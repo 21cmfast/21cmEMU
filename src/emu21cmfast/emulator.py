@@ -245,7 +245,7 @@ class EMU21cmFAST:
                                      "USE_MASS_DEPENDENT_ZETA": True, "SUBCELL_RSD": True,
                                      "INHOMO_RECO": True, "USE_TS_FLUCT": True,
                                      "M_MIN_in_Mass": False,"PHOTON_CONS": True,
-                                     "FIX_VCB_AVG": False, "EVOLVING_R_BUBBLE_MAX": False}
+                                     "FIX_VCB_AVG": False}
         if flag_options is not None:
             if isinstance(flag_options, p21.FlagOptions):
                 self.flag_options = flag_options
