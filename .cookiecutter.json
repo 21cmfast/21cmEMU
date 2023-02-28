@@ -1,0 +1,13 @@
+{
+  "_template": "gh:cjolowicz/cookiecutter-hypermodern-python",
+  "author": "Daniela Breitman",
+  "copyright_year": "2023",
+  "development_status": "Development Status :: 5 - Production/Stable",
+  "email": "daniela.breitman@sns.it",
+  "friendly_name": "EMU21cmFAST",
+  "github_user": "DanielaBreitman",
+  "license": "MIT",
+  "package_name": "emu21cmfast",
+  "project_name": "EMU21cmFAST",
+  "version": "1.0.0"
+}
