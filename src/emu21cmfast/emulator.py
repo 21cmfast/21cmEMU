@@ -4,26 +4,21 @@ import tensorflow as tf
 import py21cmfast as p21
 import logging
 
-# Logging Config
-LOGGING_CONFIG = {}
-logging_format = "[%(asctime)s] %(process)d-%(levelname)s "
-logging_format += "%(module)s::%(funcName)s():l%(lineno)d: "
-logging_format += "%(message)s"
-logging.basicConfig(format=logging_format, level=logging.INFO)
-log = logging.getLogger("21cmEMU")
+log = logging.getLogger("21cmFAST")
 
-class EMU21cmFAST:
+class p21cmEMU:
     r"""
     This class allows the use to load an emulator and use it to obtain 21cmFAST summaries.
     """
     def __init__(self,
+                 emu_path : str,
                  io_options : dict = None,
-                 url : str = None,
-                 version : str = None
                      ):
         """
         Parameters
         ----------
+        emu_path : str
+            Path of the emulator folder location including the folder name e.g. ./folder/21cmEMU
         io_options : dict, optional
             Dict containing 'store' and 'cache_dir' keys with the keys of summaries to store and folder path
             where to store them, respectively. This must be provided only if you want to save the emulator output 
@@ -33,18 +28,17 @@ class EMU21cmFAST:
         """
         log.debug('Init emulator...')
         try:
-            emu = tf.keras.models.load_model('21cmEMU', compile = False)
+            emu = tf.keras.models.load_model(emu_path, compile = False)
         except OSError as e:
-            log.warning('Emulator not found. Downloading...')
-            from .get_emulator import Download_EMU
-            status = Download21cmEMU(url = url, version = version).download_and_extract()
-            emu = tf.keras.models.load_model('21cmEMU', compile = False)
-            
+            raise ValueError('Wrong file path to emulator:', emu_path,' Remember to include the emulator folder name in the path.', e)
 
         self.model = emu
         self.io_options = io_options
 
-        all_emulator_numbers = np.load('emulator_constants.npz')
+        if len(os.path.dirname(emu_path)) > 1:
+            all_emulator_numbers = np.load(os.path.dirname(emu_path) + '/emulator_constants.npz')
+        else:
+            all_emulator_numbers = np.load('emulator_constants.npz')
 
         self.zs = all_emulator_numbers['zs']
         self.limits = all_emulator_numbers['limits']
@@ -65,7 +59,8 @@ class EMU21cmFAST:
         self.tau_err = all_emulator_numbers['tau_err']       
 
 
-    def predict(self, astro_params, cosmo_params = None, user_params = None, flag_options = None):
+    def predict(self, astro_params, verbose = False, emu_only = False,
+                cosmo_params = None, user_params = None, flag_options = None):
         r"""
         Call the emulator, evaluate it at the given parameters, restore dimensions.
     
@@ -78,8 +73,8 @@ class EMU21cmFAST:
         """
         self.check_params(cosmo_params, user_params, flag_options)
         astro_params, theta = self.format_theta(astro_params)
-   
-        emu_pred = self.model.predict(theta, verbose = False)
+        self.emu_only = emu_only
+        emu_pred = self.model.predict(theta, verbose = verbose)
 
         Tb_pred_normed = emu_pred[:,:84] #First 84 numbers of emu prediction are Tb
         xHI_pred = emu_pred[:,84:84*2] # Next 84 numbers are xHI
@@ -89,28 +84,34 @@ class EMU21cmFAST:
 
         # Set the xHI < z(Ts undefined) to 0
         xHI_pred_fix = np.zeros(xHI_pred.shape)
+        if not emu_only:
+            tau = np.zeros(theta.shape[0])
+            uvlfs = np.zeros((theta.shape[0], 3, len(self.uv_lf_zs),100))
+            for i in range(theta.shape[0]):
+                zbin = np.argmin(abs(self.zs - Ts_undefined_pred[i]))
+                if xHI_pred[i,zbin] < 1e-1:
+                    xHI_pred_fix[i,zbin:] = xHI_pred[i,zbin:]
+                else:
+                    xHI_pred_fix[i,:] = xHI_pred[i,:]
+                # Use py21cmFAST to analytically calculate UV LF and $\tau_e$
 
-        tau = np.zeros(theta.shape[0])
-        uvlfs = np.zeros((theta.shape[0], 3, len(self.uv_lf_zs),100))
-        for i in range(theta.shape[0]):
-            zbin = np.argmin(abs(self.zs - Ts_undefined_pred[i]))
-            if xHI_pred[i,zbin] < 1e-1:
-                xHI_pred_fix[i,zbin:] = xHI_pred[i,zbin:]
-            else:
-                xHI_pred_fix[i,:] = xHI_pred[i,:]
-            # Use py21cmFAST to analytically calculate UV LF and $\tau_e$
+                tau[i] = p21.wrapper.compute_tau(redshifts = self.zs, global_xHI = xHI_pred_fix[i,:], 
+                                                 cosmo_params = self.cosmo_params, user_params = self.user_params)
 
-            tau[i] = p21.wrapper.compute_tau(redshifts = self.zs, global_xHI = xHI_pred_fix[i,:], 
-                                             cosmo_params = self.cosmo_params, user_params = self.user_params)
-            
-            uvlfs[i,...] = np.array(p21.wrapper.compute_luminosity_function(redshifts = self.uv_lf_zs, 
-                                                                            astro_params=astro_params[i],
-                                                                            cosmo_params = self.cosmo_params, 
-                                                                            user_params = self.user_params, 
-                                                                            flag_options = self.flag_options))
-            if np.sum(np.isnan(uvlfs[i,-1,:,:])) > 200:
-                log.warning('UV LF computation failed: mostly NaNs.')
-
+                uvlfs[i,...] = np.array(p21.wrapper.compute_luminosity_function(redshifts = self.uv_lf_zs, 
+                                                                                astro_params=astro_params[i],
+                                                                                cosmo_params = self.cosmo_params, 
+                                                                                user_params = self.user_params, 
+                                                                                flag_options = self.flag_options))
+                if np.sum(np.isnan(uvlfs[i,-1,:,:])) > 200:
+                    log.warning('UV LF computation failed: mostly NaNs.')
+        else:
+            for i in range(theta.shape[0]):
+                zbin = np.argmin(abs(self.zs - Ts_undefined_pred[i]))
+                if xHI_pred[i,zbin] < 1e-1:
+                    xHI_pred_fix[i,zbin:] = xHI_pred[i,zbin:]
+                else:
+                    xHI_pred_fix[i,:] = xHI_pred[i,:]
         # Restore dimensions
         PS_pred = self.PS_mean + self.PS_std * PS_pred_normed # log10(PS[mK^2])
         Ts_pred = self.Ts_mean + self.Ts_std * Ts_pred_normed # log10(Ts[mK])
@@ -118,14 +119,21 @@ class EMU21cmFAST:
 
 
         if theta.shape[0] == 1:
-
-            summaries = {'delta': 10**PS_pred[0,...], 'k': self.ks_cut, 'brightness_temp': Tb_pred[0,...], 
+            if not emu_only:
+                summaries = {'delta': 10**PS_pred[0,...], 'k': self.ks_cut, 'brightness_temp': Tb_pred[0,...], 
                      'spin_temp': 10**Ts_pred[0,...], 'tau_e': tau[0], 'Muv': uvlfs[0,0,:,:], 'lfunc': uvlfs[0,-1,:,:], 'uv_lfs_redshifts':self.uv_lf_zs,
                      'ps_redshifts':self.zs_cut, 'redshifts': self.zs, 'xHI': xHI_pred_fix[0,...]}
+            else:
+                summaries = {'delta': 10**PS_pred[0,...], 'k': self.ks_cut, 'brightness_temp': Tb_pred[0,...], 
+                     'spin_temp': 10**Ts_pred[0,...],'ps_redshifts':self.zs_cut, 'redshifts': self.zs, 'xHI': xHI_pred_fix[0,...]}
         else:
-            summaries = {'delta': 10**PS_pred, 'k': self.ks_cut, 'brightness_temp': Tb_pred, 
+            if not emu_only:
+                summaries = {'delta': 10**PS_pred, 'k': self.ks_cut, 'brightness_temp': Tb_pred, 
                      'spin_temp': 10**Ts_pred, 'tau_e': tau, 'Muv': uvlfs[:,0,:,:], 'lfunc': uvlfs[:,-1,:,:], 'uv_lfs_redshifts':self.uv_lf_zs,
                      'ps_redshifts':self.zs_cut, 'redshifts': self.zs, 'xHI': xHI_pred_fix}
+            else:
+                summaries = {'delta': 10**PS_pred, 'k': self.ks_cut, 'brightness_temp': Tb_pred, 
+                     'spin_temp': 10**Ts_pred,'ps_redshifts':self.zs_cut, 'redshifts': self.zs, 'xHI': xHI_pred_fix}
         errors = self.get_errors(summaries, theta)
         # Put the summaries and errors in one single dict
         output = summaries.copy()
@@ -160,8 +168,12 @@ class EMU21cmFAST:
 
         # For now, we return the mean emulator error (obtained from the test set) for each summary.
         # Some errors are fractional => actual error = fractional error * value
-        output = {'delta_err': self.PS_err/100. * summaries['delta'], 'brightness_temp_err': self.Tb_err, 'xHI_err': self.xHI_err,
+        if not self.emu_only:
+            output = {'delta_err': self.PS_err/100. * summaries['delta'], 'brightness_temp_err': self.Tb_err, 'xHI_err': self.xHI_err,
                       'spin_temp_err': self.Ts_err, 'tau_e_err': self.tau_err/100. * summaries['tau_e']}
+        else:
+             output = {'delta_err': self.PS_err/100. * summaries['delta'], 'brightness_temp_err': self.Tb_err, 'xHI_err': self.xHI_err,
+                      'spin_temp_err': self.Ts_err}
         return output
     
     def format_theta(self, astro_params):
@@ -280,4 +292,5 @@ class EMU21cmFAST:
                     raise ValueError('Input user params do not match the emulator user params. The emulator can only be used with a single set of user params:', training_user_params)
         else:
             self.user_params = training_user_params
+
 
