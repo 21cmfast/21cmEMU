@@ -13,6 +13,7 @@ class p21cmEMU:
     def __init__(self,
                  emu_path : str,
                  io_options : dict = None,
+                 emu_only : bool = False
                      ):
         """
         Parameters
@@ -23,7 +24,9 @@ class p21cmEMU:
             Dict containing 'store' and 'cache_dir' keys with the keys of summaries to store and folder path
             where to store them, respectively. This must be provided only if you want to save the emulator output 
             at each evaluation.
-        
+        emu_only : bool, optional
+            If set to True, skips the 21cmFAST calls to calculate tau_e and UV LFs. 
+            Set to True only if you don't need tau_e and UV LFs in your output.
         
         """
         log.debug('Init emulator...')
@@ -57,9 +60,9 @@ class p21cmEMU:
         self.Ts_err = all_emulator_numbers['Ts_err']
         self.xHI_err = all_emulator_numbers['xHI_err']
         self.tau_err = all_emulator_numbers['tau_err']       
+        self.emu_only = emu_only
 
-
-    def predict(self, astro_params, verbose = False, emu_only = False,
+    def predict(self, astro_params, verbose = False,
                 cosmo_params = None, user_params = None, flag_options = None):
         r"""
         Call the emulator, evaluate it at the given parameters, restore dimensions.
@@ -73,7 +76,6 @@ class p21cmEMU:
         """
         self.check_params(cosmo_params, user_params, flag_options)
         astro_params, theta = self.format_theta(astro_params)
-        self.emu_only = emu_only
         emu_pred = self.model.predict(theta, verbose = verbose)
 
         Tb_pred_normed = emu_pred[:,:84] #First 84 numbers of emu prediction are Tb
@@ -84,7 +86,7 @@ class p21cmEMU:
 
         # Set the xHI < z(Ts undefined) to 0
         xHI_pred_fix = np.zeros(xHI_pred.shape)
-        if not emu_only:
+        if not self.emu_only:
             tau = np.zeros(theta.shape[0])
             uvlfs = np.zeros((theta.shape[0], 3, len(self.uv_lf_zs),100))
             for i in range(theta.shape[0]):
@@ -119,7 +121,7 @@ class p21cmEMU:
 
 
         if theta.shape[0] == 1:
-            if not emu_only:
+            if not self.emu_only:
                 summaries = {'delta': 10**PS_pred[0,...], 'k': self.ks_cut, 'brightness_temp': Tb_pred[0,...], 
                      'spin_temp': 10**Ts_pred[0,...], 'tau_e': tau[0], 'Muv': uvlfs[0,0,:,:], 'lfunc': uvlfs[0,-1,:,:], 'uv_lfs_redshifts':self.uv_lf_zs,
                      'ps_redshifts':self.zs_cut, 'redshifts': self.zs, 'xHI': xHI_pred_fix[0,...]}
@@ -127,7 +129,7 @@ class p21cmEMU:
                 summaries = {'delta': 10**PS_pred[0,...], 'k': self.ks_cut, 'brightness_temp': Tb_pred[0,...], 
                      'spin_temp': 10**Ts_pred[0,...],'ps_redshifts':self.zs_cut, 'redshifts': self.zs, 'xHI': xHI_pred_fix[0,...]}
         else:
-            if not emu_only:
+            if not self.emu_only:
                 summaries = {'delta': 10**PS_pred, 'k': self.ks_cut, 'brightness_temp': Tb_pred, 
                      'spin_temp': 10**Ts_pred, 'tau_e': tau, 'Muv': uvlfs[:,0,:,:], 'lfunc': uvlfs[:,-1,:,:], 'uv_lfs_redshifts':self.uv_lf_zs,
                      'ps_redshifts':self.zs_cut, 'redshifts': self.zs, 'xHI': xHI_pred_fix}
