@@ -1,7 +1,4 @@
 # This is a basic workflow to help you get started with Actions
-
-name: Upload coverage reports to Codecov
-  uses: codecov/codecov-action@v3
   
 name: CI
 
@@ -37,3 +34,6 @@ jobs:
         run: |
           echo Add other actions to build,
           echo test, and deploy your project.
+          
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v3
