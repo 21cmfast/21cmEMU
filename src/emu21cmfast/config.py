@@ -1,21 +1,23 @@
-
+"""User-facing configuration for emu21cmfast."""
 import logging
+from pathlib import Path
+
 import toml
 from appdirs import AppDirs
-from pathlib import Path
+
 
 log = logging.getLogger(__name__)
 
 APPDIR = AppDirs("EMU21cmFAST", "21cmFAST")
-LATEST = 'v1'
+LATEST = "v1"
+
 
 class Config:
-    """
-    Class that handles the configuration file.
-    """
+    """Class that handles the configuration file."""
+
     def __init__(self, config_file=None):
         if config_file is None:
-            config_file = Path(APPDIR.user_config_dir) / 'config.toml'
+            config_file = Path(APPDIR.user_config_dir) / "config.toml"
         else:
             config_file = Path(config_file)
 
@@ -29,68 +31,67 @@ class Config:
         self.config = toml.loads(self.config_file.read_text())
 
         # Ensure we have the version listed in the config file
-        if 'emu-versions' not in self:
-            self['emu-versions'] = ()
-        if 'data-path' not in self:
-            self['data-path'] = APPDIR.user_data_dir
+        if "emu-versions" not in self:
+            self["emu-versions"] = ()
+        if "data-path" not in self:
+            self["data-path"] = APPDIR.user_data_dir
 
         if not self.data_path.exists():
             self.data_path.mkdir(parents=True, exist_ok=True)
 
     def add_emulator(self, emu: str):
-        self['emu-versions'] += (emu,)
+        """Add a new emulator version to the config."""
+        self["emu-versions"] += (emu,)
         self.config_file.write_text(toml.dumps(self.config))
 
     def get_emulator(self, emu: str):
-        if emu not in self['emu-versions']:
+        """Get the path to the emulator data."""
+        if emu not in self["emu-versions"]:
             raise ValueError(f"Emulator {emu} not found in config file.")
-        return Path(self['data-path']) / emu
-    
+        return Path(self["data-path"]) / emu
+
     @property
     def data_path(self):
-        return Path(self['data-path'])
-    
+        """Get the path to the data directory."""
+        return Path(self["data-path"])
+
     def __getitem__(self, key):
+        """Get a value from the config file."""
         return self.config[key]
 
     def __setitem__(self, key, value):
+        """Set a value in the config file."""
         self.config[key] = value
         self.config_file.write_text(toml.dumps(self.config))
 
     def __delitem__(self, key):
+        """Delete a value from the config file."""
         del self.config[key]
         self.config_file.write_text(toml.dumps(self.config))
 
     def __contains__(self, key):
+        """Check if a key is in the config file."""
         return key in self.config
 
-    def __iter__(self):
-        return iter(self.config)
-
-    def __len__(self):
-        return len(self.config)
-
     def __repr__(self):
+        """Get the string representation of the config file."""
         return repr(self.config)
 
     def __str__(self):
+        """Get the string representation of the config file."""
         return str(self.config)
 
-    def delete(self, key):
-        del self.config[key]
-        self.config_file.write_text(toml.dumps(self.config))
-
     def keys(self):
+        """Get the keys in the config file."""
         return self.config.keys()
 
     def values(self):
+        """Get the values in the config file."""
         return self.config.values()
 
     def items(self):
+        """Get the items in the config file."""
         return self.config.items()
 
-    def update(self, other):
-        self.config.update(other)
-        self.config_file.write_text(toml.dumps(self.config))
 
 CONFIG = Config()

@@ -33,4 +33,3 @@ See https://emu21cmfast.readthedocs.io/en/latest/.
 
 Acknowledging
 =============
-
