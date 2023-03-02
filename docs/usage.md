@@ -37,3 +37,9 @@ theta = np.random.rand(9*5).reshape((5,9))
 
 emulator_output = emu_instance.predict(theta)
 ```
+The output here will contain all the summaries i.e. power spectrum, global 21-cm brightness temperature,
+IGM spin temperature, neutral fraction, as well as analytically calculated $\tau_e$ and UV LFs.
+Setting `emu_only = True` upon creating an instance of the class will skip the analytic calculation of the UV LFs and $\tau_e$.
+This will yield a speed-up by about a factor of 10.
+
+Let's make a plot with the results:
