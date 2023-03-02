@@ -1,4 +1,6 @@
 """User-facing configuration for emu21cmfast."""
+from __future__ import annotations
+
 import logging
 from pathlib import Path
 

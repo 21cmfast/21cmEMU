@@ -147,7 +147,8 @@ def install_myself(session: Session) -> None:
             env={
                 "CFLAGS": (
                     "-isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk"
-                )
+                ),
+                "CC": "gcc",
             },
         )
     session.install(".")
