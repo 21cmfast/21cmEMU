@@ -4,16 +4,24 @@ import tensorflow as tf
 import py21cmfast as p21
 import logging
 
-log = logging.getLogger("21cmFAST")
+# Logging Config
+LOGGING_CONFIG = {}
+logging_format = "[%(asctime)s] %(process)d-%(levelname)s "
+logging_format += "%(module)s::%(funcName)s():l%(lineno)d: "
+logging_format += "%(message)s"
+logging.basicConfig(format=logging_format, level=logging.INFO)
+log = logging.getLogger("21cmEMU")
 
-class p21cmEMU:
+class EMU21cmFAST:
     r"""
     This class allows the use to load an emulator and use it to obtain 21cmFAST summaries.
     """
     def __init__(self,
-                 emu_path : str,
+                 emu_path : str = None,
                  io_options : dict = None,
-                 emu_only : bool = False
+                 emu_only : bool = False,
+                 url : str = None,
+                 version : str = 'latest',
                      ):
         """
         Parameters
@@ -27,21 +35,31 @@ class p21cmEMU:
         emu_only : bool, optional
             If set to True, skips the 21cmFAST calls to calculate tau_e and UV LFs. 
             Set to True only if you don't need tau_e and UV LFs in your output.
+        url : str, optional
+            Emulator zip file download url.
+        version : str, optional
+            Emulator version to download, default is 'latest'. 
         
         """
         log.debug('Init emulator...')
-        try:
-            emu = tf.keras.models.load_model(emu_path, compile = False)
-        except OSError as e:
-            raise ValueError('Wrong file path to emulator:', emu_path,' Remember to include the emulator folder name in the path.', e)
+        if emu_path is not None:
+            try:
+                emu = tf.keras.models.load_model(emu_path, compile = False)
+            except OSError as e:
+                log.warning('Emulator not found. Downloading latest version...')
+                from get_emulator import Download_EMU
+                emu_path = Download_EMU(url = url, version = version).download_and_extract()
+                emu = tf.keras.models.load_model('21cmEMU', compile = False)
+        if emu_path is None or ulr is not None:
+            log.warning('Emulator path not provided. Downloading latest version...')
+            from get_emulator import Download_EMU
+            emu_path = Download_EMU(url = url, version = version).download_and_extract()
+            emu = tf.keras.models.load_model('21cmEMU', compile = False)
 
         self.model = emu
         self.io_options = io_options
 
-        if len(os.path.dirname(emu_path)) > 1:
-            all_emulator_numbers = np.load(os.path.dirname(emu_path) + '/emulator_constants.npz')
-        else:
-            all_emulator_numbers = np.load('emulator_constants.npz')
+        all_emulator_numbers = np.load('emulator_constants.npz')
 
         self.zs = all_emulator_numbers['zs']
         self.limits = all_emulator_numbers['limits']
