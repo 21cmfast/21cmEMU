@@ -5,8 +5,8 @@ description = "EMU21cmFAST"
 authors = ["Daniela Breitman <daniela.breitman@sns.it>"]
 license = "MIT"
 readme = "README.md"
-homepage = "https://github.com/DanielaBreitman/EMU21cmFAST"
-repository = "https://github.com/DanielaBreitman/EMU21cmFAST"
+homepage = "https://github.com/21cmFAST/EMU21cmFAST"
+repository = "https://github.com/21cmFAST/EMU21cmFAST"
 documentation = "https://EMU21cmFAST.readthedocs.io"
 packages = [
     { include = "emu21cmfast", from = "src" },
@@ -16,7 +16,7 @@ classifiers = [
 ]
 
 [tool.poetry.urls]
-Changelog = "https://github.com/DanielaBreitman/EMU21cmFAST/releases"
+Changelog = "https://github.com/21cmFAST/EMU21cmFAST/releases"
 
 [tool.poetry.dependencies]
 python = "^3.7"

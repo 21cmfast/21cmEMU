@@ -40,7 +40,7 @@ setup(
     ),
     author="Daniela Breitman",
     author_email="daniela.breitman@sns.it",
-    url="https://github.com/DanielaBreitman/21cmEMU",
+    url="https://github.com/21cmFAST/21cmEMU",
     packages=find_packages("src"),
     package_dir={"": "21cmemu"},
     py_modules=[],

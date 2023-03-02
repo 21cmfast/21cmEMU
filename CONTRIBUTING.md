@@ -12,9 +12,9 @@ Here is a list of important resources for contributors:
 - [Code of Conduct]
 
 [mit license]: https://opensource.org/licenses/MIT
-[source code]: https://github.com/DanielaBreitman/EMU21cmFAST
+[source code]: https://github.com/21cmFAST/EMU21cmFAST
 [documentation]: https://EMU21cmFAST.readthedocs.io/
-[issue tracker]: https://github.com/DanielaBreitman/EMU21cmFAST/issues
+[issue tracker]: https://github.com/21cmFAST/EMU21cmFAST/issues
 
 ## How to report a bug
 
@@ -108,7 +108,7 @@ $ nox --session=pre-commit -- install
 It is recommended to open an issue before starting work on anything.
 This will allow a chance to talk it over with the owners and validate your approach.
 
-[pull request]: https://github.com/DanielaBreitman/EMU21cmFAST/pulls
+[pull request]: https://github.com/21cmFAST/EMU21cmFAST/pulls
 
 <!-- github-only -->
 
