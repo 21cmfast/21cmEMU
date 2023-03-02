@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "EMU21cmFAST"
 version = "1.0.0"
-description = "EMU21cmFAST"
+description = "Emulator of 21cmFAST summaries."
 authors = ["Daniela Breitman <daniela.breitman@sns.it>"]
 license = "MIT"
 readme = "README.md"
@@ -13,14 +13,29 @@ packages = [
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Unix",
+    "Operating System :: POSIX",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
 ]
-
+keywords = [
+    "Epoch of Reionization",
+    "Cosmology",
+]
 [tool.poetry.urls]
 Changelog = "https://github.com/21cmFAST/EMU21cmFAST/releases"
 
 [tool.poetry.dependencies]
-python = "^3.7"
+python = ">=3.8,<3.12"
 click = ">=8.0.1"
+numpy = "^1.24.2"
+21cmfast = "^3.2.0"
+scipy = "^1.10.1"
+tensorflow = "^2.11.0"
 
 [tool.poetry.dev-dependencies]
 Pygments = ">=2.10.0"
