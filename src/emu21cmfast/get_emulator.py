@@ -17,15 +17,15 @@ class Download_EMU:
         path where to download 21cmEMU. Default is in the current directory.
     version : str, optional
         When multiple versions will be available, one will be able to specify 
-        the version number instead of the link.
+        the version number instead of the link. Default is 'latest'.
     """
     
     def __init__(self, url = None, 
                  destination_dir = None,
                  version = 'v1'):
         if url is None:
-            if version == 'v1' or version is None:
-                url = ''
+            if version == 'v1' or version == 'latest' or version is None:
+                url = 'https://www.dropbox.com/s/rv55tetjy22lple/21cmEMU.zip?dl=1'
             else:
                 raise ValueError('The only version currently available is v1')
         self.url = url
@@ -53,4 +53,4 @@ class Download_EMU:
                 log.info('Extracted the emulator successfully')
         except Exception as e:
             raise TypeError('The downloaded file is not a zipped file. Check that the download link is correct!', e)
-        return 1
+        return self.destination_dir + '21cmEMU/'
