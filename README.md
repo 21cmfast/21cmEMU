@@ -34,10 +34,11 @@
 ## Installation
 
 You can install _EMU21cmFAST_ via [pip] from [PyPI]:
-
 ```console
 $ pip install EMU21cmFAST
 ```
+
+Note that you need `gcc` and the `fftw3` and `gsl` packages for the `21cmFAST` installation.
 
 ## Usage
 
