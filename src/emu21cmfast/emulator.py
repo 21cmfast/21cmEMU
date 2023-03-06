@@ -117,8 +117,15 @@ class EMU21cmFAST:
             (theta.shape[0], 60, 12)
         )  # The rest is PS
 
+        # Restore dimensions
+        PS_pred = self.PS_mean + self.PS_std * PS_pred_normed  # log10(PS[mK^2])
+        Ts_pred = self.Ts_mean + self.Ts_std * Ts_pred_normed  # log10(Ts[mK])
+        Tb_pred = self.Tb_mean + self.Tb_std * Tb_pred_normed  # Tb[mK]
+        
         # Set the xHI < z(Ts undefined) to 0
+        # For Ts, set it to NaN
         xHI_pred_fix = np.zeros(xHI_pred.shape)
+        Ts_pred_fix = np.zeros(Ts_pred.shape)
         if not self.emu_only:
             tau = np.zeros(theta.shape[0])
             uvlfs = np.zeros((theta.shape[0], 3, len(self.uv_lf_zs), 100))
@@ -128,6 +135,8 @@ class EMU21cmFAST:
                     xHI_pred_fix[i, zbin:] = xHI_pred[i, zbin:]
                 else:
                     xHI_pred_fix[i, :] = xHI_pred[i, :]
+                Ts_pred_fix[i,zbin:] = Ts_pred[i,zbin:]
+                Ts_pred_fix[i,:zbin] = np.nan
                 # Use py21cmFAST to analytically calculate UV LF and $\tau_e$
 
                 tau[i] = p21.wrapper.compute_tau(
@@ -155,18 +164,15 @@ class EMU21cmFAST:
                     xHI_pred_fix[i, zbin:] = xHI_pred[i, zbin:]
                 else:
                     xHI_pred_fix[i, :] = xHI_pred[i, :]
-        # Restore dimensions
-        PS_pred = self.PS_mean + self.PS_std * PS_pred_normed  # log10(PS[mK^2])
-        Ts_pred = self.Ts_mean + self.Ts_std * Ts_pred_normed  # log10(Ts[mK])
-        Tb_pred = self.Tb_mean + self.Tb_std * Tb_pred_normed  # Tb[mK]
-
+                Ts_pred_fix[i,zbin:] = Ts_pred[i,zbin:]
+                Ts_pred_fix[i,:zbin] = np.nan
         if theta.shape[0] == 1:
             if not self.emu_only:
                 summaries = {
                     "delta": 10 ** PS_pred[0, ...],
                     "k": self.ks_cut,
                     "brightness_temp": Tb_pred[0, ...],
-                    "spin_temp": 10 ** Ts_pred[0, ...],
+                    "spin_temp": 10 ** Ts_pred_fix[0, ...],
                     "tau_e": tau[0],
                     "Muv": uvlfs[0, 0, :, :],
                     "lfunc": uvlfs[0, -1, :, :],
@@ -180,7 +186,7 @@ class EMU21cmFAST:
                     "delta": 10 ** PS_pred[0, ...],
                     "k": self.ks_cut,
                     "brightness_temp": Tb_pred[0, ...],
-                    "spin_temp": 10 ** Ts_pred[0, ...],
+                    "spin_temp": 10 ** Ts_pred_fix[0, ...],
                     "ps_redshifts": self.zs_cut,
                     "redshifts": self.zs,
                     "xHI": xHI_pred_fix[0, ...],
@@ -191,7 +197,7 @@ class EMU21cmFAST:
                     "delta": 10**PS_pred,
                     "k": self.ks_cut,
                     "brightness_temp": Tb_pred,
-                    "spin_temp": 10**Ts_pred,
+                    "spin_temp": 10**Ts_pred_fix,
                     "tau_e": tau,
                     "Muv": uvlfs[:, 0, :, :],
                     "lfunc": uvlfs[:, -1, :, :],
@@ -205,7 +211,7 @@ class EMU21cmFAST:
                     "delta": 10**PS_pred,
                     "k": self.ks_cut,
                     "brightness_temp": Tb_pred,
-                    "spin_temp": 10**Ts_pred,
+                    "spin_temp": 10**Ts_pred_fix,
                     "ps_redshifts": self.zs_cut,
                     "redshifts": self.zs,
                     "xHI": xHI_pred_fix,
