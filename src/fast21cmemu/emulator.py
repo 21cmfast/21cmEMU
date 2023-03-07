@@ -16,7 +16,7 @@ from .get_emulator import download_emu_data
 log = logging.getLogger(__name__)
 
 
-class EMU21cmFAST:
+class FAST21cmEMU:
     r"""A class that loads an emulator and uses it to obtain 21cmFAST summaries.
 
     Parameters

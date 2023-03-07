@@ -1,15 +1,15 @@
 [tool.poetry]
-name = "EMU21cmFAST"
+name = "FAST21cmEMU"
 version = "1.0.0"
 description = "Emulator of 21cmFAST summaries."
 authors = ["Daniela Breitman <daniela.breitman@sns.it>"]
 license = "MIT"
 readme = "README.md"
-homepage = "https://github.com/21cmFAST/EMU21cmFAST"
-repository = "https://github.com/21cmFAST/EMU21cmFAST"
-documentation = "https://EMU21cmFAST.readthedocs.io"
+homepage = "https://github.com/21cmFAST/FAST21cmEMU"
+repository = "https://github.com/21cmFAST/FAST21cmEMU"
+documentation = "https://FAST21cmEMU.readthedocs.io"
 packages = [
-    { include = "emu21cmfast", from = "src" },
+    { include = "fast21cmemu", from = "src" },
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
@@ -27,7 +27,7 @@ keywords = [
     "Cosmology",
 ]
 [tool.poetry.urls]
-Changelog = "https://github.com/21cmFAST/EMU21cmFAST/releases"
+Changelog = "https://github.com/21cmFAST/FAST21cmEMU/releases"
 
 [tool.poetry.dependencies]
 python = ">=3.8,<3.12"
@@ -66,7 +66,7 @@ xdoctest = {extras = ["colors"], version = ">=0.15.10"}
 myst-parser = {version = ">=0.16.1"}
 
 [tool.poetry.scripts]
-EMU21cmFAST = "emu21cmfast.__main__:main"
+FAST21cmEMU = "fast21cmemu.__main__:main"
 
 [tool.coverage.paths]
 source = ["src", "*/site-packages"]
@@ -74,7 +74,7 @@ tests = ["tests", "*/tests"]
 
 [tool.coverage.run]
 branch = true
-source = ["emu21cmfast", "tests"]
+source = ["fast21cmemu", "tests"]
 
 [tool.coverage.report]
 show_missing = true

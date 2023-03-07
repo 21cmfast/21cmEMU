@@ -1,8 +1,8 @@
 # Reference
 
-## emu21cmfast
+## fast21cmemu
 
 ```{eval-rst}
-.. automodule:: emu21cmfast
+.. automodule:: fast21cmemu
    :members:
 ```

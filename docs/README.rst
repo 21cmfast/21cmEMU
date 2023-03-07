@@ -1,16 +1,16 @@
 ======
-EMU21cmFAST
+FAST21cmEMU
 ======
 
 .. start-badges
-.. image:: https://github.com/21cmfast/EMU21cmFAST/actions/workflows/test_suite.yaml/badge.svg
-    :target: https://github.com/21cmfast/EMU21cmFAST/actions/workflows/test_suite.yaml
-.. image:: https://codecov.io/gh/21cmfast/EMU21cmFAST/branch/master/graph/badge.svg
-    :target: https://codecov.io/gh/21cmfast/EMU21cmFAST
+.. image:: https://github.com/21cmfast/FAST21cmEMU/actions/workflows/test_suite.yaml/badge.svg
+    :target: https://github.com/21cmfast/FAST21cmEMU/actions/workflows/test_suite.yaml
+.. image:: https://codecov.io/gh/21cmfast/FAST21cmEMU/branch/master/graph/badge.svg
+    :target: https://codecov.io/gh/21cmfast/FAST21cmEMU
 .. image:: https://img.shields.io/badge/code%20style-black-000000.svg
     :target: https://github.com/ambv/black
 .. image:: https://readthedocs.org/projects/21cmmc/badge/?version=latest
-    :target: https://emu21cmfast.readthedocs.io/en/latest/
+    :target: https://fast21cmemu.readthedocs.io/en/latest/
     :alt: Documentation Status
 .. end-badges
 
@@ -29,7 +29,7 @@ Features
 Documentation
 =============
 
-See https://emu21cmfast.readthedocs.io/en/latest/.
+See https://fast21cmemu.readthedocs.io/en/latest/.
 
 Acknowledging
 =============

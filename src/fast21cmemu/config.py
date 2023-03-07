@@ -10,7 +10,7 @@ from appdirs import AppDirs
 
 log = logging.getLogger(__name__)
 
-APPDIR = AppDirs("EMU21cmFAST", "21cmFAST")
+APPDIR = AppDirs("py21cmEMU", "21cmFAST")
 LATEST = "v1"
 
 
