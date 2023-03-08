@@ -1,5 +1,6 @@
 """Sphinx configuration."""
 from unittest.mock import MagicMock
+import sys
 
 sys.path.insert(0, os.path.abspath("../"))
 
