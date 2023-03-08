@@ -1,8 +1,8 @@
 # Usage
 
 ```{eval-rst}
-.. click:: fast21cmemu.__main__:main
-    :prog: FAST21cmEMU
+.. click:: py21cmemu.__main__:main
+    :prog: 21cmEMU
     :nested: full
 ```
 
@@ -11,8 +11,8 @@
 Once you installed the repository with `python setup.py install`, try running the following:
 
 ```python
-from emulator import FAST21cmEMU
-emu_instance = FAST21cmEMU()
+from emulator import py21cmEMU
+emu_instance = py21cmEMU()
 ```
 
 The second line will create an instance of the emulator class. During this step,

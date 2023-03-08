@@ -1,8 +1,8 @@
 # Reference
 
-## fast21cmemu
+## 21cmEMU
 
 ```{eval-rst}
-.. automodule:: fast21cmemu
+.. automodule:: py21cmemu
    :members:
 ```

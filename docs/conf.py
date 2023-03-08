@@ -1,5 +1,5 @@
 """Sphinx configuration."""
-project = "EMU21cmFAST"
+project = "21cmEMU"
 author = "Daniela Breitman"
 copyright = "2023, Daniela Breitman"
 extensions = [
@@ -8,5 +8,6 @@ extensions = [
     "sphinx_click",
     "myst_parser",
 ]
+autodoc_mock_imports = ['py21cmfast']
 autodoc_typehints = "description"
 html_theme = "furo"

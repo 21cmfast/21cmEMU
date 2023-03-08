@@ -1,23 +1,23 @@
 # 21cmEMU
 
-[![PyPI](https://img.shields.io/pypi/v/FAST21cmEMU.svg)][pypi_]
-[![Status](https://img.shields.io/pypi/status/FAST21cmEMU.svg)][status]
-[![Python Version](https://img.shields.io/pypi/pyversions/FAST21cmEMU)][python version]
-[![License](https://img.shields.io/pypi/l/FAST21cmEMU)][license]
+[![PyPI](https://img.shields.io/pypi/v/py21cmemu.svg)][pypi_]
+[![Status](https://img.shields.io/pypi/status/py21cmemu.svg)][status]
+[![Python Version](https://img.shields.io/pypi/pyversions/py21cmemu)][python version]
+[![License](https://img.shields.io/pypi/l/py21cmemu)][license]
 
-[![Read the documentation at https://FAST21cmEMU.readthedocs.io/](https://img.shields.io/readthedocs/FAST21cmEMU/latest.svg?label=Read%20the%20Docs)][read the docs]
-[![Tests](https://github.com/21cmFAST/FAST21cmEMU/workflows/Tests/badge.svg)][tests]
-[![Codecov](https://codecov.io/gh/21cmFAST/FAST21cmEMU/branch/main/graph/badge.svg)][codecov]
+[![Read the documentation at https://21cmEMU.readthedocs.io/](https://img.shields.io/readthedocs/py21cmEMU/latest.svg?label=Read%20the%20Docs)][read the docs]
+[![Tests](https://github.com/21cmFAST/21cmEMU/workflows/Tests/badge.svg)][tests]
+[![Codecov](https://codecov.io/gh/21cmFAST/21cmEMU/branch/main/graph/badge.svg)][codecov]
 
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)][pre-commit]
 [![Black](https://img.shields.io/badge/code%20style-black-000000.svg)][black]
 
-[pypi_]: https://pypi.org/project/FAST21cmEMU/
-[status]: https://pypi.org/project/FAST21cmEMU/
-[python version]: https://pypi.org/project/FAST21cmEMU
-[read the docs]: https://FAST21cmEMU.readthedocs.io/
-[tests]: https://github.com/21cmFAST/FAST21cmEMU/actions?workflow=Tests
-[codecov]: https://app.codecov.io/gh/21cmFAST/EMU21cmEMU
+[pypi_]: https://pypi.org/project/py21cmemu/
+[status]: https://pypi.org/project/py21cmemu/
+[python version]: https://pypi.org/project/py21cmemu
+[read the docs]: https://21cmemu.readthedocs.io/
+[tests]: https://github.com/21cmFAST/21cmEMU/actions?workflow=Tests
+[codecov]: https://app.codecov.io/gh/21cmFAST/21cmEMU
 [pre-commit]: https://github.com/pre-commit/pre-commit
 [black]: https://github.com/psf/black
 
@@ -33,9 +33,9 @@
 
 ## Installation
 
-You can install _FAST21cmEMU_ via [pip] from [PyPI]:
+You can install _py21cmEMU_ via [pip] from [PyPI]:
 ```console
-$ pip install FAST21cmEMU
+$ pip install py21cmemu
 ```
 
 Note that you need `gcc` and the `fftw3` and `gsl` packages for the `21cmFAST` installation.

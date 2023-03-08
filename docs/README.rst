@@ -1,5 +1,5 @@
 ======
-FAST21cmEMU
+21cmEMU
 ======
 
 .. start-badges
@@ -29,7 +29,7 @@ Features
 Documentation
 =============
 
-See https://fast21cmemu.readthedocs.io/en/latest/.
+See https://py21cmemu.readthedocs.io/en/latest/.
 
 Acknowledging
 =============

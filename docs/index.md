@@ -19,5 +19,5 @@ reference
 contributing
 Code of Conduct <codeofconduct>
 License <license>
-Changelog <https://github.com/21cmFAST/EMU21cmFAST/releases>
+Changelog <https://github.com/21cmFAST/21cmEMU/releases>
 ```

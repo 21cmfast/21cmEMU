@@ -1,15 +1,15 @@
 [tool.poetry]
-name = "FAST21cmEMU"
+name = "21cmEMU"
 version = "1.0.0"
 description = "Emulator of 21cmFAST summaries."
 authors = ["Daniela Breitman <daniela.breitman@sns.it>"]
 license = "MIT"
 readme = "README.md"
-homepage = "https://github.com/21cmFAST/FAST21cmEMU"
-repository = "https://github.com/21cmFAST/FAST21cmEMU"
-documentation = "https://FAST21cmEMU.readthedocs.io"
+homepage = "https://github.com/21cmFAST/21cmEMU"
+repository = "https://github.com/21cmFAST/21cmEMU"
+documentation = "https://21cmEMU.readthedocs.io"
 packages = [
-    { include = "fast21cmemu", from = "src" },
+    { include = "py21cmemu", from = "src" },
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
@@ -27,7 +27,7 @@ keywords = [
     "Cosmology",
 ]
 [tool.poetry.urls]
-Changelog = "https://github.com/21cmFAST/FAST21cmEMU/releases"
+Changelog = "https://github.com/21cmFAST/21cmEMU/releases"
 
 [tool.poetry.dependencies]
 python = ">=3.8,<3.12"
