@@ -9,4 +9,4 @@ formats: all
 python:
   install:
     - requirements: docs/requirements.txt
-    - path: .
+    - path: . --no-deps
