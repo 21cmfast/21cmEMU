@@ -4,10 +4,10 @@
   "copyright_year": "2023",
   "development_status": "Development Status :: 5 - Production/Stable",
   "email": "daniela.breitman@sns.it",
-  "friendly_name": "EMU21cmFAST",
+  "friendly_name": "21cmEMU",
   "github_user": "DanielaBreitman",
   "license": "MIT",
-  "package_name": "emu21cmfast",
-  "project_name": "EMU21cmFAST",
+  "package_name": "py21cmemu",
+  "project_name": "21cmEMU",
   "version": "1.0.0"
 }

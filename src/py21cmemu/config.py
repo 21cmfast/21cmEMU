@@ -1,4 +1,4 @@
-"""User-facing configuration for emu21cmfast."""
+"""User-facing configuration for py21cmEMU."""
 from __future__ import annotations
 
 import logging

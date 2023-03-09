@@ -1,4 +1,4 @@
-exclude: "^docs/conf.py|^src/emu21cmfast/emulator_constants.npz"
+exclude: "^docs/conf.py|^src/py21cmemu/emulator_constants.npz"
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks

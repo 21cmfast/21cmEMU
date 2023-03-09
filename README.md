@@ -52,7 +52,7 @@ To learn more, see the [Contributor Guide].
 ## License
 
 Distributed under the terms of the [MIT license][license],
-_EMU21cmFAST_ is free and open source software.
+_21cmEMU_ is free and open source software.
 
 ## Issues
 
@@ -66,11 +66,11 @@ This project was generated from [@cjolowicz]'s [Hypermodern Python Cookiecutter]
 [@cjolowicz]: https://github.com/cjolowicz
 [pypi]: https://pypi.org/
 [hypermodern python cookiecutter]: https://github.com/cjolowicz/cookiecutter-hypermodern-python
-[file an issue]: https://github.com/21cmFAST/EMU21cmFAST/issues
+[file an issue]: https://github.com/21cmFAST/21cmEMU/issues
 [pip]: https://pip.pypa.io/
 
 <!-- github-only -->
 
-[license]: https://github.com/21cmFAST/EMU21cmFAST/blob/main/LICENSE
-[contributor guide]: https://github.com/21cmFAST/EMU21cmFAST/blob/main/CONTRIBUTING.md
-[command-line reference]: https://EMU21cmFAST.readthedocs.io/en/latest/usage.html
+[license]: https://github.com/21cmFAST/21cmEMU/blob/main/LICENSE
+[contributor guide]: https://github.com/21cmFAST/21cmEMU/blob/main/CONTRIBUTING.md
+[command-line reference]: https://21cmEMU.readthedocs.io/en/latest/usage.html

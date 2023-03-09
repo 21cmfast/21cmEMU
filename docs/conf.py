@@ -1,9 +1,9 @@
 """Sphinx configuration."""
 from unittest.mock import MagicMock
 import sys
+from pathlib import Path
 
-sys.path.insert(0, os.path.abspath("../"))
-
+sys.path.insert(0, str(Path(__file__).absolute().parent.parent / "src"))
 
 class Mock(MagicMock):
     @classmethod
