@@ -11,8 +11,8 @@
 Once you installed the repository with `python setup.py install`, try running the following:
 
 ```python
-from emulator import py21cmEMU
-emu_instance = py21cmEMU()
+from emulator import Emulator
+emu_instance = Emulator()
 ```
 
 The second line will create an instance of the emulator class. During this step,

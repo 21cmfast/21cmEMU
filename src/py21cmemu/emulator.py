@@ -16,7 +16,7 @@ from .get_emulator import download_emu_data
 log = logging.getLogger(__name__)
 
 
-class py21cmEMU:
+class Emulator:
     r"""A class that loads an emulator and uses it to obtain 21cmFAST summaries.
 
     Parameters
@@ -121,7 +121,7 @@ class py21cmEMU:
         PS_pred = self.PS_mean + self.PS_std * PS_pred_normed  # log10(PS[mK^2])
         Ts_pred = self.Ts_mean + self.Ts_std * Ts_pred_normed  # log10(Ts[mK])
         Tb_pred = self.Tb_mean + self.Tb_std * Tb_pred_normed  # Tb[mK]
-        
+
         # Set the xHI < z(Ts undefined) to 0
         # For Ts, set it to NaN
         xHI_pred_fix = np.zeros(xHI_pred.shape)
@@ -135,8 +135,8 @@ class py21cmEMU:
                     xHI_pred_fix[i, zbin:] = xHI_pred[i, zbin:]
                 else:
                     xHI_pred_fix[i, :] = xHI_pred[i, :]
-                Ts_pred_fix[i,zbin:] = Ts_pred[i,zbin:]
-                Ts_pred_fix[i,:zbin] = np.nan
+                Ts_pred_fix[i, zbin:] = Ts_pred[i, zbin:]
+                Ts_pred_fix[i, :zbin] = np.nan
                 # Use py21cmFAST to analytically calculate UV LF and $\tau_e$
 
                 tau[i] = p21.wrapper.compute_tau(
@@ -164,8 +164,8 @@ class py21cmEMU:
                     xHI_pred_fix[i, zbin:] = xHI_pred[i, zbin:]
                 else:
                     xHI_pred_fix[i, :] = xHI_pred[i, :]
-                Ts_pred_fix[i,zbin:] = Ts_pred[i,zbin:]
-                Ts_pred_fix[i,:zbin] = np.nan
+                Ts_pred_fix[i, zbin:] = Ts_pred[i, zbin:]
+                Ts_pred_fix[i, :zbin] = np.nan
         if theta.shape[0] == 1:
             if not self.emu_only:
                 summaries = {
