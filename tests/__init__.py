@@ -1,1 +1,1 @@
-"""Test suite for the emu21cmfast package."""
+"""Test suite for the py21cmemu package."""
