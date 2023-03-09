@@ -66,7 +66,7 @@ xdoctest = {extras = ["colors"], version = ">=0.15.10"}
 myst-parser = {version = ">=0.16.1"}
 
 [tool.poetry.scripts]
-FAST21cmEMU = "fast21cmemu.__main__:main"
+py21cmEMU = "py21cmemu.__main__:main"
 
 [tool.coverage.paths]
 source = ["src", "*/site-packages"]
@@ -74,7 +74,7 @@ tests = ["tests", "*/tests"]
 
 [tool.coverage.run]
 branch = true
-source = ["fast21cmemu", "tests"]
+source = ["py21cmemu", "tests"]
 
 [tool.coverage.report]
 show_missing = true
