@@ -1,7 +1,7 @@
 """Test cases for the __main__ module."""
 import numpy as np
 
-from emu21cmfast import EMU21cmFAST
+from py21cmemu import py21cmEMU
 
 
 def test_basic_prediction():
