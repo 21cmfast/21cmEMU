@@ -15,6 +15,43 @@ from .get_emulator import download_emu_data
 
 log = logging.getLogger(__name__)
 
+USER_PARAMS = {
+    "BOX_LEN": 250,
+    "DIM": 512,
+    "HII_DIM": 128,
+    "USE_FFTW_WISDOM": True,
+    "HMF": 1,
+    "USE_RELATIVE_VELOCITIES": False,
+    "POWER_SPECTRUM": 0,
+    "N_THREADS": 1,
+    "PERTURB_ON_HIGH_RES": False,
+    "NO_RNG": False,
+    "USE_INTERPOLATION_TABLES": True,
+    "FAST_FCOLL_TABLES": False,
+    "USE_2LPT": True,
+    "MINIMIZE_MEMORY": False,
+}
+
+COSMO_PARAMS = {
+    "SIGMA_8": 0.82,
+    "hlittle": 0.6774,
+    "OMm": 0.3075,
+    "OMb": 0.0486,
+    "POWER_INDEX": 0.97,
+}
+
+FLAG_OPTIONS = {
+    "USE_HALO_FIELD": False,
+    "USE_MINI_HALOS": False,
+    "USE_MASS_DEPENDENT_ZETA": True,
+    "SUBCELL_RSD": True,
+    "INHOMO_RECO": True,
+    "USE_TS_FLUCT": True,
+    "M_MIN_in_Mass": False,
+    "PHOTON_CONS": True,
+    "FIX_VCB_AVG": False,
+}
+
 
 class Emulator:
     r"""A class that loads an emulator and uses it to obtain 21cmFAST summaries.
@@ -376,13 +413,6 @@ class Emulator:
 
     def check_params(self, cosmo_params, user_params, flag_options):
         """Check that the parameters are in the correct format."""
-        training_cosmo_params = {
-            "SIGMA_8": 0.82,
-            "hlittle": 0.6774,
-            "OMm": 0.3075,
-            "OMb": 0.0486,
-            "POWER_INDEX": 0.97,
-        }
         if cosmo_params is not None:
             if isinstance(cosmo_params, p21.CosmoParams):
                 self.cosmo_params = cosmo_params
@@ -391,27 +421,16 @@ class Emulator:
 
             # Check that given cosmo params match emulator training data cosmo params
             # if they do not, raise error and exit
-            for key in training_cosmo_params.keys():
-                if self.cosmo_params.defining_dict[key] != training_cosmo_params[key]:
+            for key in COSMO_PARAMS.keys():
+                if self.cosmo_params.defining_dict[key] != COSMO_PARAMS[key]:
                     raise ValueError(
                         "Input cosmo_params do not match the emulator cosmo_params. The"
                         " emulator can only be used with a single set of cosmo "
-                        f"params: {training_cosmo_params}"
+                        f"params: {COSMO_PARAMS}"
                     )
         else:
-            self.cosmo_params = p21.CosmoParams(training_cosmo_params)
+            self.cosmo_params = p21.CosmoParams(COSMO_PARAMS)
 
-        training_flag_options = {
-            "USE_HALO_FIELD": False,
-            "USE_MINI_HALOS": False,
-            "USE_MASS_DEPENDENT_ZETA": True,
-            "SUBCELL_RSD": True,
-            "INHOMO_RECO": True,
-            "USE_TS_FLUCT": True,
-            "M_MIN_in_Mass": False,
-            "PHOTON_CONS": True,
-            "FIX_VCB_AVG": False,
-        }
         if flag_options is not None:
             if isinstance(flag_options, p21.FlagOptions):
                 self.flag_options = flag_options
@@ -420,32 +439,16 @@ class Emulator:
 
             # Check that given flag options match emulator training data flag options
             # if they do not, raise error and exit
-            for key in training_flag_options.keys():
-                if self.flag_options.defining_dict[key] != training_flag_options[key]:
+            for key in FLAG_OPTIONS.keys():
+                if self.flag_options.defining_dict[key] != FLAG_OPTIONS[key]:
                     raise ValueError(
                         "Input flag options do not match the emulator flag options. The"
                         " emulator can only be used with a single set of flag "
-                        f"options: {training_flag_options}",
+                        f"options: {FLAG_OPTIONS}",
                     )
         else:
-            self.flag_options = training_flag_options
+            self.flag_options = FLAG_OPTIONS
 
-        training_user_params = {
-            "BOX_LEN": 250,
-            "DIM": 512,
-            "HII_DIM": 128,
-            "USE_FFTW_WISDOM": True,
-            "HMF": 1,
-            "USE_RELATIVE_VELOCITIES": False,
-            "POWER_SPECTRUM": 0,
-            "N_THREADS": 1,
-            "PERTURB_ON_HIGH_RES": False,
-            "NO_RNG": False,
-            "USE_INTERPOLATION_TABLES": True,
-            "FAST_FCOLL_TABLES": False,
-            "USE_2LPT": True,
-            "MINIMIZE_MEMORY": False,
-        }
         if user_params is not None:
             if isinstance(user_params, p21.UserParams):
                 self.user_params = user_params
@@ -454,12 +457,12 @@ class Emulator:
 
             # Check that given flag options match emulator training data flag options
             # if they do not, raise error and exit
-            for key in training_user_params.keys():
-                if self.user_params.defining_dict[key] != training_user_params[key]:
+            for key in USER_PARAMS.keys():
+                if self.user_params.defining_dict[key] != USER_PARAMS[key]:
                     raise ValueError(
                         "Input user params do not match the emulator user params. The "
                         "emulator can only be used with a single set of user "
-                        f"params: {training_user_params}",
+                        f"params: {USER_PARAMS}",
                     )
         else:
-            self.user_params = training_user_params
+            self.user_params = USER_PARAMS
