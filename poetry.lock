@@ -2749,7 +2749,7 @@ files = [
 
 [[package]]
 name = "tensorflow"
-version = "2.11.0"
+version = "2.11.1"
 description = "TensorFlow is an open source machine learning framework for everyone."
 category = "main"
 optional = false
