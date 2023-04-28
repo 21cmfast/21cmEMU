@@ -5,7 +5,6 @@ import logging
 from pathlib import Path
 
 import numpy as np
-import py21cmfast as p21
 import tensorflow as tf
 
 from .config import CONFIG
@@ -14,6 +13,12 @@ from .get_emulator import download_emu_data
 
 
 log = logging.getLogger(__name__)
+
+try:
+    import py21cmfast as p21
+except ImportError:
+    log.warning("Could not import 21cmFAST, continuing without it...")
+    p21 = None
 
 USER_PARAMS = {
     "BOX_LEN": 250,
@@ -73,7 +78,6 @@ class Emulator:
     def __init__(
         self,
         io_options: dict | None = None,
-        emu_only: bool = False,
         version: str = "latest",
     ):
         log.debug("Init emulator...")
@@ -104,6 +108,15 @@ class Emulator:
         self.Tb_std = all_emulator_numbers["Tb_std"]
         self.Ts_mean = all_emulator_numbers["Ts_mean"]
         self.Ts_std = all_emulator_numbers["Ts_std"]
+
+        self.tau_mean = all_emulator_numbers["tau_mean"]
+        self.tau_std = all_emulator_numbers["tau_std"]
+
+        self.UVLFs_mean = all_emulator_numbers["UVLFs_mean"]
+        self.UVLFs_std = all_emulator_numbers["UVLFs_std"]
+        self.UVLFs_MUVs = np.append(
+            np.arange(-25, -15, 1.0), np.arange(-15, -4.5, 0.5)
+        )  # all_emulator_numbers['UVLFs_MUVs']
         self.uv_lf_zs = np.array([6, 7, 8, 10])
 
         self.PS_err = all_emulator_numbers["PS_err"]
@@ -111,12 +124,13 @@ class Emulator:
         self.Ts_err = all_emulator_numbers["Ts_err"]
         self.xHI_err = all_emulator_numbers["xHI_err"]
         self.tau_err = all_emulator_numbers["tau_err"]
-        self.emu_only = emu_only
 
     def predict(
         self,
         astro_params: p21.AstroParams | np.ndarray | dict | list,
         verbose: bool = False,
+        emulate_LFs: bool = True,
+        emulate_tau: bool = True,
         cosmo_params=None,
         user_params=None,
         flag_options=None,
@@ -132,6 +146,12 @@ class Emulator:
             (for batch evaluation).
         verbose : bool, optional
             If True, prints the emulator prediction.
+        emulate_LFs : bool, optional
+            Default is True, the UV LFs are emulated.
+            If False, uses 21cmFAST to calculate analytically.
+        emulate_tau : bool, optional
+            Default is True, tau is emulated.
+            If False, use 21cmFAST to calculate analytically.
         cosmo_params : p21.CosmoParams, optional
             Cosmological parameters to use. If not provided, the default values
             are used.
@@ -150,50 +170,83 @@ class Emulator:
         Ts_undefined_pred = emu_pred[
             :, 84 * 3
         ]  # Right after Ts is the redshift at which Ts becomes undefined
-        PS_pred_normed = emu_pred[:, 84 * 3 + 1 :].reshape(
+        PS_pred_normed = emu_pred[:, 84 * 3 + 1 : 84 * 3 + 1 + 60 * 12].reshape(
             (theta.shape[0], 60, 12)
-        )  # The rest is PS
+        )  # The 60 z x 12 k PS
+        tau_pred_normed = emu_pred[:, 84 * 3 + 1 + 60 * 12]  # tau_e is one number
+        UVLFs_pred_normed = emu_pred[
+            :, 84 * 3 + 1 + 60 * 12 + 1 :
+        ]  # Last 124 numbers are UV LFs at z = 6, 7, 8, 10.
 
         # Restore dimensions
         PS_pred = self.PS_mean + self.PS_std * PS_pred_normed  # log10(PS[mK^2])
         Ts_pred = self.Ts_mean + self.Ts_std * Ts_pred_normed  # log10(Ts[mK])
         Tb_pred = self.Tb_mean + self.Tb_std * Tb_pred_normed  # Tb[mK]
+        tau_pred = self.tau_mean + self.tau_std * tau_pred_normed  # log10(tau_e)
+        UVLFs_pred = (
+            self.UVLFs_mean + self.UVLFs_std * UVLFs_pred_normed
+        )  # log10(\phi/Mpc^{-3})
 
+        UVLFs = np.zeros(
+            (UVLFs_pred.shape[0], len(self.uv_lf_zs), len(self.UVLFs_MUVs))
+        )
+        current_idx = 0
+        for i in range(len(self.uv_lf_zs)):
+            UVLFs[:, i, :] = UVLFs_pred[
+                :, current_idx : current_idx + len(self.UVLFs_MUVs)
+            ]
+            current_idx += len(self.UVLFs_MUVs)
         # Set the xHI < z(Ts undefined) to 0
         # For Ts, set it to NaN
         xHI_pred_fix = np.zeros(xHI_pred.shape)
         Ts_pred_fix = np.zeros(Ts_pred.shape)
-        if not self.emu_only:
-            tau = np.zeros(theta.shape[0])
-            uvlfs = np.zeros((theta.shape[0], 3, len(self.uv_lf_zs), 100))
+        if emulate_LFs or emulate_tau:
+            tau_pred = np.zeros(theta.shape[0])
+            UVLFs = np.zeros((theta.shape[0], len(self.uv_lf_zs), 100))
+            self.UVLFs_MUVs = np.zeros((theta.shape[0], len(self.uv_lf_zs), 100))
             for i in range(theta.shape[0]):
                 zbin = np.argmin(abs(self.zs - Ts_undefined_pred[i]))
-                if xHI_pred[i, zbin] < 1e-1:
+                if xHI_pred[i, zbin] < 1e-2:
                     xHI_pred_fix[i, zbin:] = xHI_pred[i, zbin:]
                 else:
                     xHI_pred_fix[i, :] = xHI_pred[i, :]
                 Ts_pred_fix[i, zbin:] = Ts_pred[i, zbin:]
                 Ts_pred_fix[i, :zbin] = np.nan
                 # Use py21cmFAST to analytically calculate UV LF and $\tau_e$
-
-                tau[i] = p21.wrapper.compute_tau(
-                    redshifts=self.zs,
-                    global_xHI=xHI_pred_fix[i, :],
-                    cosmo_params=self.cosmo_params,
-                    user_params=self.user_params,
-                )
-
-                uvlfs[i, ...] = np.array(
-                    p21.wrapper.compute_luminosity_function(
-                        redshifts=self.uv_lf_zs,
-                        astro_params=astro_params[i],
+                if emulate_tau and p21 is not None:
+                    tau_pred[i] = p21.wrapper.compute_tau(
+                        redshifts=self.zs,
+                        global_xHI=xHI_pred_fix[i, :],
                         cosmo_params=self.cosmo_params,
                         user_params=self.user_params,
-                        flag_options=self.flag_options,
                     )
-                )
-                if np.sum(np.isnan(uvlfs[i, -1, :, :])) > 200:
-                    log.warning("UV LF computation failed: mostly NaNs.")
+                else:
+                    if emulate_tau:
+                        log.warning(
+                            "21cmFAST has not been imported. "
+                            + "Proceeding to emulate tau_e anyways..."
+                        )
+
+                if emulate_LFs and p21 is not None:
+                    lfs_out = np.array(
+                        p21.wrapper.compute_luminosity_function(
+                            redshifts=self.uv_lf_zs,
+                            astro_params=astro_params[i],
+                            cosmo_params=self.cosmo_params,
+                            user_params=self.user_params,
+                            flag_options=self.flag_options,
+                        )
+                    )
+                    UVLFs[i, ...] = lfs_out[-1, ...]
+                    self.UVLFs_MUVs[i, ...] = lfs_out[0, ...]
+                    if np.sum(np.isnan(UVLFs[i, -1, :, :])) > 200:
+                        log.warning("UV LF computation failed: mostly NaNs.")
+                else:
+                    if emulate_LFs:
+                        log.warning(
+                            "21cmFAST has not been imported. "
+                            + "Proceeding to emulate the LFs anyways..."
+                        )
         else:
             for i in range(theta.shape[0]):
                 zbin = np.argmin(abs(self.zs - Ts_undefined_pred[i]))
@@ -204,55 +257,35 @@ class Emulator:
                 Ts_pred_fix[i, zbin:] = Ts_pred[i, zbin:]
                 Ts_pred_fix[i, :zbin] = np.nan
         if theta.shape[0] == 1:
-            if not self.emu_only:
-                summaries = {
-                    "delta": 10 ** PS_pred[0, ...],
-                    "k": self.ks_cut,
-                    "brightness_temp": Tb_pred[0, ...],
-                    "spin_temp": 10 ** Ts_pred_fix[0, ...],
-                    "tau_e": tau[0],
-                    "Muv": uvlfs[0, 0, :, :],
-                    "lfunc": uvlfs[0, -1, :, :],
-                    "uv_lfs_redshifts": self.uv_lf_zs,
-                    "ps_redshifts": self.zs_cut,
-                    "redshifts": self.zs,
-                    "xHI": xHI_pred_fix[0, ...],
-                }
-            else:
-                summaries = {
-                    "delta": 10 ** PS_pred[0, ...],
-                    "k": self.ks_cut,
-                    "brightness_temp": Tb_pred[0, ...],
-                    "spin_temp": 10 ** Ts_pred_fix[0, ...],
-                    "ps_redshifts": self.zs_cut,
-                    "redshifts": self.zs,
-                    "xHI": xHI_pred_fix[0, ...],
-                }
+            summaries = {
+                "delta": 10 ** PS_pred[0, ...],
+                "k": self.ks_cut,
+                "brightness_temp": Tb_pred[0, ...],
+                "spin_temp": 10 ** Ts_pred_fix[0, ...],
+                "tau_e": 10 ** tau_pred[0],
+                "Muv": self.UVLFs_MUVs[0, ...]
+                if len(self.UVLFs_MUVs.shape) == 3
+                else self.UVLFs_MUVs,
+                "lfunc": UVLFs,
+                "uv_lfs_redshifts": self.uv_lf_zs,
+                "ps_redshifts": self.zs_cut,
+                "redshifts": self.zs,
+                "xHI": xHI_pred_fix[0, ...],
+            }
         else:
-            if not self.emu_only:
-                summaries = {
-                    "delta": 10**PS_pred,
-                    "k": self.ks_cut,
-                    "brightness_temp": Tb_pred,
-                    "spin_temp": 10**Ts_pred_fix,
-                    "tau_e": tau,
-                    "Muv": uvlfs[:, 0, :, :],
-                    "lfunc": uvlfs[:, -1, :, :],
-                    "uv_lfs_redshifts": self.uv_lf_zs,
-                    "ps_redshifts": self.zs_cut,
-                    "redshifts": self.zs,
-                    "xHI": xHI_pred_fix,
-                }
-            else:
-                summaries = {
-                    "delta": 10**PS_pred,
-                    "k": self.ks_cut,
-                    "brightness_temp": Tb_pred,
-                    "spin_temp": 10**Ts_pred_fix,
-                    "ps_redshifts": self.zs_cut,
-                    "redshifts": self.zs,
-                    "xHI": xHI_pred_fix,
-                }
+            summaries = {
+                "delta": 10**PS_pred,
+                "k": self.ks_cut,
+                "brightness_temp": Tb_pred,
+                "spin_temp": 10**Ts_pred_fix,
+                "tau_e": 10**tau_pred,
+                "Muv": self.UVLFs_MUVs,
+                "lfunc": UVLFs,
+                "uv_lfs_redshifts": self.uv_lf_zs,
+                "ps_redshifts": self.zs_cut,
+                "redshifts": self.zs,
+                "xHI": xHI_pred_fix,
+            }
         errors = self.get_errors(summaries, theta)
         # Put the summaries and errors in one single dict
         output = summaries.copy()
@@ -328,26 +361,28 @@ class Emulator:
             "X_RAY_SPEC_INDEX",
         ]
         is_astroparams = False
-        if isinstance(astro_params, p21.AstroParams):
-            is_astroparams = True
-            theta = np.array(
-                [astro_params.defining_dict[key] for key in astro_param_keys]
-            )
+        if p21 is not None:
+            if isinstance(astro_params, p21.AstroParams):
+                is_astroparams = True
+                theta = np.array(
+                    [astro_params.defining_dict[key] for key in astro_param_keys]
+                )
         elif isinstance(astro_params, dict):
             theta = np.array([astro_params[key] for key in astro_param_keys])
         elif type(astro_params) == np.ndarray:
             if len(astro_params.shape) > 1 and astro_params.shape[0] > 1:
                 # If we supply an array of p21.AstroParams / dict
                 theta = np.zeros(astro_params.shape)
-                if isinstance(astro_params[0], p21.AstroParams):
-                    is_astroparams = True
-                    for i in range(astro_params.shape[0]):
-                        theta[i, :] = np.array(
-                            [
-                                astro_params[i].defining_dict[key]
-                                for key in astro_param_keys
-                            ]
-                        )
+                if p21 is not None:
+                    if isinstance(astro_params[0], p21.AstroParams):
+                        is_astroparams = True
+                        for i in range(astro_params.shape[0]):
+                            theta[i, :] = np.array(
+                                [
+                                    astro_params[i].defining_dict[key]
+                                    for key in astro_param_keys
+                                ]
+                            )
                 elif isinstance(astro_params, dict):
                     theta = np.array([astro_params[key] for key in astro_param_keys])
                 elif type(astro_params[0]) == np.ndarray:
@@ -414,33 +449,35 @@ class Emulator:
     def check_params(self, cosmo_params, user_params, flag_options):
         """Check that the parameters are in the correct format."""
         if cosmo_params is not None:
-            if isinstance(cosmo_params, p21.CosmoParams):
-                self.cosmo_params = cosmo_params
+            if p21 is not None:
+                if isinstance(cosmo_params, p21.CosmoParams):
+                    self.cosmo_params = cosmo_params.defining_dict
             else:
-                self.cosmo_params = p21.CosmoParams(cosmo_params)
+                self.cosmo_params = cosmo_params
 
             # Check that given cosmo params match emulator training data cosmo params
             # if they do not, raise error and exit
             for key in COSMO_PARAMS.keys():
-                if self.cosmo_params.defining_dict[key] != COSMO_PARAMS[key]:
+                if self.cosmo_params[key] != COSMO_PARAMS[key]:
                     raise ValueError(
                         "Input cosmo_params do not match the emulator cosmo_params. The"
                         " emulator can only be used with a single set of cosmo "
                         f"params: {COSMO_PARAMS}"
                     )
         else:
-            self.cosmo_params = p21.CosmoParams(COSMO_PARAMS)
+            self.cosmo_params = COSMO_PARAMS
 
         if flag_options is not None:
-            if isinstance(flag_options, p21.FlagOptions):
-                self.flag_options = flag_options
+            if p21 is not None:
+                if isinstance(flag_options, p21.FlagOptions):
+                    self.flag_options = flag_options.defining_dict
             else:
-                self.flag_options = p21.FlagOptions(flag_options)
+                self.flag_options = flag_options
 
             # Check that given flag options match emulator training data flag options
             # if they do not, raise error and exit
             for key in FLAG_OPTIONS.keys():
-                if self.flag_options.defining_dict[key] != FLAG_OPTIONS[key]:
+                if self.flag_options[key] != FLAG_OPTIONS[key]:
                     raise ValueError(
                         "Input flag options do not match the emulator flag options. The"
                         " emulator can only be used with a single set of flag "
@@ -450,15 +487,16 @@ class Emulator:
             self.flag_options = FLAG_OPTIONS
 
         if user_params is not None:
-            if isinstance(user_params, p21.UserParams):
-                self.user_params = user_params
+            if p21 is not None:
+                if isinstance(user_params, p21.UserParams):
+                    self.user_params = user_params.defining_dict
             else:
-                self.user_params = p21.UserParams(user_params)
+                self.user_params = user_params
 
             # Check that given flag options match emulator training data flag options
             # if they do not, raise error and exit
             for key in USER_PARAMS.keys():
-                if self.user_params.defining_dict[key] != USER_PARAMS[key]:
+                if self.user_params[key] != USER_PARAMS[key]:
                     raise ValueError(
                         "Input user params do not match the emulator user params. The "
                         "emulator can only be used with a single set of user "
