@@ -14,12 +14,6 @@ from .get_emulator import download_emu_data
 
 log = logging.getLogger(__name__)
 
-try:
-    import py21cmfast as p21
-except ImportError:
-    log.warning("Could not import 21cmFAST, continuing without it...")
-    p21 = None
-
 USER_PARAMS = {
     "BOX_LEN": 250,
     "DIM": 512,
@@ -127,22 +121,20 @@ class Emulator:
 
     def predict(
         self,
-        astro_params: p21.AstroParams | np.ndarray | dict | list,
+        astro_params: np.ndarray | dict | list,
         verbose: bool = False,
-        emulate_LFs: bool = True,
-        emulate_tau: bool = True,
-        cosmo_params=None,
-        user_params=None,
-        flag_options=None,
+        cosmo_params: dict = None,
+        user_params: dict = None,
+        flag_options: dict = None,
     ):
         r"""Call the emulator, evaluate it at the given parameters, restore dimensions.
 
         Parameters
         ----------
-        astro_params : p21.AstroParams or np.ndarray or dict
+        astro_params : np.ndarray or dict
             An array with the nine astro_params input all $\in [0,1]$ OR in the
-            p21.AstroParams input units. Dicts and p21.AstroParams are also accepted
-            formats. Arrays of only dicts or AstroParams are accepted as well
+            21cmFAST AstroParams input units. Dicts (e.g. p21.AstroParams.defining_dict)
+            are also accepted formats. Arrays of only dicts are accepted as well
             (for batch evaluation).
         verbose : bool, optional
             If True, prints the emulator prediction.
@@ -152,12 +144,12 @@ class Emulator:
         emulate_tau : bool, optional
             Default is True, tau is emulated.
             If False, use 21cmFAST to calculate analytically.
-        cosmo_params : p21.CosmoParams, optional
+        cosmo_params : Dict of CosmoParams, optional
             Cosmological parameters to use. If not provided, the default values
             are used.
-        user_params : p21.UserParams, optional
+        user_params : Dict of UserParams, optional
             User parameters to use. If not provided, the default values are used.
-        flag_options : p21.FlagOptions, optional
+        flag_options : Dict of FlagOptions, optional
             Flag options to use. If not provided, the default values are used.
         """
         self.check_params(cosmo_params, user_params, flag_options)
@@ -200,62 +192,14 @@ class Emulator:
         # For Ts, set it to NaN
         xHI_pred_fix = np.zeros(xHI_pred.shape)
         Ts_pred_fix = np.zeros(Ts_pred.shape)
-        if emulate_LFs or emulate_tau:
-            tau_pred = np.zeros(theta.shape[0])
-            UVLFs = np.zeros((theta.shape[0], len(self.uv_lf_zs), 100))
-            self.UVLFs_MUVs = np.zeros((theta.shape[0], len(self.uv_lf_zs), 100))
-            for i in range(theta.shape[0]):
-                zbin = np.argmin(abs(self.zs - Ts_undefined_pred[i]))
-                if xHI_pred[i, zbin] < 1e-2:
-                    xHI_pred_fix[i, zbin:] = xHI_pred[i, zbin:]
-                else:
-                    xHI_pred_fix[i, :] = xHI_pred[i, :]
-                Ts_pred_fix[i, zbin:] = Ts_pred[i, zbin:]
-                Ts_pred_fix[i, :zbin] = np.nan
-                # Use py21cmFAST to analytically calculate UV LF and $\tau_e$
-                if emulate_tau and p21 is not None:
-                    tau_pred[i] = p21.wrapper.compute_tau(
-                        redshifts=self.zs,
-                        global_xHI=xHI_pred_fix[i, :],
-                        cosmo_params=self.cosmo_params,
-                        user_params=self.user_params,
-                    )
-                else:
-                    if emulate_tau:
-                        log.warning(
-                            "21cmFAST has not been imported. "
-                            + "Proceeding to emulate tau_e anyways..."
-                        )
-
-                if emulate_LFs and p21 is not None:
-                    lfs_out = np.array(
-                        p21.wrapper.compute_luminosity_function(
-                            redshifts=self.uv_lf_zs,
-                            astro_params=astro_params[i],
-                            cosmo_params=self.cosmo_params,
-                            user_params=self.user_params,
-                            flag_options=self.flag_options,
-                        )
-                    )
-                    UVLFs[i, ...] = lfs_out[-1, ...]
-                    self.UVLFs_MUVs[i, ...] = lfs_out[0, ...]
-                    if np.sum(np.isnan(UVLFs[i, -1, :, :])) > 200:
-                        log.warning("UV LF computation failed: mostly NaNs.")
-                else:
-                    if emulate_LFs:
-                        log.warning(
-                            "21cmFAST has not been imported. "
-                            + "Proceeding to emulate the LFs anyways..."
-                        )
-        else:
-            for i in range(theta.shape[0]):
-                zbin = np.argmin(abs(self.zs - Ts_undefined_pred[i]))
-                if xHI_pred[i, zbin] < 1e-1:
-                    xHI_pred_fix[i, zbin:] = xHI_pred[i, zbin:]
-                else:
-                    xHI_pred_fix[i, :] = xHI_pred[i, :]
-                Ts_pred_fix[i, zbin:] = Ts_pred[i, zbin:]
-                Ts_pred_fix[i, :zbin] = np.nan
+        for i in range(theta.shape[0]):
+            zbin = np.argmin(abs(self.zs - Ts_undefined_pred[i]))
+            if xHI_pred[i, zbin] < 1e-1:
+                xHI_pred_fix[i, zbin:] = xHI_pred[i, zbin:]
+            else:
+                xHI_pred_fix[i, :] = xHI_pred[i, :]
+            Ts_pred_fix[i, zbin:] = Ts_pred[i, zbin:]
+            Ts_pred_fix[i, :zbin] = np.nan
         if theta.shape[0] == 1:
             summaries = {
                 "delta": 10 ** PS_pred[0, ...],
@@ -297,15 +241,9 @@ class Emulator:
             and self.io_options["cache_dir"] is not None
             and len(self.io_options["store"]) > 0
         ):
-            if isinstance(astro_params, p21.AstroParams) or isinstance(
-                astro_params, dict
-            ):
-                ap = astro_params.defining_dict
-                fname = "_".join([str(np.round(ap[i], 5)) for i in ap.keys()])
-            else:
-                fname = "_".join(
-                    [str(np.round(astro_params[i], 5)) for i in range(len(theta))]
-                )
+            fname = "_".join(
+                [str(np.round(astro_params[i], 5)) for i in range(len(theta))]
+            )
             to_save = {}
             for i in self.io_options["store"]:
                 to_save[i] = output[i]
@@ -319,9 +257,9 @@ class Emulator:
         Parameters
         ----------
         summaries : dict
-            Dict containing the emulator predictions, defined in p21cmEMU.predict
+            Dict containing the emulator predictions, defined in Emulator.predict
         theta : dict
-            Dict containing the normalized parameters, also defined in p21cmEMU.predict
+            Dict containing the normalized parameters, also defined in Emulator.predict
 
         Returns
         -------
@@ -361,29 +299,12 @@ class Emulator:
             "X_RAY_SPEC_INDEX",
         ]
         is_astroparams = False
-        if p21 is not None:
-            if isinstance(astro_params, p21.AstroParams):
-                is_astroparams = True
-                theta = np.array(
-                    [astro_params.defining_dict[key] for key in astro_param_keys]
-                )
-        elif isinstance(astro_params, dict):
+        if isinstance(astro_params, dict):
             theta = np.array([astro_params[key] for key in astro_param_keys])
         elif type(astro_params) == np.ndarray:
             if len(astro_params.shape) > 1 and astro_params.shape[0] > 1:
-                # If we supply an array of p21.AstroParams / dict
                 theta = np.zeros(astro_params.shape)
-                if p21 is not None:
-                    if isinstance(astro_params[0], p21.AstroParams):
-                        is_astroparams = True
-                        for i in range(astro_params.shape[0]):
-                            theta[i, :] = np.array(
-                                [
-                                    astro_params[i].defining_dict[key]
-                                    for key in astro_param_keys
-                                ]
-                            )
-                elif isinstance(astro_params, dict):
+                if isinstance(astro_params, dict):
                     theta = np.array([astro_params[key] for key in astro_param_keys])
                 elif type(astro_params[0]) == np.ndarray:
                     theta = astro_params.copy()
@@ -449,11 +370,7 @@ class Emulator:
     def check_params(self, cosmo_params, user_params, flag_options):
         """Check that the parameters are in the correct format."""
         if cosmo_params is not None:
-            if p21 is not None:
-                if isinstance(cosmo_params, p21.CosmoParams):
-                    self.cosmo_params = cosmo_params.defining_dict
-            else:
-                self.cosmo_params = cosmo_params
+            self.cosmo_params = cosmo_params
 
             # Check that given cosmo params match emulator training data cosmo params
             # if they do not, raise error and exit
@@ -468,11 +385,7 @@ class Emulator:
             self.cosmo_params = COSMO_PARAMS
 
         if flag_options is not None:
-            if p21 is not None:
-                if isinstance(flag_options, p21.FlagOptions):
-                    self.flag_options = flag_options.defining_dict
-            else:
-                self.flag_options = flag_options
+            self.flag_options = flag_options
 
             # Check that given flag options match emulator training data flag options
             # if they do not, raise error and exit
@@ -487,11 +400,7 @@ class Emulator:
             self.flag_options = FLAG_OPTIONS
 
         if user_params is not None:
-            if p21 is not None:
-                if isinstance(user_params, p21.UserParams):
-                    self.user_params = user_params.defining_dict
-            else:
-                self.user_params = user_params
+            self.user_params = user_params
 
             # Check that given flag options match emulator training data flag options
             # if they do not, raise error and exit
