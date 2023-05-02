@@ -74,7 +74,6 @@ class Emulator:
         io_options: dict | None = None,
         version: str = "latest",
     ):
-        log.debug("Init emulator...")
         if version == "latest":
             version = LATEST
 
@@ -123,9 +122,9 @@ class Emulator:
         self,
         astro_params: np.ndarray | dict | list,
         verbose: bool = False,
-        cosmo_params: dict = None,
-        user_params: dict = None,
-        flag_options: dict = None,
+        cosmo_params: dict | None = None,
+        user_params: dict | None = None,
+        flag_options: dict | None = None,
     ):
         r"""Call the emulator, evaluate it at the given parameters, restore dimensions.
 
@@ -244,14 +243,12 @@ class Emulator:
             fname = "_".join(
                 [str(np.round(astro_params[i], 5)) for i in range(len(theta))]
             )
-            to_save = {}
-            for i in self.io_options["store"]:
-                to_save[i] = output[i]
+            to_save = {i: output[i] for i in self.io_options["store"]}
             np.savez(fname, to_save)
 
         return output
 
-    def get_errors(self, summaries: dict, theta: np.ndarray | None = None):
+    def get_errors(self, summaries: dict, theta: np.ndarray | None = None) -> dict:
         r"""Calculate the emulator error on its outputs.
 
         Parameters
@@ -268,22 +265,13 @@ class Emulator:
         # For now, we return the mean emulator error (obtained from the test set) for
         # each summary. Some errors are fractional => actual error = fractional
         # error * value
-        if not self.emu_only:
-            output = {
-                "delta_err": self.PS_err / 100.0 * summaries["delta"],
-                "brightness_temp_err": self.Tb_err,
-                "xHI_err": self.xHI_err,
-                "spin_temp_err": self.Ts_err,
-                "tau_e_err": self.tau_err / 100.0 * summaries["tau_e"],
-            }
-        else:
-            output = {
-                "delta_err": self.PS_err / 100.0 * summaries["delta"],
-                "brightness_temp_err": self.Tb_err,
-                "xHI_err": self.xHI_err,
-                "spin_temp_err": self.Ts_err,
-            }
-        return output
+        return {
+            "delta_err": self.PS_err / 100.0 * summaries["delta"],
+            "brightness_temp_err": self.Tb_err,
+            "xHI_err": self.xHI_err,
+            "spin_temp_err": self.Ts_err,
+            "tau_e_err": self.tau_err / 100.0 * summaries["tau_e"],
+        }
 
     def format_theta(self, astro_params):
         """Format the astro_params input to be a numpy array."""
@@ -327,22 +315,21 @@ class Emulator:
         if len(theta.shape) == 1:
             theta = theta.reshape([1, -1])
         normed = True
-        # Check that theta is normalized, if not, normalise it.
-        if is_astroparams or max(theta.ravel()) > 1 or min(theta.ravel()) < 0:
-            normed = False  # to indicate that input params was not normalised
-            theta[:, [0, 2, 4, 6]] = np.log10(theta[:, [0, 2, 4, 6]])
-            theta[:, 7] /= 1000
-            theta -= self.limits[:, 0]
-            theta /= self.limits[:, 1] - self.limits[:, 0]
-            # Restore dimensions i.e. undo the limits
-            all_astro_params = self.undo_normalization(theta)
+        if not is_astroparams and max(theta.ravel()) <= 1 and min(theta.ravel()) >= 0:
+            return (
+                (self.undo_normalization(theta), theta)
+                if normed
+                else (np.array([astro_params]), theta)
+            )
+        normed = False  # to indicate that input params was not normalised
+        theta[:, [0, 2, 4, 6]] = np.log10(theta[:, [0, 2, 4, 6]])
+        theta[:, 7] /= 1000
+        theta -= self.limits[:, 0]
+        theta /= self.limits[:, 1] - self.limits[:, 0]
+        # Restore dimensions i.e. undo the limits
+        all_astro_params = self.undo_normalization(theta)
 
-            return all_astro_params, theta
-        else:
-            if normed:
-                return self.undo_normalization(theta), theta
-            else:
-                return np.array([astro_params]), theta
+        return all_astro_params, theta
 
     def undo_normalization(self, theta):
         """Undo the normalization of the parameters."""
