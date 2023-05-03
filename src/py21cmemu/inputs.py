@@ -1,8 +1,15 @@
 """Module containing functionality for handling emulator inputs."""
+from __future__ import annotations
+
+from typing import Sequence
 
 import numpy as np
 
 from .properties import emulator_properties as properties
+
+
+SingleParamVecType = dict[str, float] | np.ndarray | Sequence[float]
+ParamVecType = Sequence[SingleParamVecType] | SingleParamVecType
 
 
 class EmulatorInput:
@@ -20,9 +27,7 @@ class EmulatorInput:
         "X_RAY_SPEC_INDEX",
     )
 
-    def _format_single_theta_vector(
-        self, theta: list[float] | np.ndarray | dict[str, float]
-    ) -> np.ndarray:
+    def _format_single_theta_vector(self, theta: SingleParamVecType) -> np.ndarray:
         if len(theta) != len(self.astro_param_keys):
             raise ValueError(
                 "One of the parameter vectors given is not the correct length. Got "
@@ -38,7 +43,7 @@ class EmulatorInput:
 
     def make_param_array(
         self,
-        astro_params: dict[str, float] | np.ndarray | list[dict[str, float]],
+        astro_params: ParamVecType,
         normed: bool = True,
     ) -> np.ndarray:
         """Format the astro_params input to be a numpy array.
@@ -77,7 +82,7 @@ class EmulatorInput:
             return self.normalize(theta)
 
     def make_list_of_dicts(
-        self, theta: np.ndarray, normed: bool = True
+        self, theta: ParamVecType, normed: bool = True
     ) -> list[dict[str, float]]:
         """Make a list of dicts from a theta array.
 

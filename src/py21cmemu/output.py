@@ -1,4 +1,6 @@
 """Output class."""
+from __future__ import annotations
+
 import dataclasses as dc
 from dataclasses import dataclass
 from pathlib import Path

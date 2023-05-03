@@ -10,6 +10,7 @@ import tensorflow as tf
 from .config import CONFIG
 from .get_emulator import get_emu_data
 from .inputs import EmulatorInput
+from .inputs import ParamVecType
 from .output import EmulatorOutput
 from .output import RawEmulatorOutput
 from .properties import emulator_properties
@@ -41,7 +42,7 @@ class Emulator:
         return getattr(self.properties, name)
 
     def predict(
-        self, astro_params: np.ndarray | dict | list, verbose: bool = False
+        self, astro_params: ParamVecType, verbose: bool = False
     ) -> tuple[np.ndarray, EmulatorOutput, dict[str, np.ndarray]]:
         r"""Call the emulator, evaluate it at the given parameters, restore dimensions.
 
@@ -72,7 +73,9 @@ class Emulator:
 
         return theta, emu, errors
 
-    def get_errors(self, emu: EmulatorOutput, theta: np.ndarray | None = None) -> dict:
+    def get_errors(
+        self, emu: EmulatorOutput, theta: np.ndarray | None = None
+    ) -> dict[str, np.ndarray]:
         """Calculate the emulator error on its outputs.
 
         Parameters

@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
+from typing import Any
+from typing import Generator
 
 import toml
 from appdirs import AppDirs
@@ -16,7 +18,7 @@ APPDIR = AppDirs("py21cmEMU")
 class Config:
     """Class that handles the configuration file."""
 
-    def __init__(self, config_file=None):
+    def __init__(self, config_file: str | Path | None = None) -> None:
         if config_file is None:
             config_file = Path(APPDIR.user_config_dir) / "config.toml"
         else:
@@ -37,62 +39,51 @@ class Config:
         if not self.data_path.exists():
             self.data_path.mkdir(parents=True, exist_ok=True)
 
-    # def add_emulator(self, emu: str):
-    #     """Add a new emulator version to the config."""
-    #     self["emu-versions"] += (emu,)
-    #     self.config_file.write_text(toml.dumps(self.config))
-
     @property
-    def emu_path(self):
+    def emu_path(self) -> Path:
         """Get the path to the emulator data."""
         return Path(self["data-path"]) / "21cmEMU" / "21cmEMU"
 
-    # def get_emulator(self, emu: str):
-    #     """Get the path to the emulator data."""
-    #     if emu not in self["emu-versions"]:
-    #         raise ValueError(f"Emulator {emu} not found in config file.")
-    #     return Path(self["data-path"]) / emu
-
     @property
-    def data_path(self):
+    def data_path(self) -> Path:
         """Get the path to the data directory."""
         return Path(self["data-path"])
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> Any:
         """Get a value from the config file."""
         return self.config[key]
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: str, value: Any):
         """Set a value in the config file."""
         self.config[key] = value
         self.config_file.write_text(toml.dumps(self.config))
 
-    def __delitem__(self, key):
+    def __delitem__(self, key: str) -> None:
         """Delete a value from the config file."""
         del self.config[key]
         self.config_file.write_text(toml.dumps(self.config))
 
-    def __contains__(self, key):
+    def __contains__(self, key: str) -> bool:
         """Check if a key is in the config file."""
         return key in self.config
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """Get the string representation of the config file."""
         return repr(self.config)
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Get the string representation of the config file."""
         return str(self.config)
 
-    def keys(self):
+    def keys(self) -> Generator[str, None, None]:
         """Get the keys in the config file."""
         return self.config.keys()
 
-    def values(self):
+    def values(self) -> Generator[Any, None, None]:
         """Get the values in the config file."""
         return self.config.values()
 
-    def items(self):
+    def items(self) -> Generator[tuple[str, Any], None, None]:
         """Get the items in the config file."""
         return self.config.items()
 
