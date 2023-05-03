@@ -9,6 +9,7 @@ import tensorflow as tf
 
 from .config import CONFIG
 from .get_emulator import get_emu_data
+from .output import EmulatorOutput
 
 
 log = logging.getLogger(__name__)
@@ -212,10 +213,8 @@ class Emulator:
             }
         errors = self.get_errors(summaries, theta)
         # Put the summaries and errors in one single dict
-        output = summaries.copy()
-        for k in errors.keys():
-            output[k] = errors[k]
-
+        output = EmulatorOutput(summaries)
+        output.add_errors(errors)
         if (
             self.io_options is not None
             and self.io_options["cache_dir"] is not None
