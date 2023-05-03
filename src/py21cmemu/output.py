@@ -206,7 +206,7 @@ class RawEmulatorOutput:
             if k.name not in renorm
         }
 
-        out = renorm | other
+        out = {**renorm, **other}
 
         # Set the xHI < z(Ts undefined) to 0
         # For Ts, set it to NaN
