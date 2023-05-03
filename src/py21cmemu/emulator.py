@@ -8,8 +8,7 @@ import numpy as np
 import tensorflow as tf
 
 from .config import CONFIG
-from .config import LATEST
-from .get_emulator import download_emu_data
+from .get_emulator import get_emu_data
 
 
 log = logging.getLogger(__name__)
@@ -74,16 +73,9 @@ class Emulator:
         io_options: dict | None = None,
         version: str = "latest",
     ):
-        if version == "latest":
-            version = LATEST
+        get_emu_data(version=version)
 
-        if version not in CONFIG["emu-versions"]:
-            log.info(
-                f"Emulator version {version} not found in config file. Downloading..."
-            )
-            download_emu_data(version=version)
-
-        emu = tf.keras.models.load_model(CONFIG.get_emulator(version), compile=False)
+        emu = tf.keras.models.load_model(CONFIG.emu_path, compile=False)
 
         self.model = emu
         self.io_options = io_options
