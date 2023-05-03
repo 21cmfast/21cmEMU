@@ -11,7 +11,6 @@ from appdirs import AppDirs
 log = logging.getLogger(__name__)
 
 APPDIR = AppDirs("py21cmEMU")
-LATEST = "v1"
 
 
 class Config:
@@ -32,25 +31,27 @@ class Config:
 
         self.config = toml.loads(self.config_file.read_text())
 
-        # Ensure we have the version listed in the config file
-        if "emu-versions" not in self:
-            self["emu-versions"] = ()
         if "data-path" not in self:
             self["data-path"] = APPDIR.user_data_dir
 
         if not self.data_path.exists():
             self.data_path.mkdir(parents=True, exist_ok=True)
 
-    def add_emulator(self, emu: str):
-        """Add a new emulator version to the config."""
-        self["emu-versions"] += (emu,)
-        self.config_file.write_text(toml.dumps(self.config))
+    # def add_emulator(self, emu: str):
+    #     """Add a new emulator version to the config."""
+    #     self["emu-versions"] += (emu,)
+    #     self.config_file.write_text(toml.dumps(self.config))
 
-    def get_emulator(self, emu: str):
+    @property
+    def emu_path(self):
         """Get the path to the emulator data."""
-        if emu not in self["emu-versions"]:
-            raise ValueError(f"Emulator {emu} not found in config file.")
-        return Path(self["data-path"]) / emu
+        return Path(self["data-path"]) / "21cmEMU" / "21cmEMU"
+
+    # def get_emulator(self, emu: str):
+    #     """Get the path to the emulator data."""
+    #     if emu not in self["emu-versions"]:
+    #         raise ValueError(f"Emulator {emu} not found in config file.")
+    #     return Path(self["data-path"]) / emu
 
     @property
     def data_path(self):

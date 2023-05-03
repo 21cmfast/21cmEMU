@@ -37,6 +37,7 @@ scipy = "^1.10.1"
 tensorflow = "^2.6.0"
 appdirs = "^1.4.4"
 toml = "^0.10.2"
+GitPuython = "^3.1.31"
 
 [tool.poetry.dev-dependencies]
 Pygments = ">=2.10.0"
