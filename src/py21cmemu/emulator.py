@@ -135,7 +135,7 @@ class Emulator:
         """
         astro_params, theta = self.format_theta(astro_params)
         emu_pred = self.model.predict(theta, verbose=verbose)
-        print(emu_pred.shape)
+
         Tb_pred_normed = emu_pred[:, :84]  # First 84 numbers of emu prediction are Tb
         xHI_pred = emu_pred[:, 84 : 84 * 2]  # Next 84 numbers are xHI
         Ts_pred_normed = emu_pred[:, 2 * 84 : 84 * 3]  # Next 84 numbers are Ts
