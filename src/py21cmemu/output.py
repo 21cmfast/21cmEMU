@@ -11,7 +11,7 @@ import numpy as np
 from .properties import emulator_properties
 
 
-@dataclass(frozen=True, kw_only=True)
+@dataclass(frozen=True)
 class EmulatorOutput:
     """A simple class that makes it easier to access the corrected emulator output."""
 
