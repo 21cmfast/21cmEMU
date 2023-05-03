@@ -92,6 +92,10 @@ class Emulator:
         here = Path(__file__).parent
         all_emulator_numbers = np.load(here / "emulator_constants.npz")
 
+        self.flag_options = FLAG_OPTIONS
+        self.user_params = USER_PARAMS
+        self.cosmo_params = COSMO_PARAMS
+
         self.zs = all_emulator_numbers["zs"]
         self.limits = all_emulator_numbers["limits"]
         self.zs_cut = self.zs[:60]
@@ -119,14 +123,7 @@ class Emulator:
         self.xHI_err = all_emulator_numbers["xHI_err"]
         self.tau_err = all_emulator_numbers["tau_err"]
 
-    def predict(
-        self,
-        astro_params: np.ndarray | dict | list,
-        verbose: bool = False,
-        cosmo_params: dict = None,
-        user_params: dict = None,
-        flag_options: dict = None,
-    ):
+    def predict(self, astro_params: np.ndarray | dict | list, verbose: bool = False):
         r"""Call the emulator, evaluate it at the given parameters, restore dimensions.
 
         Parameters
@@ -144,15 +141,7 @@ class Emulator:
         emulate_tau : bool, optional
             Default is True, tau is emulated.
             If False, use 21cmFAST to calculate analytically.
-        cosmo_params : Dict of CosmoParams, optional
-            Cosmological parameters to use. If not provided, the default values
-            are used.
-        user_params : Dict of UserParams, optional
-            User parameters to use. If not provided, the default values are used.
-        flag_options : Dict of FlagOptions, optional
-            Flag options to use. If not provided, the default values are used.
         """
-        self.check_params(cosmo_params, user_params, flag_options)
         astro_params, theta = self.format_theta(astro_params)
         emu_pred = self.model.predict(theta, verbose=verbose)
 
@@ -366,50 +355,3 @@ class Emulator:
                 }
             )
         return all_astro_params
-
-    def check_params(self, cosmo_params, user_params, flag_options):
-        """Check that the parameters are in the correct format."""
-        if cosmo_params is not None:
-            self.cosmo_params = cosmo_params
-
-            # Check that given cosmo params match emulator training data cosmo params
-            # if they do not, raise error and exit
-            for key in COSMO_PARAMS.keys():
-                if self.cosmo_params[key] != COSMO_PARAMS[key]:
-                    raise ValueError(
-                        "Input cosmo_params do not match the emulator cosmo_params. The"
-                        " emulator can only be used with a single set of cosmo "
-                        f"params: {COSMO_PARAMS}"
-                    )
-        else:
-            self.cosmo_params = COSMO_PARAMS
-
-        if flag_options is not None:
-            self.flag_options = flag_options
-
-            # Check that given flag options match emulator training data flag options
-            # if they do not, raise error and exit
-            for key in FLAG_OPTIONS.keys():
-                if self.flag_options[key] != FLAG_OPTIONS[key]:
-                    raise ValueError(
-                        "Input flag options do not match the emulator flag options. The"
-                        " emulator can only be used with a single set of flag "
-                        f"options: {FLAG_OPTIONS}",
-                    )
-        else:
-            self.flag_options = FLAG_OPTIONS
-
-        if user_params is not None:
-            self.user_params = user_params
-
-            # Check that given flag options match emulator training data flag options
-            # if they do not, raise error and exit
-            for key in USER_PARAMS.keys():
-                if self.user_params[key] != USER_PARAMS[key]:
-                    raise ValueError(
-                        "Input user params do not match the emulator user params. The "
-                        "emulator can only be used with a single set of user "
-                        f"params: {USER_PARAMS}",
-                    )
-        else:
-            self.user_params = USER_PARAMS
