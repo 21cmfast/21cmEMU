@@ -3,14 +3,15 @@ from __future__ import annotations
 
 from typing import Dict
 from typing import Sequence
+from typing import Union
 
 import numpy as np
 
 from .properties import emulator_properties as properties
 
 
-SingleParamVecType = Dict[str, float] | np.ndarray | Sequence[float]
-ParamVecType = Sequence[SingleParamVecType] | SingleParamVecType
+SingleParamVecType = Union[Dict[str, float], np.ndarray, Sequence[float]]
+ParamVecType = Union[Sequence[SingleParamVecType], SingleParamVecType]
 
 
 class EmulatorInput:
