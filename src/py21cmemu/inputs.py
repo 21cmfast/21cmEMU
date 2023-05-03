@@ -1,6 +1,7 @@
 """Module containing functionality for handling emulator inputs."""
 from __future__ import annotations
 
+from typing import Dict
 from typing import Sequence
 
 import numpy as np
@@ -8,7 +9,7 @@ import numpy as np
 from .properties import emulator_properties as properties
 
 
-SingleParamVecType = dict[str, float] | np.ndarray | Sequence[float]
+SingleParamVecType = Dict[str, float] | np.ndarray | Sequence[float]
 ParamVecType = Sequence[SingleParamVecType] | SingleParamVecType
 
 
