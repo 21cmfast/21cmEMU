@@ -138,22 +138,6 @@ def precommit(session: Session) -> None:
         activate_virtualenv_in_precommit_hooks(session)
 
 
-def install_myself(session: Session) -> None:
-    """Install the package in the session's virtual environment."""
-    if sys.platform == "darwin":
-        # On MacOS, we need the following
-        session.install(
-            "21cmFAST",
-            env={
-                "CFLAGS": (
-                    "-isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk"
-                ),
-                "CC": "gcc",
-            },
-        )
-    session.install(".")
-
-
 @session(python=python_versions[0])
 def safety(session: Session) -> None:
     """Scan dependencies for insecure packages."""
@@ -167,7 +151,6 @@ def mypy(session: Session) -> None:
     """Type-check using mypy."""
     args = session.posargs or ["src", "tests", "docs/conf.py"]
 
-    install_myself(session)
     session.install("mypy", "pytest")
     session.run("mypy", *args)
     if not session.posargs:
@@ -177,8 +160,7 @@ def mypy(session: Session) -> None:
 @session(python=python_versions)
 def tests(session: Session) -> None:
     """Run the test suite."""
-    install_myself(session)
-    session.install("coverage[toml]", "pytest", "pygments")
+    session.install("coverage[toml]", "pytest", "pygments", ".")
     try:
         session.run("coverage", "run", "--parallel", "-m", "pytest", *session.posargs)
     finally:
@@ -202,8 +184,7 @@ def coverage(session: Session) -> None:
 @session(python=python_versions[0])
 def typeguard(session: Session) -> None:
     """Runtime type checking using Typeguard."""
-    install_myself(session)
-    session.install("pytest", "typeguard", "pygments")
+    session.install("pytest", "typeguard", "pygments", ".")
     session.run("pytest", f"--typeguard-packages={package}", *session.posargs)
 
 
@@ -217,8 +198,7 @@ def xdoctest(session: Session) -> None:
         if "FORCE_COLOR" in os.environ:
             args.append("--colored=1")
 
-    install_myself(session)
-    session.install("xdoctest[colors]")
+    session.install("xdoctest[colors]", ".")
     session.run("python", "-m", "xdoctest", *args)
 
 
@@ -229,7 +209,6 @@ def docs_build(session: Session) -> None:
     if not session.posargs and "FORCE_COLOR" in os.environ:
         args.insert(0, "--color")
 
-    install_myself(session)
     session.install("sphinx", "sphinx-click", "furo", "myst-parser")
 
     build_dir = Path("docs", "_build")
@@ -243,7 +222,6 @@ def docs_build(session: Session) -> None:
 def docs(session: Session) -> None:
     """Build and serve the documentation with live reloading on file changes."""
     args = session.posargs or ["--open-browser", "docs", "docs/_build"]
-    install_myself(session)
     session.install("sphinx", "sphinx-autobuild", "sphinx-click", "furo", "myst-parser")
 
     build_dir = Path("docs", "_build")
