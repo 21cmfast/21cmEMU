@@ -14,7 +14,7 @@ def test_basic_prediction():
 
 def test_properties():
     """Test that the properties are loaded correctly."""
-    from .properties import emulator_properties as properties
+    from py21cmemu.properties import emulator_properties as properties
 
     properties.limits
 
@@ -22,8 +22,7 @@ def test_properties():
 def test_inputs():
     """Test that we perform parameter normalization properly."""
     from py21cmemu import EmulatorInput
-
-    from .properties import emulator_properties as properties
+    from py21cmemu.properties import emulator_properties as properties
 
     limits = properties.limits
 
