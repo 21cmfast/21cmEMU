@@ -25,13 +25,12 @@ def test_inputs():
     from py21cmemu.properties import emulator_properties as properties
 
     limits = properties.limits
+    limits[:, 7] *= 1000.0  # keV to eV
 
     single_param = np.random.rand(9).reshape((1, 9))
     inp = EmulatorInput().make_param_array(single_param, normed=True)
 
-    assert (
-        inp.min() >= 0 and inp.max() <= 1
-    ), "Single param set not normalized properly."
+    assert (inp == single_param).all(), "Single param set not normalized properly."
 
     inp = EmulatorInput().make_param_array(single_param, normed=False)
 
@@ -44,7 +43,7 @@ def test_inputs():
 
     inp = EmulatorInput().make_param_array(many_params, normed=True)
 
-    assert inp.min() >= 0 and inp.max() <= 1, "Many params not normalized properly."
+    assert (inp == many_params).ravel().all(), "Many params not normalized properly."
 
     inp = EmulatorInput().make_param_array(many_params, normed=False)
 
@@ -54,14 +53,14 @@ def test_inputs():
 
     # Test for single dict
     single_param = {}
-    for i in EmulatorInput.astro_param_keys:
+    arr = np.zeros(len(EmulatorInput.astro_param_keys))
+    for k, i in enumerate(EmulatorInput.astro_param_keys):
         single_param[i] = np.random.rand()
+        arr[k] = single_param[i]
 
     inp = EmulatorInput().make_param_array(single_param, normed=True)
 
-    assert (
-        inp.min() >= 0 and inp.max() <= 1
-    ), "Single param dict not normalized properly."
+    assert (inp == arr).all(), "Single param dict not normalized properly."
 
     inp = EmulatorInput().make_param_array(single_param, normed=False)
     assert (inp >= limits[:, 0]).all() and (
