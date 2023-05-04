@@ -126,6 +126,7 @@ def test_inputs():
 
     assert (arr == inp).all(), "Single param array w norm failed."
 
+    arr[7] /= 1000  # eV to keV
     inp = EmulatorInput().make_param_array(arr, normed=True)
 
     assert inp.min() >= 0 and inp.max() <= 1, "Single param array w norm undo failed."
