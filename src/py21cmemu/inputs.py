@@ -103,10 +103,7 @@ class EmulatorInput:
             List of dicts of astro params, one for each parameter set.
         """
         theta = self.make_param_array(theta, normed=normed)
-        return [
-            dict(zip(self.astro_param_keys, theta[i], strict=True))
-            for i in range(len(theta))
-        ]
+        return [dict(zip(self.astro_param_keys, theta[i])) for i in range(len(theta))]
 
     def normalize(self, theta: np.ndarray) -> np.ndarray:
         """Normalize the parameters.
