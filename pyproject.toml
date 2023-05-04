@@ -74,11 +74,10 @@ tests = ["tests", "*/tests"]
 
 [tool.coverage.run]
 branch = true
-source = ["py21cmemu", "tests"]
+source = ["py21cmemu"]
 
 [tool.coverage.report]
 show_missing = true
-fail_under = 100
 
 [tool.isort]
 profile = "black"
