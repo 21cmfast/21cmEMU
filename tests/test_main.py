@@ -24,7 +24,7 @@ def test_inputs():
     from py21cmemu import EmulatorInput
     from py21cmemu.properties import emulator_properties as properties
 
-    limits = properties.limits
+    limits = properties.limits.copy()
     limits[7, :] *= 1000.0  # keV to eV
 
     single_param = np.random.rand(9).reshape((1, 9))
