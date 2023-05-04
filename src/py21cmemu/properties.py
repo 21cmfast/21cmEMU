@@ -76,6 +76,7 @@ class EmulatorProperties:
         self.Ts_err = all_emulator_numbers["Ts_err"]
         self.xHI_err = all_emulator_numbers["xHI_err"]
         self.tau_err = all_emulator_numbers["tau_err"]
+        self.UVLFs_err = all_emulator_numbers["UVLFs_err"]
 
         self.flag_options = FLAG_OPTIONS
         self.user_params = USER_PARAMS
