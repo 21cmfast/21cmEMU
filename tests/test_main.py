@@ -30,26 +30,28 @@ def test_inputs():
     single_param = np.random.rand(9).reshape((1, 9))
     inp = EmulatorInput().make_param_array(single_param, normed=True)
 
-    assert (inp == single_param).all(), "Single param set not normalized properly."
+    assert (inp == single_param).all(), "Single param array not normalized properly."
 
     inp = EmulatorInput().make_param_array(single_param, normed=False)
 
     assert (inp >= limits[:, 0]).all() and (
         inp <= limits[:, 1]
-    ).all(), "Single param set dimensions not restored properly."
+    ).all(), "Single param array dimensions not restored properly."
 
     # Test for many params at once, array
     many_params = np.random.rand(9 * 5).reshape((5, 9))
 
     inp = EmulatorInput().make_param_array(many_params, normed=True)
 
-    assert (inp == many_params).ravel().all(), "Many params not normalized properly."
+    assert (
+        (inp == many_params).ravel().all()
+    ), "Many params array not normalized properly."
 
     inp = EmulatorInput().make_param_array(many_params, normed=False)
 
-    assert (
+    assert np.array(
         [(i >= limits[:, 0]).all() and (i <= limits[:, 1]).all() for i in inp]
-    ).all(), "Many params dimensions not restored properly."
+    ).all(), "Many params array dimensions not restored properly."
 
     # Test for single dict
     single_param = {}
@@ -72,13 +74,13 @@ def test_inputs():
     many_params_list = [single_param, single_param, single_param]
     inp = EmulatorInput().make_param_array(many_params_list, normed=False)
 
-    assert (
+    assert np.array(
         [(i >= limits[:, 0]).all() and (i <= limits[:, 1]).all() for i in inp]
-    ).all(), "Many params list dimensions not restored properly."
+    ).all(), "Many params list of dicts dimensions not restored properly."
 
     many_params_list = np.array([single_param, single_param, single_param])
     inp = EmulatorInput().make_param_array(many_params_list, normed=False)
 
-    assert (
+    assert np.array(
         [(i >= limits[:, 0]).all() and (i <= limits[:, 1]).all() for i in inp]
-    ).all(), "Many params array dimensions not restored properly."
+    ).all(), "Many params array of dicts dimensions not restored properly."
