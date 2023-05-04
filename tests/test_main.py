@@ -4,12 +4,15 @@ import numpy as np
 from py21cmemu import Emulator
 
 
-def test_basic_prediction():
+def test_prediction():
     """Simply test that we can make a prediction without erroring."""
     emu = Emulator(version="latest")
     theta = np.random.rand(9 * 5).reshape((5, 9))
 
     theta, output, errors = emu.predict(theta)
+
+    # Test writing
+    output.write("test_writing")
 
 
 def test_properties():
@@ -26,6 +29,17 @@ def test_inputs():
 
     limits = properties.limits.copy()
     limits[7, :] *= 1000.0  # keV to eV
+
+    single_param = np.random.rand(9)
+    inp = EmulatorInput().make_param_array(single_param, normed=True)
+
+    assert (inp == single_param).all(), "Single param 1D array not normalized properly."
+
+    inp = EmulatorInput().make_param_array(single_param, normed=False)
+
+    assert (inp >= limits[:, 0]).all() and (
+        inp <= limits[:, 1]
+    ).all(), "Single param 1D array dimensions not restored properly."
 
     single_param = np.random.rand(9).reshape((1, 9))
     inp = EmulatorInput().make_param_array(single_param, normed=True)
@@ -84,3 +98,39 @@ def test_inputs():
     assert np.array(
         [(i >= limits[:, 0]).all() and (i <= limits[:, 1]).all() for i in inp]
     ).all(), "Many params array of dicts dimensions not restored properly."
+
+    # Test for list / list of lists
+    arr_list = list(arr)
+    inp = EmulatorInput().make_param_array(arr_list, normed=True)
+
+    assert (inp == arr).all(), "Single param list not normalized properly."
+
+    many_params_list = [arr_list, arr_list, arr_list]
+    inp = EmulatorInput().make_param_array(many_params_list, normed=False)
+
+    assert np.array(
+        [(i >= limits[:, 0]).all() and (i <= limits[:, 1]).all() for i in inp]
+    ).all(), "Many params list of lists dimensions not restored properly."
+
+    # Test undo_normalisation
+
+    arr = (
+        np.random.rand(len(EmulatorInput.astro_param_keys))
+        * (limits[:, 1] - limits[:, 0])
+        + limits[:, 0]
+    )
+    arr[7] *= 1000  # keV to eV
+
+    inp = EmulatorInput().make_param_array(arr, normed=False)
+
+    assert (arr == inp).all(), "Single param array w norm failed."
+
+    inp = EmulatorInput().make_param_array(arr, normed=True)
+
+    assert inp.min() >= 0 and inp.max() <= 1, "Single param array w norm undo failed."
+
+    # Test make_list_of_dicts
+
+    pars = np.random.rand(10 * 9).reshape((10, 9))
+
+    inp = EmulatorInput().make_list_of_dicts(pars, normed=True)
