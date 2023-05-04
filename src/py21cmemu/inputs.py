@@ -67,9 +67,11 @@ class EmulatorInput:
                 " of astro params (in same order as astro_param_keys), OR a sequence of"
                 " such."
             )
-
-        if not hasattr(astro_params[0], "__len__"):
+        if type(astro_params) == dict:
             astro_params = [astro_params]
+        else:
+            if not hasattr(astro_params[0], "__len__"):
+                astro_params = [astro_params]
 
         theta = np.array(
             [self._format_single_theta_vector(theta) for theta in astro_params]
