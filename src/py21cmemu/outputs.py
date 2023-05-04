@@ -222,5 +222,6 @@ class RawEmulatorOutput:
         out["PS"] = 10 ** out["PS"]
         out["Ts"] = 10 ** out["Ts"]
         out["tau"] = 10 ** out["tau"]
+        out["UVLFs"] = 10 ** out["UVLFs"]
 
         return EmulatorOutput(**out).squeeze()

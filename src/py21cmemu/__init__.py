@@ -3,4 +3,4 @@
 __version__ = "1.0.0"
 from .emulator import Emulator
 from .get_emulator import get_emu_data
-from .output import EmulatorOutput
+from .outputs import EmulatorOutput
