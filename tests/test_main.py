@@ -189,17 +189,22 @@ def test_config(tmp_path):
     from py21cmemu.get_emulator import get_emu_data
 
     APPDIR = AppDirs("py21cmEMU")
-    Config(config_file=Path(APPDIR.user_config_dir) / "config.toml")
+    config_file = Path(APPDIR.user_config_dir) / "config.toml"
+    Config(config_file=config_file)
 
     conf = Config(config_file=tmp_path / "foo.toml")
     assert conf.__str__() == str(conf.config)
     assert conf.__repr__() == repr(conf.config)
     get_emu_data()
 
-    conf_keys = ["data_path"]
+    conf_keys = conf.keys()
     conf.__delitem__(key=conf_keys[0])
     conf.items()
     conf.values()
+    # Change data-path to something that dne
+    # for L40
+    conf.__setitem__("data-path", tmp_path / "/path/DNE/")
+    conf = Config(config_file=tmp_path / "foo.toml")
 
 
 def test_get_emulator():
