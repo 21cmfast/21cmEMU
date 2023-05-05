@@ -15,7 +15,8 @@ def test_prediction(tmp_path):
     dir = tmp_path / "sub"
     dir.mkdir()
     output.write(dir / "test_writing", theta=theta)
-    check = np.load(dir / "test_writing.npz")
+    check = np.load(dir / "test_writing.npz", allow_pickle=True)["arr_0"].item()
+
     assert (check["inputs"] == theta).all()
     assert len(check.keys()) == len(output.keys()) + 1
     assert (check["delta"] == output["delta"]).all()

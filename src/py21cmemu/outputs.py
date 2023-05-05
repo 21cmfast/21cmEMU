@@ -102,7 +102,6 @@ class EmulatorOutput:
             raise ValueError(f"File {pth} exists and clobber=False.")
 
         out = {k: getattr(self, k) for k in store}
-
         if theta is not None:
             out["inputs"] = theta
 
