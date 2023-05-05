@@ -14,7 +14,7 @@ def test_prediction():
     theta, output, errors = emu.predict(theta)
 
     # Test writing
-    tmp_path = Path.PosixPath("PYTEST_TMPDIR/test_create_file")
+    tmp_path = Path("PYTEST_TMPDIR/test_create_file")
     dir = tmp_path / "test_tmp"
     dir.mkdir()
     output.write(dir + "/test_writing", theta=theta)
