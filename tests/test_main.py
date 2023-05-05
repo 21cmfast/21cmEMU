@@ -18,8 +18,11 @@ def test_prediction(tmp_path):
     check = np.load(dir / "test_writing.npz", allow_pickle=True)["arr_0"].item()
 
     assert (check["inputs"] == theta).all()
-    assert len(check.keys()) == len(output.keys()) + 1
-    assert (check["delta"] == output["delta"]).all()
+    output_keys = []
+    for i in output.keys():
+        output_keys.append(i)
+    assert len(check.keys()) == len(output_keys) + 1
+    assert (check["PS"] == output.PS).all()
 
 
 def test_properties():
