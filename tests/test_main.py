@@ -196,7 +196,7 @@ def test_config(tmp_path):
     assert conf.__repr__() == repr(conf.config)
     get_emu_data()
 
-    conf_keys = list(conf.keys())
+    conf_keys = ["data_path"]
     conf.__delitem__(key=conf_keys[0])
     conf.items()
     conf.values()
