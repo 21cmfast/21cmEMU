@@ -67,7 +67,7 @@ class EmulatorInput:
                 " of astro params (in same order as astro_param_keys), OR a sequence of"
                 " such."
             )
-        if type(astro_params) == dict:
+        if isinstance(astro_params, dict):
             astro_params = [astro_params]
         else:
             if not hasattr(astro_params[0], "__len__"):
