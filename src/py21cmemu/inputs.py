@@ -42,6 +42,13 @@ class EmulatorInput:
             return theta.astype(float)
         elif isinstance(theta, list):
             return np.array(theta, dtype=float)
+        else:
+            raise TypeError(
+                "astro_params is in the wrong format. Should be a dict of astro params,"
+                " list of astro params (in same order as astro_param_keys), or an array"
+                " of astro params (in same order as astro_param_keys), OR a sequence of"
+                " such."
+            )
 
     def make_param_array(
         self,

@@ -1,11 +1,12 @@
 """Test cases for the __main__ module."""
 import numpy as np
+import pytest
 
 from py21cmemu import Emulator
 
 
-def test_prediction(tmp_path):
-    """Simply test that we can make a prediction without erroring."""
+def test_output(tmp_path):
+    """Test outputs.py and emulator.py."""
     emu = Emulator(version="latest")
     theta = np.random.rand(9 * 5).reshape((5, 9))
 
@@ -14,7 +15,7 @@ def test_prediction(tmp_path):
     # Test writing
     dir = tmp_path / "sub"
     dir.mkdir()
-    output.write(dir / "test_writing", theta=theta)
+    output.write(dir / "test_writing", theta=theta, store=None)
     check = np.load(dir / "test_writing.npz", allow_pickle=True)["arr_0"].item()
 
     assert (check["inputs"] == theta).all()
@@ -23,6 +24,23 @@ def test_prediction(tmp_path):
         output_keys.append(i)
     assert len(check.keys()) == len(output_keys) + 1
     assert (check["PS"] == output.PS).all()
+
+    with pytest.raises(ValueError):
+        output.write(dir / "test_writing.npz", clobber=False)
+
+    from py21cmemu.outputs import RawEmulatorOutput
+
+    out2 = RawEmulatorOutput(np.random.rand(1098))
+    with pytest.raises(ValueError):
+        out2.renormalize("foo")
+
+    output.__getitem__("xHI")
+
+    output.k
+    output.Muv
+    output.UVLF_redshifts
+    output.ps_redshifts
+    output.redshifts
 
 
 def test_properties():
@@ -147,3 +165,71 @@ def test_inputs():
     pars = np.random.rand(10 * 9).reshape((10, 9))
 
     inp = emu_in.make_list_of_dicts(pars, normed=True)
+
+    with pytest.raises(ValueError):
+        arr = np.random.rand(10 * 5).reshape((5, 10))
+        emu_in.make_param_array(arr, normed=True)
+
+    with pytest.raises(TypeError):
+        emu_in.make_param_array(7, normed=True)
+
+    with pytest.raises(TypeError):
+        arr = np.random.rand(9 * 5).reshape((5, 9))
+        arr_tup = [tuple(i) for i in arr]
+        emu_in.make_param_array(arr_tup, normed=True)
+
+
+def test_config(tmp_path):
+    """Test config.py."""
+    from pathlib import Path
+
+    from appdirs import AppDirs
+
+    from py21cmemu.config import Config
+    from py21cmemu.get_emulator import get_emu_data
+
+    APPDIR = AppDirs("py21cmEMU")
+    Config(config_file=Path(APPDIR.user_config_dir) / "config.toml")
+
+    conf = Config(config_file=tmp_path / "foo.toml")
+    assert conf.__str__() == str(conf.config)
+    assert conf.__repr__() == repr(conf.config)
+    get_emu_data()
+
+    conf_keys = list(conf.keys())
+    conf.__delitem__(key=conf_keys[0])
+    conf.items()
+    conf.values()
+
+
+def test_get_emulator():
+    """Test get_emulator.py."""
+    import shutil
+
+    # import git
+    from py21cmemu.config import CONFIG
+    from py21cmemu.get_emulator import get_emu_data
+
+    # Get list of available versions
+    # if (CONFIG.data_path / "21cmEMU").exists():
+    #    repo = git.Repo(CONFIG.data_path / "21cmEMU")
+    # else:
+    #    URL = "https://huggingface.co/DanielaBreitman/21cmEMU"
+    #    repo = git.Repo.clone_from(URL, CONFIG.data_path / "21cmEMU")
+    # Pull latest changes
+    # repo.remotes.origin.pull()
+    version = "foo"
+    # versions = sorted(
+    #    [tag.name.lower() for tag in repo.tags if tag.name.lower().startswith("v")]
+    # )
+    with pytest.raises(
+        ValueError,
+        #    match=f"Version {version} not available. Must be one of {versions}. ",
+    ):
+        get_emu_data(version=version)
+    # Clone it for the first time
+    shutil.rmtree(CONFIG.data_path / "21cmEMU")
+    get_emu_data()
+
+    # Missing test that other versions are accessible
+    # (only one version for now)
