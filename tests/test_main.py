@@ -203,7 +203,7 @@ def test_config(tmp_path):
     conf.values()
     # Change data-path to something that dne
     # for L40
-    conf.__setitem__("data-path", tmp_path / "/path/DNE/")
+    conf.__setitem__("data-path", tmp_path / "new")
     conf = Config(config_file=tmp_path / "foo.toml")
 
 
