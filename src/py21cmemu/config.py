@@ -75,9 +75,9 @@ class Config:
         """Get the string representation of the config file."""
         return str(self.config)
 
-    def keys(self) -> list:
-        """Get the keys in the config file."""
-        return list(self.config.keys())
+    def keys(self) -> Generator[str, None, None]:
+        """Yield the keys in the config file."""
+        yield from self.config.keys()
 
     def values(self) -> Generator[Any, None, None]:
         """Yield the values in the config file."""
