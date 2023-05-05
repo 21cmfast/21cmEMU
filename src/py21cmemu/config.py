@@ -80,8 +80,9 @@ class Config:
         return list(self.config.keys())
 
     def values(self) -> Generator[Any, None, None]:
-        """Get the values in the config file."""
-        return self.config.values()
+        """Yield the values in the config file."""
+        for k in self.config.keys():
+            yield getattr(self, k)
 
     def items(self) -> Generator[tuple[str, Any], None, None]:
         """Yield the keys and values of the main data products, like a dict."""
