@@ -1,12 +1,10 @@
 """Test cases for the __main__ module."""
-from pathlib import Path
-
 import numpy as np
 
 from py21cmemu import Emulator
 
 
-def test_prediction():
+def test_prediction(tmp_path):
     """Simply test that we can make a prediction without erroring."""
     emu = Emulator(version="latest")
     theta = np.random.rand(9 * 5).reshape((5, 9))
@@ -14,8 +12,7 @@ def test_prediction():
     theta, output, errors = emu.predict(theta)
 
     # Test writing
-    tmp_path = Path("PYTEST_TMPDIR/test_create_file")
-    dir = tmp_path / "test_tmp"
+    dir = tmp_path / "sub"
     dir.mkdir()
     output.write(dir + "/test_writing", theta=theta)
     check = np.load(dir + "/test_writing")

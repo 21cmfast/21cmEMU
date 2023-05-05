@@ -36,7 +36,6 @@ numpy = "^1.22.0"
 scipy = "^1.10.1"
 tensorflow = "^2.6.0"
 appdirs = "^1.4.4"
-pathlib = ">=1.0.1"
 toml = "^0.10.2"
 GitPython = "^3.1.31"
 
