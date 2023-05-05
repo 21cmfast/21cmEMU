@@ -3,6 +3,7 @@ import numpy as np
 import pytest
 
 from py21cmemu import Emulator
+from py21cmemu.outputs import RawEmulatorOutput
 
 
 def test_output(tmp_path):
@@ -13,10 +14,10 @@ def test_output(tmp_path):
     theta, output, errors = emu.predict(theta)
 
     # Test writing
-    dir = tmp_path / "sub"
-    dir.mkdir()
-    output.write(dir / "test_writing", theta=theta, store=None)
-    check = np.load(dir / "test_writing.npz", allow_pickle=True)["arr_0"].item()
+    write_dir = tmp_path / "sub"
+    write_dir.mkdir()
+    output.write(write_dir / "test_writing", theta=theta, store=None)
+    check = np.load(write_dir / "test_writing.npz", allow_pickle=True)["arr_0"].item()
 
     assert (check["inputs"] == theta).all()
     output_keys = []
@@ -26,15 +27,21 @@ def test_output(tmp_path):
     assert (check["PS"] == output.PS).all()
 
     with pytest.raises(ValueError):
-        output.write(dir / "test_writing.npz", clobber=False)
+        output.write(write_dir / "test_writing.npz", clobber=False)
 
-    from py21cmemu.outputs import RawEmulatorOutput
+    # Test that setting store restricts what is written
+    output.write(write_dir / "test_writing_small", store=["PS"])
+    check = np.load(write_dir / "test_writing_small.npz", allow_pickle=True)[
+        "arr_0"
+    ].item()
+    assert "xHI" not in check
+    assert "theta" not in check
 
     out2 = RawEmulatorOutput(np.random.rand(1098))
     with pytest.raises(ValueError):
         out2.renormalize("foo")
 
-    output.__getitem__("xHI")
+    assert np.all(output["xHI"] == output.xHI)
 
     output.k
     output.Muv
@@ -198,9 +205,13 @@ def test_config(tmp_path):
     get_emu_data()
 
     conf_keys = list(conf.keys())
+    assert len(list(conf.items())) == 1
+    assert len(list(conf.values())) == 1
+
     conf.__delitem__(key=conf_keys[0])
-    conf.items()
-    conf.values()
+    assert len(list(conf.items())) == 0
+    assert len(list(conf.values())) == 0
+
     # Change data-path to something that dne
     # for L40
     conf.__setitem__("data-path", tmp_path / "new")
