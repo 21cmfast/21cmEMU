@@ -1,5 +1,5 @@
 """Test cases for the __main__ module."""
-from pathlib.Path import tmp_path
+from pathlib import Path
 
 import numpy as np
 
@@ -14,6 +14,7 @@ def test_prediction():
     theta, output, errors = emu.predict(theta)
 
     # Test writing
+    tmp_path = Path.PosixPath("PYTEST_TMPDIR/test_create_file")
     dir = tmp_path / "test_tmp"
     dir.mkdir()
     output.write(dir + "/test_writing", theta=theta)
