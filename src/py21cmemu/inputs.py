@@ -42,6 +42,13 @@ class EmulatorInput:
             return theta.astype(float)
         elif isinstance(theta, list):
             return np.array(theta, dtype=float)
+        else:
+            raise TypeError(
+                "astro_params is in the wrong format. Should be a dict of astro params,"
+                " list of astro params (in same order as astro_param_keys), or an array"
+                " of astro params (in same order as astro_param_keys), OR a sequence of"
+                " such."
+            )
 
     def make_param_array(
         self,
@@ -67,9 +74,11 @@ class EmulatorInput:
                 " of astro params (in same order as astro_param_keys), OR a sequence of"
                 " such."
             )
-
-        if not hasattr(astro_params[0], "__len__"):
+        if isinstance(astro_params, dict):
             astro_params = [astro_params]
+        else:
+            if not hasattr(astro_params[0], "__len__"):
+                astro_params = [astro_params]
 
         theta = np.array(
             [self._format_single_theta_vector(theta) for theta in astro_params]
@@ -101,10 +110,7 @@ class EmulatorInput:
             List of dicts of astro params, one for each parameter set.
         """
         theta = self.make_param_array(theta, normed=normed)
-        return [
-            dict(zip(self.astro_param_keys, theta[i], strict=True))
-            for i in range(len(theta))
-        ]
+        return [dict(zip(self.astro_param_keys, theta[i])) for i in range(len(theta))]
 
     def normalize(self, theta: np.ndarray) -> np.ndarray:
         """Normalize the parameters.
@@ -120,12 +126,12 @@ class EmulatorInput:
         np.ndarray
             Normalized parameters, with shape (n_batch, n_params).
         """
-        theta_wdims = theta.copy()
-        theta_wdims[:, 7] /= 1000
-        theta_wdims[:, [0, 2, 4, 6]] = np.log10(theta_wdims[:, [0, 2, 4, 6]])
-        theta_wdims -= properties.limits[:, 0]
-        theta_wdims /= properties.limits[:, 1] - properties.limits[:, 0]
-        return theta_wdims
+        theta_woutdims = theta.copy()
+        theta_woutdims[:, 7] /= 1000
+        theta_woutdims[:, [0, 2, 4, 6]] = np.log10(theta_woutdims[:, [0, 2, 4, 6]])
+        theta_woutdims -= properties.limits[:, 0]
+        theta_woutdims /= properties.limits[:, 1] - properties.limits[:, 0]
+        return theta_woutdims
 
     def undo_normalization(self, theta: np.ndarray) -> np.ndarray:
         """Undo the normalization of the parameters.
@@ -145,3 +151,4 @@ class EmulatorInput:
         theta_wdims *= properties.limits[:, 1] - properties.limits[:, 0]
         theta_wdims += properties.limits[:, 0]
         theta_wdims[:, 7] *= 1000
+        return theta_wdims

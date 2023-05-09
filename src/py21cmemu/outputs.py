@@ -102,7 +102,6 @@ class EmulatorOutput:
             raise ValueError(f"File {pth} exists and clobber=False.")
 
         out = {k: getattr(self, k) for k in store}
-
         if theta is not None:
             out["inputs"] = theta
 
@@ -222,5 +221,6 @@ class RawEmulatorOutput:
         out["PS"] = 10 ** out["PS"]
         out["Ts"] = 10 ** out["Ts"]
         out["tau"] = 10 ** out["tau"]
+        out["UVLFs"] = 10 ** out["UVLFs"]
 
         return EmulatorOutput(**out).squeeze()

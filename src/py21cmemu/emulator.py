@@ -11,8 +11,8 @@ from .config import CONFIG
 from .get_emulator import get_emu_data
 from .inputs import EmulatorInput
 from .inputs import ParamVecType
-from .output import EmulatorOutput
-from .output import RawEmulatorOutput
+from .outputs import EmulatorOutput
+from .outputs import RawEmulatorOutput
 from .properties import emulator_properties
 
 
@@ -87,15 +87,17 @@ class Emulator:
 
         Returns
         -------
-        The mean error on the test set (i.e. independent of theta).
+        The mean error on the test set (i.e. independent of theta) with all units
+        restored and logs removed.
         """
         # For now, we return the mean emulator error (obtained from the test set) for
-        # each summary. Some errors are fractional => actual error = fractional
-        # error * value
+        # each summary. All errors are the median absolute difference between test set
+        # and prediction AFTER units have been restored AND log has been removed.
         return {
-            "delta_err": self.PS_err / 100.0 * emu.PS,
+            "delta_err": self.PS_err,
             "brightness_temp_err": self.Tb_err,
             "xHI_err": self.xHI_err,
             "spin_temp_err": self.Ts_err,
-            "tau_e_err": self.tau_err / 100.0 * emu.tau,
+            "UVLFs_err": self.UVLFs_err,
+            "tau_e_err": self.tau_err,
         }

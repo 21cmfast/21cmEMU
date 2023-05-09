@@ -29,7 +29,6 @@
 ## Requirements
 
 - Tensorflow >= 2.6
-- 21cmFAST
 
 ## Installation
 
@@ -37,8 +36,6 @@ You can install _py21cmEMU_ via [pip] from [PyPI]:
 ```console
 $ pip install py21cmemu
 ```
-
-Note that you need `gcc` and the `fftw3` and `gsl` packages for the `21cmFAST` installation.
 
 ## Usage
 

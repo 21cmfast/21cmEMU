@@ -22,7 +22,6 @@ Features
 ========
 
 * Uses Tensorflow to emulate the following summary statistics: 21-cm power spectrum, 21-cm global brightness temperature, IGM spin temperature, and neutral fraction.
-* Uses 21cmFAST to analytically calculate the UV luminosity functions and the Thomson optical depth to the CMB.
 
 
 

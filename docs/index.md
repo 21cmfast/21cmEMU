@@ -13,9 +13,10 @@ end-before: <!-- github-only -->
 hidden:
 maxdepth: 1
 ---
-
-usage
-reference
+Installation
+Tutorials
+API Reference
+Reference
 contributing
 Code of Conduct <codeofconduct>
 License <license>

@@ -76,16 +76,16 @@ class Config:
         return str(self.config)
 
     def keys(self) -> Generator[str, None, None]:
-        """Get the keys in the config file."""
-        return self.config.keys()
+        """Yield the keys in the config file."""
+        yield from self.config.keys()
 
     def values(self) -> Generator[Any, None, None]:
-        """Get the values in the config file."""
-        return self.config.values()
+        """Yield the values in the config file."""
+        yield from self.config.values()
 
     def items(self) -> Generator[tuple[str, Any], None, None]:
-        """Get the items in the config file."""
-        return self.config.items()
+        """Yield the keys and values of the main data products, like a dict."""
+        yield from self.config.items()
 
 
 CONFIG = Config()
