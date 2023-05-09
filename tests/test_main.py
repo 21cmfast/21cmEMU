@@ -226,26 +226,13 @@ def test_get_emulator():
     from py21cmemu.config import CONFIG
     from py21cmemu.get_emulator import get_emu_data
 
-    # Get list of available versions
-    # if (CONFIG.data_path / "21cmEMU").exists():
-    #    repo = git.Repo(CONFIG.data_path / "21cmEMU")
-    # else:
-    #    URL = "https://huggingface.co/DanielaBreitman/21cmEMU"
-    #    repo = git.Repo.clone_from(URL, CONFIG.data_path / "21cmEMU")
-    # Pull latest changes
-    # repo.remotes.origin.pull()
     version = "foo"
-    # versions = sorted(
-    #    [tag.name.lower() for tag in repo.tags if tag.name.lower().startswith("v")]
-    # )
     with pytest.raises(
         ValueError,
-        #    match=f"Version {version} not available. Must be one of {versions}. ",
     ):
         get_emu_data(version=version)
-    # Clone it for the first time
+
+    get_emu_data(version="v1.0.0")
+    # This is just for the test, so delete after
     shutil.rmtree(CONFIG.data_path / "21cmEMU")
     get_emu_data()
-
-    # Missing test that other versions are accessible
-    # (only one version for now)
