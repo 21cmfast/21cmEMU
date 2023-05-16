@@ -2,6 +2,7 @@
 import sys
 from pathlib import Path
 import subprocess
+from py21cmemu import outputs, inputs, emulator, properties
 
 sys.path.insert(0, str(Path(__file__).absolute().parent.parent / "src"))
 sys.path.insert(0, str(Path(__file__).absolute().parent.parent / "src" / "py21cmemu"))
@@ -21,7 +22,8 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx_click",
     "myst_parser",
-    "nbsphinx"
+    "nbsphinx",
+    "IPython.sphinxext.ipython_console_highlighting"
 ]
 out = subprocess.run(["python", "setup.py", "--version"], capture_output=True)
 version = (

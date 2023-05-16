@@ -1,7 +1,11 @@
 appdirs==1.4.4
 furo==2023.03.27
+ipython==8.13.2
 myst_parser==1.0.0
+myst_parser==1.0.0
+nbsphinx==0.9.1
 numpy==1.24.2
+py21cmemu==1.0.4
 scipy==1.10.1
 sphinx==6.1.3
 sphinx-click==4.4.0
