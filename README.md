@@ -23,8 +23,14 @@
 
 ## Features
 
-- Uses Tensorflow to emulate the following summary statistics: 21-cm power spectrum, 21-cm global brightness temperature, IGM spin temperature, and neutral fraction.
-- Uses 21cmFAST to analytically calculate the UV luminosity functions and the Thomson optical depth to the CMB.
+Emulator the following summary statistics:
+    - 21-cm power spectrum
+    - 21-cm global brightness temperature
+    - IGM spin temperature
+    - Neutral fraction
+    - Thomson scattering optical depth
+    - UV luminosity functions
+
 
 ## Requirements
 
@@ -70,4 +76,4 @@ This project was generated from [@cjolowicz]'s [Hypermodern Python Cookiecutter]
 
 [license]: https://github.com/21cmFAST/21cmEMU/blob/main/LICENSE
 [contributor guide]: https://github.com/21cmFAST/21cmEMU/blob/main/CONTRIBUTING.md
-[command-line reference]: https://21cmEMU.readthedocs.io/en/latest/usage.html
+[command-line reference]: https://21cmEMU.readthedocs.io/en/latest/quickstart.html
