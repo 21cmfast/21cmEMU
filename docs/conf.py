@@ -16,7 +16,6 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
     "sphinx.ext.autosectionlabel",
-    "IPython.sphinxext.ipython_console_highlighting",
     "sphinx.ext.coverage",
     "sphinx.ext.doctest",
     "sphinx.ext.napoleon",
