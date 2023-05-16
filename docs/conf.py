@@ -14,5 +14,12 @@ extensions = [
     "sphinx_click",
     "myst_parser",
 ]
+version = (
+    release
+) = out.stdout.decode().rstrip()
 autodoc_typehints = "description"
 html_theme = "furo"
+
+exclude_patterns = [
+    "**.ipynb_checkpoints"
+]
