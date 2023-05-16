@@ -8,23 +8,30 @@ For users
 ^^^^^^^^^
 
 To use ``21cmEMU``, install it with pip:
+
 .. code-block:: console
-    pip install py21cmemu
+
+    $ pip install py21cmemu
 
 For developers
 ^^^^^^^^^^^^^^
 
 Start by cloning the git repository and creating a new ``conda`` environment from the ``yaml`` file:
+
 .. code-block:: console
-    git clone link
-    conda env create -f env.yml
+
+    $ conda env create -f env.yml
 
 Then you can install your local installation of the code with:
+
 .. code-block:: console
-    pip install -e .
+
+    $ pip install -e .
 
 To test the installation, run:
-.. code-bock:: python
+
+.. code-block:: python
+
     from py21cmemu import Emulator
     emu_instance = Emulator()
 
@@ -45,11 +52,10 @@ You can batch evaluate by putting a set of parameters into a ``list`` or an ``np
 Let's look at a basic example. After importing the emulator in the previous code snippet:
 
 .. code-block:: python
+
     import numpy as np
     theta = np.random.rand(9*5).reshape((5,9))
-
-    normed_input_params, output, output_errors = emu_instance.predict(theta)
-```
+    theta, output, output_errors = emu_instance.predict(theta)
 
 The output here will contain all the summaries i.e. power spectrum, global 21-cm brightness temperature,
 IGM spin temperature, neutral fraction, as well as emulated $\tau_e$ and UV LFs.

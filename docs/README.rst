@@ -1,6 +1,6 @@
-======
+=======
 21cmEMU
-======
+=======
 
 .. start-badges
 .. image:: https://github.com/21cmfast/21cmEMU/actions/workflows/test_suite.yaml/badge.svg

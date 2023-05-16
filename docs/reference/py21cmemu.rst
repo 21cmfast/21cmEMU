@@ -1,6 +1,3 @@
-21cmEMU
-==========
-
 .. testsetup::
 
     from py21cmemu import *

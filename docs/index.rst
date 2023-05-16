@@ -1,16 +1,17 @@
-.. include:: readme.rst
+.. include:: README.rst
 
 Contents
 ========
 .. toctree::
    :maxdepth: 2
 
-   quick start
+   usage
    tutorials
    reference/index
    contributing
    authors
-   changelog
+   codeofconduct
+   license
 
 Indices and tables
 ==================
