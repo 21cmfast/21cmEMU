@@ -2,7 +2,6 @@
 import sys
 from pathlib import Path
 import subprocess
-from py21cmemu import outputs, inputs, emulator, properties
 
 sys.path.insert(0, str(Path(__file__).absolute().parent.parent / "src"))
 sys.path.insert(0, str(Path(__file__).absolute().parent.parent / "src" / "py21cmemu"))
