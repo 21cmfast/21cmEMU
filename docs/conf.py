@@ -2,9 +2,9 @@
 import sys
 from pathlib import Path
 import subprocess
+import py21cmemu
 
 sys.path.insert(0, str(Path(__file__).absolute().parent.parent / "src"))
-sys.path.insert(0, str(Path(__file__).absolute().parent.parent / "src" / "py21cmemu"))
 
 master_doc = 'index'
 source_suffix = ".rst"
@@ -25,9 +25,7 @@ extensions = [
     "IPython.sphinxext.ipython_console_highlighting"
 ]
 out = subprocess.run(["python", "setup.py", "--version"], capture_output=True)
-version = (
-    release
-) = out.stdout.decode().rstrip()
+version = release = py21cmemu.__version__
 autodoc_typehints = "description"
 html_theme = "furo"
 autosectionlabel_prefix_document = True
