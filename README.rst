@@ -5,7 +5,7 @@
 .. start-badges
 .. image:: https://github.com/21cmfast/21cmEMU/actions/workflows/tests.yml/badge.svg
     :target: https://github.com/21cmfast/21cmEMU/actions/workflows/tests.yml
-.. image:: https://codecov.io/gh/21cmfast/21cmEMU/branch/master/graph/badge.svg
+.. image:: https://codecov.io/gh/21cmfast/21cmEMU/branch/main/graph/badge.svg?token=yUOqyTlZ3z
     :target: https://codecov.io/gh/21cmfast/21cmEMU
 .. image:: https://img.shields.io/badge/code%20style-black-000000.svg
     :target: https://github.com/ambv/black
