@@ -2,25 +2,8 @@
 import sys
 from pathlib import Path
 import subprocess
-from unittest.mock import MagicMock
 
 sys.path.insert(0, str(Path(__file__).absolute().parent.parent / "src"))
-
-
-class Mock(MagicMock):
-    """Make a Mock so that a package doesn't have to actually exist."""
-
-    @classmethod
-    def __getattr__(cls, name):
-        """Get stuff."""
-        return MagicMock()
-
-MOCK_MODULES = ["py21cmemu"]
-
-try:
-    from py21cmemu import Emulator
-except ImportError:
-    raise
 
 master_doc = 'index'
 source_suffix = ".rst"
