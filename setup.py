@@ -14,4 +14,11 @@ setup(
     license="MIT",
     packages=["py21cmemu"],
     zip_safe=False,
+    install_requires=[
+        "numpy",
+        "pyyaml",
+        "sphinx_click",
+        "scipy",
+        "matplotlib",
+    ],
 )
