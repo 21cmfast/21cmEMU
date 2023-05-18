@@ -17,7 +17,7 @@ setup(
     install_requires=[
         "numpy",
         "pyyaml",
-        "sphinx_click",
+        "sphinx-click",
         "scipy",
         "matplotlib",
     ],
