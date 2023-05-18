@@ -1,6 +1,6 @@
 """21cmEMU: An emulator of 21cmFAST summaries."""
 
-__version__ = "1.0.6.dev0"
+__version__ = "1.0.7"
 from .emulator import Emulator
 from .get_emulator import get_emu_data
 from .inputs import EmulatorInput

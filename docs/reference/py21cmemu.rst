@@ -1,3 +1,6 @@
+API Summary
+-----------
+
 .. testsetup::
 
     from py21cmemu import *
