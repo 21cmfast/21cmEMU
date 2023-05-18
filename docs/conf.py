@@ -40,7 +40,6 @@ extensions = [
     "nbsphinx",
     "IPython.sphinxext.ipython_console_highlighting"
 ]
-out = subprocess.run(["python", "setup.py", "--version"], capture_output=True)
 version = release = py21cmemu.__version__
 autodoc_typehints = "description"
 html_theme = "furo"
