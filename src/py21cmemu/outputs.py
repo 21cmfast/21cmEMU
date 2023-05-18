@@ -1,4 +1,4 @@
-"""Output class."""
+"""Module whose functionality is to organise the emulator output."""
 from __future__ import annotations
 
 import dataclasses as dc
