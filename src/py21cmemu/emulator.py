@@ -94,10 +94,10 @@ class Emulator:
         # each summary. All errors are the median absolute difference between test set
         # and prediction AFTER units have been restored AND log has been removed.
         return {
-            "delta_err": self.PS_err,
-            "brightness_temp_err": self.Tb_err,
+            "PS_err": self.PS_err,
+            "Tb_err": self.Tb_err,
             "xHI_err": self.xHI_err,
-            "spin_temp_err": self.Ts_err,
+            "Ts_err": self.Ts_err,
             "UVLFs_err": self.UVLFs_err,
-            "tau_e_err": self.tau_err,
+            "tau_err": self.tau_err,
         }
