@@ -54,7 +54,7 @@ class EmulatorOutput:
         return self.properties.uv_lf_zs
 
     @property
-    def ps_redshifts(self) -> np.ndarray:
+    def PS_redshifts(self) -> np.ndarray:
         """The redshifts of the power spectra."""
         return self.properties.zs_cut
 
