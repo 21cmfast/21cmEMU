@@ -46,7 +46,7 @@ def test_output(tmp_path):
     output.k
     output.Muv
     output.UVLF_redshifts
-    output.ps_redshifts
+    output.PS_redshifts
     output.redshifts
 
 
