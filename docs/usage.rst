@@ -16,11 +16,11 @@ To use ``21cmEMU``, install it with pip:
 For developers
 ^^^^^^^^^^^^^^
 
-Start by cloning the git repository and creating a new ``conda`` environment from the ``yaml`` file:
+Start by cloning the git repository and creating a new ``conda`` environment from the ``yaml`` provided file:
 
 .. code-block:: console
 
-    $ conda env create -f env.yml
+    $ conda env create -f ENV.yml
 
 Then you can install your local installation of the code with:
 
