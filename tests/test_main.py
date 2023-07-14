@@ -233,6 +233,24 @@ def test_get_emulator():
         get_emu_data(version=version)
 
     get_emu_data(version="v1.0.0")
-    # This is just for the test, so delete after
+    # Modify the saved_model.pb file for the test to fail
+    np.savetxt(
+        CONFIG.data_path / "21cmEMU" / "21cmEMU" / "saved_model.pb", np.zeros(10)
+    )
+    with pytest.raises(RuntimeError):
+        get_emu_data()
     shutil.rmtree(CONFIG.data_path / "21cmEMU")
     get_emu_data()
+
+
+def test_get_emulator_no_internet():
+    """Test get_emulator.py but when there is no internet."""
+    from pytest_socket import disable_socket
+
+    disable_socket()
+
+    from py21cmemu.get_emulator import get_emu_data
+
+    # The data is there, but it cannot do pulls
+    with pytest.raises(UserWarning):
+        get_emu_data()
