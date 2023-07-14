@@ -243,12 +243,8 @@ def test_get_emulator():
     get_emu_data()
 
 
-def test_get_emulator_no_internet():
+def test_get_emulator_no_internet(disable_socket):
     """Test get_emulator.py but when there is no internet."""
-    from pytest_socket import disable_socket
-
-    disable_socket()
-
     from py21cmemu.get_emulator import get_emu_data
 
     # The data is there, but it cannot do pulls
