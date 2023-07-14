@@ -13,7 +13,7 @@ class SocketToggle:
         self.socket_disabled = True
 
         def guarded(*args, **kwargs):
-            if getattr(_module, "_socket_disabled", False):
+            if getattr("socket_disabled", False):
                 raise RuntimeError("I told you not to use the Internet!")
             else:
                 # SocketType is a valid public alias of socket.socket,
