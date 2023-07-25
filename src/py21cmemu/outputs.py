@@ -167,9 +167,14 @@ class RawEmulatorOutput:
     @property
     def UVLFs(self) -> np.ndarray:
         """The UV luminosity functions as a function of z and Muv."""
-        return self.output[:, self.nz * 3 + 1 + 60 * 12 + 1 :].reshape(
+        full_UVLFs = self.output[:, self.nz * 3 + 1 + 60 * 12 + 1 :].reshape(
             (-1, len(self.properties.uv_lf_zs), len(self.properties.UVLFs_MUVs))
         )
+        # Crop M_UVs to allowed range of [-20,-10]
+        m = np.logical_and(
+            self.properties.UVLFs_MUVs <= -10, self.properties.UVLFs_MUVs >= -20
+        )
+        return full_UVLFs[..., m]
 
     def renormalize(self, name: str):
         """Renormalize a normalized quantity.
