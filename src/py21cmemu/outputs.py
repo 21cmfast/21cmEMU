@@ -46,7 +46,11 @@ class EmulatorOutput:
     @property
     def Muv(self) -> np.ndarray:
         """The Muv-values of the UVLFs."""
-        return self.properties.UVLFs_MUVs
+        # Crop the M_UV to -20 to -10 range
+        m = np.logical_and(
+            self.properties.UVLFs_MUVs <= -10, self.properties.UVLFs_MUVs >= -20
+        )
+        return self.properties.UVLFs_MUVs[m]
 
     @property
     def UVLF_redshifts(self) -> np.ndarray:
