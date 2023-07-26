@@ -23,13 +23,13 @@ def get_emu_data(version: str = "latest"):
     """
     if (CONFIG.data_path / "21cmEMU").exists():
         repo = git.Repo(CONFIG.data_path / "21cmEMU")
-    else:
+    elif not CONFIG["disable-network"]:
         URL = "https://huggingface.co/DanielaBreitman/21cmEMU"
         repo = git.Repo.clone_from(URL, CONFIG.data_path / "21cmEMU")
 
     # Check download
     p = CONFIG.data_path / "21cmEMU" / "21cmEMU" / "saved_model.pb"
-    if p.stat().st_size < 1e6:
+    if not p.exists() or p.stat().st_size < 1e6:
         raise RuntimeError(
             "The emulator huggingface repo was not cloned properly.\n"
             "Check that git-lfs is installed properly on your system.\n"
@@ -48,10 +48,12 @@ def get_emu_data(version: str = "latest"):
 
     # Pull latest changes
     try:
+        if CONFIG["disable-network"]:
+            raise RuntimeError("Network is disabled via config")
+
         repo.remotes.origin.pull()
     except Exception as e:
-        print(e)
-        warn("Skipping the pulling step...")
+        warn(f"Skipping the pulling step. Error received: {e}", stacklevel=2)
 
     versions = sorted(
         [tag.name.lower() for tag in repo.tags if tag.name.lower().startswith("v")]

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 from typing import Generator
@@ -38,6 +39,9 @@ class Config:
 
         if not self.data_path.exists():
             self.data_path.mkdir(parents=True, exist_ok=True)
+
+        if "disable-network" not in self:
+            self["disable-network"] = False
 
     @property
     def emu_path(self) -> Path:
@@ -86,6 +90,21 @@ class Config:
     def items(self) -> Generator[tuple[str, Any], None, None]:
         """Yield the keys and values of the main data products, like a dict."""
         yield from self.config.items()
+
+    def update(self, **kw) -> None:
+        """Update the config file with new values."""
+        self.config.update(**kw)
+        self.config_file.write_text(toml.dumps(self.config))
+
+    @contextmanager
+    def use(self, **kw) -> Generator[None, None, None]:
+        """Use configuration values temporarily."""
+        old = {k: self[k] for k in kw}
+        self.update(**kw)
+        try:
+            yield
+        finally:
+            self.update(**old)
 
 
 CONFIG = Config()
