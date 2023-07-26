@@ -3,6 +3,7 @@ import shutil
 
 import numpy as np
 import pytest
+from typeguard import suppress_type_checks
 
 from py21cmemu import Emulator
 from py21cmemu.config import CONFIG
@@ -181,7 +182,8 @@ def test_inputs():
         emu_in.make_param_array(arr, normed=True)
 
     with pytest.raises(TypeError):
-        emu_in.make_param_array(7, normed=True)
+        with suppress_type_checks():
+            emu_in.make_param_array(7, normed=True)
 
     arr = np.random.rand(9 * 5).reshape((5, 9))
     arr_tup = [tuple(i) for i in arr]
