@@ -60,18 +60,9 @@ def get_emu_data(version: str = "latest"):
     )
 
     if version == "latest":
-        try:
-            version = repo.git.checkout("main")
-        except Exception as e:
-            print(e)
-            warn("Skipping the version checkout step...")
+        version = repo.git.checkout("main")
     elif version.lower() in versions:
-        # Checkout the version
-        try:
-            repo.git.checkout(version)
-        except Exception as e:
-            print(e)
-            warn("Skipping the version checkout step...")
+        repo.git.checkout(version)
     else:
         raise ValueError(
             f"Version {version} not available. Must be one of {versions}. "
