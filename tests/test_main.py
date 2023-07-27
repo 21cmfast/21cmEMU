@@ -1,8 +1,12 @@
 """Test cases for the __main__ module."""
+import shutil
+
 import numpy as np
 import pytest
+from typeguard import suppress_type_checks
 
 from py21cmemu import Emulator
+from py21cmemu.config import CONFIG
 from py21cmemu.outputs import RawEmulatorOutput
 
 
@@ -173,16 +177,17 @@ def test_inputs():
 
     inp = emu_in.make_list_of_dicts(pars, normed=True)
 
+    arr = np.random.rand(10 * 5).reshape((5, 10))
     with pytest.raises(ValueError):
-        arr = np.random.rand(10 * 5).reshape((5, 10))
         emu_in.make_param_array(arr, normed=True)
 
     with pytest.raises(TypeError):
-        emu_in.make_param_array(7, normed=True)
+        with suppress_type_checks():
+            emu_in.make_param_array(7, normed=True)
 
+    arr = np.random.rand(9 * 5).reshape((5, 9))
+    arr_tup = [tuple(i) for i in arr]
     with pytest.raises(TypeError):
-        arr = np.random.rand(9 * 5).reshape((5, 9))
-        arr_tup = [tuple(i) for i in arr]
         emu_in.make_param_array(arr_tup, normed=True)
 
 
@@ -205,12 +210,12 @@ def test_config(tmp_path):
     get_emu_data()
 
     conf_keys = list(conf.keys())
-    assert len(list(conf.items())) == 1
-    assert len(list(conf.values())) == 1
+    assert len(list(conf.items())) == 2
+    assert len(list(conf.values())) == 2
 
     conf.__delitem__(key=conf_keys[0])
-    assert len(list(conf.items())) == 0
-    assert len(list(conf.values())) == 0
+    assert len(list(conf.items())) == 1
+    assert len(list(conf.values())) == 1
 
     # Change data-path to something that dne
     # for L40
@@ -233,6 +238,41 @@ def test_get_emulator():
         get_emu_data(version=version)
 
     get_emu_data(version="v1.0.0")
-    # This is just for the test, so delete after
+    # Modify the saved_model.pb file for the test to fail
+    np.savetxt(
+        CONFIG.data_path / "21cmEMU" / "21cmEMU" / "saved_model.pb", np.zeros(10)
+    )
+    with pytest.raises(RuntimeError):
+        get_emu_data()
     shutil.rmtree(CONFIG.data_path / "21cmEMU")
     get_emu_data()
+
+
+def test_get_emulator_no_internet():
+    """Test get_emulator.py but when there is no internet."""
+    from py21cmemu.get_emulator import get_emu_data
+
+    # Temporarily move the huggingface repo
+    if (CONFIG.data_path / "21cmEMU").exists():
+        shutil.move(CONFIG.data_path / "21cmEMU", CONFIG.data_path / "21cmEMU_temp")
+
+    # The data is there, but it cannot do pulls
+    with pytest.raises(
+        RuntimeError, match="The emulator huggingface repo was not cloned properly"
+    ):
+        with CONFIG.use(**{"disable-network": True}):
+            get_emu_data()
+
+    # Move the repo back
+    if (CONFIG.data_path / "21cmEMU_temp").exists():
+        shutil.move(CONFIG.data_path / "21cmEMU_temp", CONFIG.data_path / "21cmEMU")
+
+    # Now, make sure the data is there
+    get_emu_data()
+
+    # Access again, but without pulling.
+    with CONFIG.use(**{"disable-network": True}):
+        with pytest.warns(
+            UserWarning, match="Skipping the pulling step. Error received:"
+        ):
+            get_emu_data()
