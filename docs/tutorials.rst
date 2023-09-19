@@ -8,3 +8,4 @@ The following introductory tutorials will help you get started with ``21cmEMU``.
 
    tutorials/Tutorial_1
    tutorials/Tutorial_2
+   tutorials/Tutorial_3
