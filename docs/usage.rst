@@ -4,6 +4,8 @@ Quickstart
 Installation
 ------------
 
+Make sure you have ``git-lfs`` installed on your system. Otherwise, ``21cmEMU`` will not be installed properly.
+
 For users
 ^^^^^^^^^
 
