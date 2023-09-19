@@ -159,7 +159,6 @@ def test_inputs():
         * (limits[:, 1] - limits[:, 0])
         + limits[:, 0]
     )
-    arr[[0, 2, 4, 6]] = 10 ** (arr[[0, 2, 4, 6]])
     arr[7] *= 1000  # keV to eV
 
     inp = emu_in.make_param_array(arr, normed=False)
