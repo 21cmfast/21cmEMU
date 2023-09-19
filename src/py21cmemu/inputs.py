@@ -128,7 +128,6 @@ class EmulatorInput:
         """
         theta_woutdims = theta.copy()
         theta_woutdims[:, 7] /= 1000
-        theta_woutdims[:, [0, 2, 4, 6]] = np.log10(theta_woutdims[:, [0, 2, 4, 6]])
         theta_woutdims -= properties.limits[:, 0]
         theta_woutdims /= properties.limits[:, 1] - properties.limits[:, 0]
         return theta_woutdims

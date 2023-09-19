@@ -202,7 +202,7 @@ class RawEmulatorOutput:
         -------
         EmulatorOutput
             The emulator output with normalized quantities re-normalized back to
-            physical units.
+            physical units. Nothing is in log except UV LFs.
         """
         # Restore dimensions
         # Renormalize stuff that needs renormalization
@@ -230,6 +230,5 @@ class RawEmulatorOutput:
         out["PS"] = 10 ** out["PS"]
         out["Ts"] = 10 ** out["Ts"]
         out["tau"] = 10 ** out["tau"]
-        out["UVLFs"] = 10 ** out["UVLFs"]
 
         return EmulatorOutput(**out).squeeze()
