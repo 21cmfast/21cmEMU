@@ -55,7 +55,7 @@ To learn more, see the `Contributor Guide <https://github.com/21cmFAST/21cmEMU/b
 Citation
 ========
 
-If you use ``21cmEMU`` in your research, please cite `Breitman+23 <https://arxiv.org/abs/2309.05697>`_.
+If you use ``21cmEMU`` in your research, please cite `Breitman et al., 2023 <https://arxiv.org/abs/2309.05697>`_.
 
 License
 =======
