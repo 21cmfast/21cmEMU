@@ -99,5 +99,6 @@ class Emulator:
             "xHI_err": self.xHI_err,
             "Ts_err": self.Ts_err,
             "UVLFs_err": self.UVLFs_err,
+            "UVLFs_logerr": self.UVLFs_logerr,
             "tau_err": self.tau_err,
         }
