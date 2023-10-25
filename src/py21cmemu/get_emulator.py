@@ -40,7 +40,7 @@ def get_emu_data(version: str = "latest"):
             "git clone -v -- https://huggingface.co/DanielaBreitman/21cmEMU\n"
             "Then, ensure that it downloaded fully by running: "
             "du -sh 21cmEMU \n"
-            "The folder should be about 500M. "
+            "The folder should be about 500M: 250M for the model, 250M for .git. "
             "Now copy this folder and its contents "
             "over to your other machine and put it in "
             " ~/.local/share/py21cmEMU/21cmEMU "
@@ -54,16 +54,16 @@ def get_emu_data(version: str = "latest"):
         repo.remotes.origin.pull()
     except Exception as e:
         warn(f"Skipping the pulling step. Error received: {e}", stacklevel=2)
-
-    versions = sorted(
-        [tag.name.lower() for tag in repo.tags if tag.name.lower().startswith("v")]
-    )
-
-    if version == "latest":
-        version = repo.git.checkout("main")
-    elif version.lower() in versions:
-        repo.git.checkout(version)
     else:
-        raise ValueError(
-            f"Version {version} not available. Must be one of {versions}. "
+        versions = sorted(
+            [tag.name.lower() for tag in repo.tags if tag.name.lower().startswith("v")]
         )
+
+        if version == "latest":
+            version = repo.git.checkout("main")
+        elif version.lower() in versions:
+            repo.git.checkout(version)
+        else:
+            raise ValueError(
+                f"Version {version} not available. Must be one of {versions}. "
+            )
