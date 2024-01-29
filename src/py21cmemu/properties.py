@@ -1,4 +1,5 @@
 """A module definining the static properties of the Emulator."""
+
 from __future__ import annotations
 
 from pathlib import Path

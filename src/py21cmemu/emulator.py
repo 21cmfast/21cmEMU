@@ -1,4 +1,5 @@
 """Module that interacts with the Emulator Tensorflow model."""
+
 from __future__ import annotations
 
 import logging
