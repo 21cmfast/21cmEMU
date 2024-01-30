@@ -1,4 +1,5 @@
 """Download and install the emulator data."""
+
 from __future__ import annotations
 
 import logging
