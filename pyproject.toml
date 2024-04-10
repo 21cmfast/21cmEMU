@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "py21cmEMU"
-version = "1.1.2"
+version = "1.1.3"
 description = "Emulator of 21cmFAST summaries."
 authors = ["Daniela Breitman <daniela.breitman@sns.it>"]
 license = "MIT"
