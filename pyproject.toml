@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "py21cmEMU"
-version = "1.1.1"
+version = "1.1.2"
 description = "Emulator of 21cmFAST summaries."
 authors = ["Daniela Breitman <daniela.breitman@sns.it>"]
 license = "MIT"
@@ -34,7 +34,7 @@ python = ">=3.8,<3.12"
 click = ">=8.0.1"
 numpy = "^1.22.0"
 scipy = "^1.10.1"
-tensorflow = "^2.6.0"
+tensorflow = ">=2.4.0, <= 2.14.0"
 appdirs = "^1.4.4"
 toml = "^0.10.2"
 GitPython = "^3.1.31"
