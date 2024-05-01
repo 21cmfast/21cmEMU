@@ -1,5 +1,5 @@
 appdirs==1.4.4
-furo==2024.1.29
+furo==2024.4.27
 ipython>=7.0.0
 myst_parser==2.0.0
 nbsphinx==0.9.3
