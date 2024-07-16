@@ -6,7 +6,6 @@ import logging
 from typing import Any
 
 import numpy as np
-import tensorflow as tf
 
 from .config import CONFIG
 from .get_emulator import get_emu_data
@@ -27,16 +26,56 @@ class Emulator:
     ----------
     version : str, optional
         Emulator version to use/download, default is 'latest'.
+    emulator : str, optional
+        Emulator to use. Options are: 'radio_background' and 'default'.
+        The radio background emulator is the emulator used in Cang+24
+        It is a model that predicts the radio background
+        temperature :math:`T_{\rm r} \rm{[K]}`,
+        the global IGM neutral fraction :math:`\overline{x}_{\rm HI}`,
+        the global 21-cm brightness temperature :math:`T{\rm b} \rm{[mK]}`,
+        the 21-cm spherically-averaged power spectrum :math:`P(k) \rm{[mK^2]}`, and
+        the Thomson scattering optical depth :math:`\tau`.
+        It has five input parameters:
+        ["fR_mini", "L_X_MINI",  "F_STAR7_MINI", "F_ESC7_MINI", "A_LW"]
+        See 21cmFAST documentation for more information about the input parameters.
+
+        The default emulator is the emulator described in Breitman+23.
+        It emulates six summary statistics with 9 input astrophysical parameters.
     """
 
-    def __init__(self, version: str = "latest"):
-        get_emu_data(version=version)
+    def __init__(self, emulator: str = "default", version: str = "latest"):
 
-        emu = tf.keras.models.load_model(CONFIG.emu_path, compile=False)
+        self.which_emulator = emulator
+        if self.which_emulator == "default":
+            import tensorflow as tf
 
-        self.model = emu
+            get_emu_data(version=version)
+            model = tf.keras.models.load_model(CONFIG.emu_path, compile=False)
+        elif self.which_emulator == "radio_background":
+            import torch
+
+            device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+            torch.set_default_device(device)
+            from .models.radio_background.model import Radio_Emulator
+
+            model = Radio_Emulator()
+            model.load_state_dict(
+                torch.load(
+                    "/home/dbreitman/Radio_Background/Models/Final_model/FINAL_EMULATOR",
+                    map_location=device,
+                )
+            )
+            model.eval()
+        else:
+            raise ValueError(
+                "Please supply one of the following emulator names:"
+                + "'default' or 'radio_background'. "
+                + f"{emulator} is not a valid emulator name."
+            )
+
+        self.model = model
         self.inputs = EmulatorInput()
-        self.properties = emulator_properties
+        self.properties = emulator_properties(emulator=emulator)
 
     def __getattr__(self, name: str) -> Any:
         """Allow access to emulator properties directly from the emulator object."""
