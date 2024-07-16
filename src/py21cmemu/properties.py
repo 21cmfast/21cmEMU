@@ -99,7 +99,9 @@ class RadioBackgroundEmulatorProperties(EmulatorProperties):
 
     def __init__(self):
         here = Path(__file__).parent
-        all_emulator_numbers = np.load(here / "models/radio_background/Feb_wPScsts.npz")
+        all_emulator_numbers = np.load(
+            here / "models/radio_background/radio_background_emu_csts.npz"
+        )
         self._data = all_emulator_numbers
 
         self.logPS_mean = all_emulator_numbers["logPS_mean"]
@@ -115,7 +117,7 @@ class RadioBackgroundEmulatorProperties(EmulatorProperties):
         self.logTr_std = all_emulator_numbers["logTr_std"]
 
         self.mean_errors = np.load(
-            "/home/dbreitman/Radio_Background/Models/Final_model/median_test_errors.npz"
+            here / "models/radio_background/median_test_errors.npz"
         )
 
 
