@@ -57,15 +57,21 @@ def test_output(tmp_path):
 
 def test_properties():
     """Test that the properties are loaded correctly."""
-    from py21cmemu.properties import emulator_properties as properties
+    from py21cmemu.properties import emulator_properties
 
+    properties = emulator_properties()
     properties.limits
+
+    properties = emulator_properties(emulator="radio_background")
+    properties.logTr_mean
 
 
 def test_inputs():
     """Test that we perform parameter normalization properly."""
     from py21cmemu import EmulatorInput
-    from py21cmemu.properties import emulator_properties as properties
+    from py21cmemu.properties import emulator_properties
+
+    properties = emulator_properties()
 
     emu_in = EmulatorInput()
     limits = properties.limits.copy()
