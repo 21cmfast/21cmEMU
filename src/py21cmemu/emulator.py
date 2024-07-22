@@ -114,7 +114,7 @@ class Emulator:
         if self.which_emulator == "default":
             emu = DefaultRawEmulatorOutput(self.model.predict(theta, verbose=verbose))
         elif self.emulator_name == "radio_background":
-            return RadioRawEmulatorOutput(self.model(theta))
+            emu = RadioRawEmulatorOutput(self.model(theta))
         else:
             raise ValueError(f"Unknown emulator: {self.emulator_name}")
 

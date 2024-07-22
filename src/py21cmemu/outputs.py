@@ -258,7 +258,7 @@ class DefaultRawEmulatorOutput(RawEmulatorOutput):
 
         other = {
             k.name: getattr(self, k.name)
-            for k in dc.fields(EmulatorOutput)
+            for k in dc.fields(DefaultEmulatorOutput)
             if k.name not in renorm
         }
 
