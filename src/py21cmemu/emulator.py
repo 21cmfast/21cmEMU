@@ -148,12 +148,21 @@ class Emulator:
         # For now, we return the mean emulator error (obtained from the test set) for
         # each summary. All errors are the median absolute difference between test set
         # and prediction AFTER units have been restored AND log has been removed.
-        return {
-            "PS_err": self.PS_err,
-            "Tb_err": self.Tb_err,
-            "xHI_err": self.xHI_err,
-            "Ts_err": self.Ts_err,
-            "UVLFs_err": self.UVLFs_err,
-            "UVLFs_logerr": self.UVLFs_logerr,
-            "tau_err": self.tau_err,
-        }
+        if self.which_emulator == "default":
+            return {
+                "PS_err": self.PS_err,
+                "Tb_err": self.Tb_err,
+                "xHI_err": self.xHI_err,
+                "Ts_err": self.Ts_err,
+                "UVLFs_err": self.UVLFs_err,
+                "UVLFs_logerr": self.UVLFs_logerr,
+                "tau_err": self.tau_err,
+            }
+        else:
+            return {
+                "PS_err": self.PS_err,
+                "Tb_err": self.Tb_err,
+                "xHI_err": self.xHI_err,
+                "Tr_err": self.Tr_err,
+                "tau_err": self.tau_err,
+            }

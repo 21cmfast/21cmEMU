@@ -133,12 +133,6 @@ class RadioEmulatorOutput(EmulatorOutput):
     PS: np.ndarray
     tau: np.ndarray
 
-    Tb_err: np.ndarray
-    xHI_err: np.ndarray
-    Tr_err: np.ndarray
-    PS_err: np.ndarray
-    tau_err: np.ndarray
-
     properties = emulator_properties(emulator="radio_background")
 
     def squeeze(self):
@@ -359,7 +353,10 @@ class RadioRawEmulatorOutput(RawEmulatorOutput):
 
         out["tau"] = 10 ** (self.tau)
 
-        # Errors in real space for all quantities.
-        out.update(self.properties.median_errors)
+        other = {
+            k.name: getattr(self, k.name)
+            for k in dc.fields(RadioEmulatorOutput)
+            if k.name not in out.keys()
+        }
 
-        return RadioEmulatorOutput(**out).squeeze()
+        return RadioEmulatorOutput(**{**out, **other}).squeeze()

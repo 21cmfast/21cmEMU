@@ -59,7 +59,7 @@ def test_output(tmp_path, emu_type):
         output.PS_redshifts
         output.redshifts
     else:
-        errors.Tr_err
+        errors["Tr_err"]
         output.Tr
         output.PS_ks
 

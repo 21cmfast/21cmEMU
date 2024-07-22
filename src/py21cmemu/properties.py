@@ -115,9 +115,13 @@ class RadioBackgroundEmulatorProperties(EmulatorProperties):
         self.logTr_mean = all_emulator_numbers["logTr_mean"]
         self.logTr_std = all_emulator_numbers["logTr_std"]
 
-        self.median_errors = np.load(
-            here / "models/radio_background/median_test_errors.npz"
-        )
+        with np.load(here / "models/radio_background/median_test_errors.npz") as f:
+            self.PS_err = f["PS_err"]
+            self.Tr_err = f["Tr_err"]
+            self.Tb_err = f["Tb_err"]
+            self.xHI_err = f["xHI_err"]
+            self.tau_err = f["tau_err"]
+
         USER_PARAMS = {
             "HII_DIM": 50,
             "N_THREADS": 1,
