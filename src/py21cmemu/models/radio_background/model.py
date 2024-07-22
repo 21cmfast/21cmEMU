@@ -103,7 +103,7 @@ def cnn_list(
     final_act: bool = False,
     batch_norm: bool = False,
     act_fn: object = nn.LeakyReLU,
-) -> nn.ModuleList:
+):
     """Create a nn.ModuleList of convolutional layers.
 
     Parameters
