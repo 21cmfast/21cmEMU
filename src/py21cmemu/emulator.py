@@ -9,8 +9,9 @@ import numpy as np
 
 from .config import CONFIG
 from .get_emulator import get_emu_data
-from .inputs import EmulatorInput
+from .inputs import DefaultEmulatorInput
 from .inputs import ParamVecType
+from .inputs import RadioEmulatorInput
 from .outputs import EmulatorOutput
 from .outputs import RawEmulatorOutput
 from .properties import emulator_properties
@@ -51,6 +52,8 @@ class Emulator:
 
             get_emu_data(version=version)
             model = tf.keras.models.load_model(CONFIG.emu_path, compile=False)
+            self.inputs = DefaultEmulatorInput()
+
         elif self.which_emulator == "radio_background":
             import torch
 
@@ -66,6 +69,8 @@ class Emulator:
                 )
             )
             model.eval()
+            self.inputs = RadioEmulatorInput()
+
         else:
             raise ValueError(
                 "Please supply one of the following emulator names:"
@@ -74,7 +79,6 @@ class Emulator:
             )
 
         self.model = model
-        self.inputs = EmulatorInput()
         self.properties = emulator_properties(emulator=emulator)
 
     def __getattr__(self, name: str) -> Any:
