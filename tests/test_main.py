@@ -201,7 +201,11 @@ def test_inputs():
 
     emu_in = RadioEmulatorInput()
     arr = np.random.rand(5 * 5).reshape((5, 5))
-    emu_in.make_param_array(arr_tup, normed=True)
+    with pytest.raises(ValueError):
+        emu_in.make_param_array(arr_tup, normed=True)
+
+    emu_in.make_param_array(arr, normed=True)
+
     arr_tup = [tuple(i) for i in arr]
     with pytest.raises(TypeError):
         emu_in.make_param_array(arr_tup, normed=True)
