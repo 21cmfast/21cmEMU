@@ -41,7 +41,7 @@ class EmulatorOutput:
         return self.properties.PS_zs
 
     @property
-    def ps_ks(self) -> np.ndarray:
+    def PS_ks(self) -> np.ndarray:
         """The ks [MPC^{-1}] for the PS."""
         return self.properties.PS_ks
 
@@ -360,6 +360,6 @@ class RadioRawEmulatorOutput(RawEmulatorOutput):
         out["tau"] = 10 ** (self.tau)
 
         # Errors in real space for all quantities.
-        out.update(self.properties.mean_errors)
+        out.update(self.properties.median_errors)
 
         return RadioEmulatorOutput(**out).squeeze()

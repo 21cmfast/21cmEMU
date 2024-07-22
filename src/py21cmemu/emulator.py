@@ -113,10 +113,8 @@ class Emulator:
         theta = self.inputs.make_param_array(astro_params, normed=True)
         if self.which_emulator == "default":
             emu = DefaultRawEmulatorOutput(self.model.predict(theta, verbose=verbose))
-        elif self.emulator_name == "radio_background":
+        if self.emulator_name == "radio_background":
             emu = RadioRawEmulatorOutput(self.model(theta))
-        else:
-            raise ValueError(f"Unknown emulator: {self.emulator_name}")
 
         emu = emu.get_renormalized()
 

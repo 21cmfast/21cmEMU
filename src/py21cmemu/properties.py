@@ -115,7 +115,7 @@ class RadioBackgroundEmulatorProperties(EmulatorProperties):
         self.logTr_mean = all_emulator_numbers["logTr_mean"]
         self.logTr_std = all_emulator_numbers["logTr_std"]
 
-        self.mean_errors = np.load(
+        self.median_errors = np.load(
             here / "models/radio_background/median_test_errors.npz"
         )
         USER_PARAMS = {

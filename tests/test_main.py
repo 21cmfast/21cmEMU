@@ -9,13 +9,17 @@ from typeguard import suppress_type_checks
 from py21cmemu import Emulator
 from py21cmemu.config import CONFIG
 from py21cmemu.outputs import DefaultRawEmulatorOutput
-from py21cmemu.outputs import RadioRawEmulatorOutput
 
 
-def test_output(tmp_path):
+@pytest.mark.parametrize("emu_type", ["default", "radio_background"])
+def test_output(tmp_path, emu_type):
     """Test outputs.py and emulator.py."""
-    emu = Emulator(version="latest")
-    theta = np.random.rand(9 * 5).reshape((5, 9))
+    if emu_type == "radio_background":
+        npars = 5
+    else:
+        npars = 9
+    emu = Emulator(version="latest", emulator=emu_type)
+    theta = np.random.rand(npars * 5).reshape((5, npars))
 
     theta, output, errors = emu.predict(theta)
 
@@ -42,20 +46,25 @@ def test_output(tmp_path):
     ].item()
     assert "xHI" not in check
     assert "theta" not in check
+    if emu_type == "default":
+        out2 = DefaultRawEmulatorOutput(np.random.rand(1098))
+        with pytest.raises(ValueError):
+            out2.renormalize("foo")
 
-    out2 = DefaultRawEmulatorOutput(np.random.rand(1098))
-    with pytest.raises(ValueError):
-        out2.renormalize("foo")
+        assert np.all(output["xHI"] == output.xHI)
 
-    assert np.all(output["xHI"] == output.xHI)
+        output.k
+        output.Muv
+        output.UVLF_redshifts
+        output.PS_redshifts
+        output.redshifts
+    else:
+        errors.Tr_err
+        output.Tr
+        output.PS_ks
 
-    output.k
-    output.Muv
-    output.UVLF_redshifts
-    output.PS_redshifts
-    output.redshifts
-
-    out2 = RadioRawEmulatorOutput(np.random.rand(1098))
+        with pytest.raises(ValueError):
+            emu = Emulator(emulator="foo")
 
 
 def test_properties():
