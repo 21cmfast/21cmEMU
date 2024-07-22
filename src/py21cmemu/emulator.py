@@ -12,8 +12,9 @@ from .get_emulator import get_emu_data
 from .inputs import DefaultEmulatorInput
 from .inputs import ParamVecType
 from .inputs import RadioEmulatorInput
+from .outputs import DefaultRawEmulatorOutput
 from .outputs import EmulatorOutput
-from .outputs import RawEmulatorOutput
+from .outputs import RadioRawEmulatorOutput
 from .properties import emulator_properties
 
 
@@ -110,7 +111,13 @@ class Emulator:
             The mean error on the test set (i.e. independent of theta).
         """
         theta = self.inputs.make_param_array(astro_params, normed=True)
-        emu = RawEmulatorOutput(self.model.predict(theta, verbose=verbose))
+        if self.which_emulator == "default":
+            emu = DefaultRawEmulatorOutput(self.model.predict(theta, verbose=verbose))
+        elif self.emulator_name == "radio_background":
+            return RadioRawEmulatorOutput(self.model(theta))
+        else:
+            raise ValueError(f"Unknown emulator: {self.emulator_name}")
+
         emu = emu.get_renormalized()
 
         errors = self.get_errors(emu, theta)

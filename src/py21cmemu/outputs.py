@@ -148,13 +148,7 @@ class RadioEmulatorOutput:
 
 @dataclass(frozen=True)
 class RawEmulatorOutput:
-    """A simple data-class that makes it easier to access the raw emulator output.
-
-    Parameters
-    ----------
-    output : np.ndarray
-        The raw output array from the emulator.
-    """
+    """A super data-class that makes it easier to access the raw emulator output."""
 
     @property
     def nz(self) -> int:
@@ -178,8 +172,8 @@ class RawEmulatorOutput:
 
 
 @dataclass(frozen=True)
-class DefaultRawEmulatorOutput:
-    """A simple data-class that makes it easier to access the raw emulator output.
+class DefaultRawEmulatorOutput(RawEmulatorOutput):
+    """A simple sub data-class that makes it easier to access the raw emulator output.
 
     Parameters
     ----------
@@ -188,7 +182,6 @@ class DefaultRawEmulatorOutput:
     """
 
     output: np.ndarray
-
     properties = emulator_properties(emulator="default")
 
     @property
@@ -290,7 +283,7 @@ class DefaultRawEmulatorOutput:
 
 
 class RadioRawEmulatorOutput(RawEmulatorOutput):
-    """A simple data-class that makes it easier to access the raw emulator output.
+    """A simple sub data-class that makes it easier to access the raw emulator output.
 
     Parameters
     ----------
