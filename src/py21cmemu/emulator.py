@@ -64,10 +64,8 @@ class Emulator:
 
             model = Radio_Emulator()
             model.load_state_dict(
-                torch.load(
-                    "/home/dbreitman/Radio_Background/Models/Final_model/FINAL_EMULATOR",
-                    map_location=device,
-                )
+                torch.load("./models/radio_background/Radio_Backgrdoun_Emu_Weights"),
+                map_location=device,
             )
             model.eval()
             self.inputs = RadioEmulatorInput()
@@ -113,7 +111,7 @@ class Emulator:
         theta = self.inputs.make_param_array(astro_params, normed=True)
         if self.which_emulator == "default":
             emu = DefaultRawEmulatorOutput(self.model.predict(theta, verbose=verbose))
-        if self.emulator_name == "radio_background":
+        if self.which_emulator == "radio_background":
             emu = RadioRawEmulatorOutput(self.model(theta))
 
         emu = emu.get_renormalized()
