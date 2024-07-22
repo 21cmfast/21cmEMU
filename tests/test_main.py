@@ -68,12 +68,13 @@ def test_properties():
 
 def test_inputs():
     """Test that we perform parameter normalization properly."""
-    from py21cmemu import EmulatorInput
+    from py21cmemu import DefaultEmulatorInput
+    from py21cmemu import RadioEmulatorInput
     from py21cmemu.properties import emulator_properties
 
     properties = emulator_properties()
 
-    emu_in = EmulatorInput()
+    emu_in = DefaultEmulatorInput()
     limits = properties.limits.copy()
     limits[7, :] *= 1000.0  # keV to eV
 
@@ -116,8 +117,8 @@ def test_inputs():
 
     # Test for single dict
     single_param = {}
-    arr = np.zeros(len(EmulatorInput.astro_param_keys))
-    for k, i in enumerate(EmulatorInput.astro_param_keys):
+    arr = np.zeros(len(DefaultEmulatorInput.astro_param_keys))
+    for k, i in enumerate(DefaultEmulatorInput.astro_param_keys):
         single_param[i] = np.random.rand()
         arr[k] = single_param[i]
 
@@ -162,7 +163,7 @@ def test_inputs():
     # Test undo_normalisation
 
     arr = (
-        np.random.rand(len(EmulatorInput.astro_param_keys))
+        np.random.rand(len(DefaultEmulatorInput.astro_param_keys))
         * (limits[:, 1] - limits[:, 0])
         + limits[:, 0]
     )
@@ -192,6 +193,15 @@ def test_inputs():
             emu_in.make_param_array(7, normed=True)
 
     arr = np.random.rand(9 * 5).reshape((5, 9))
+    arr_tup = [tuple(i) for i in arr]
+    with pytest.raises(TypeError):
+        emu_in.make_param_array(arr_tup, normed=True)
+
+    properties = emulator_properties("radio_background")
+
+    emu_in = RadioEmulatorInput()
+    arr = np.random.rand(5 * 5).reshape((5, 5))
+    emu_in.make_param_array(arr_tup, normed=True)
     arr_tup = [tuple(i) for i in arr]
     with pytest.raises(TypeError):
         emu_in.make_param_array(arr_tup, normed=True)

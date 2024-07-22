@@ -119,20 +119,13 @@ class RadioBackgroundEmulatorProperties(EmulatorProperties):
             here / "models/radio_background/median_test_errors.npz"
         )
         USER_PARAMS = {
-            "BOX_LEN": 250,
-            "DIM": 512,
-            "HII_DIM": 128,
-            "USE_FFTW_WISDOM": True,
-            "HMF": 1,
-            "USE_RELATIVE_VELOCITIES": False,
-            "POWER_SPECTRUM": 0,
+            "HII_DIM": 50,
             "N_THREADS": 1,
-            "PERTURB_ON_HIGH_RES": False,
-            "NO_RNG": False,
+            "USE_RELATIVE_VELOCITIES": True,
             "USE_INTERPOLATION_TABLES": True,
-            "FAST_FCOLL_TABLES": False,
-            "USE_2LPT": True,
+            "FAST_FCOLL_TABLES": True,
             "MINIMIZE_MEMORY": False,
+            "BOX_LEN": 500,
         }
 
         COSMO_PARAMS = {
@@ -144,15 +137,13 @@ class RadioBackgroundEmulatorProperties(EmulatorProperties):
         }
 
         FLAG_OPTIONS = {
-            "USE_HALO_FIELD": False,
-            "USE_MINI_HALOS": False,
+            "USE_MINI_HALOS": True,
             "USE_MASS_DEPENDENT_ZETA": True,
-            "SUBCELL_RSD": True,
             "INHOMO_RECO": True,
             "USE_TS_FLUCT": True,
-            "M_MIN_in_Mass": False,
-            "PHOTON_CONS": True,
-            "FIX_VCB_AVG": False,
+            "USE_RADIO_ACG": False,
+            "USE_RADIO_MCG": True,
+            "Calibrate_EoR_feedback": True,
         }
         self.flag_options = FLAG_OPTIONS
         self.user_params = USER_PARAMS
