@@ -150,6 +150,8 @@ class RadioEmulatorOutput(EmulatorOutput):
 class RawEmulatorOutput:
     """A super data-class that makes it easier to access the raw emulator output."""
 
+    output: np.ndarray
+
     @property
     def nz(self) -> int:
         """Number of redshifts in the output."""
@@ -173,7 +175,7 @@ class RawEmulatorOutput:
 
 @dataclass(frozen=True)
 class DefaultRawEmulatorOutput(RawEmulatorOutput):
-    """A sub data-class that makes it easier to access the raw emulator output.
+    """A simple sub data-class that makes it easier to access the raw emulator output.
 
     Parameters
     ----------
@@ -181,10 +183,8 @@ class DefaultRawEmulatorOutput(RawEmulatorOutput):
         The raw output array from the emulator.
     """
 
-    def __init__(self, output: np.ndarray):
-        self.output = output
-        self.properties = emulator_properties(emulator="default")
-        super().__init__()
+    output: np.ndarray
+    properties = emulator_properties(emulator="default")
 
     @property
     def Tb(self) -> np.ndarray:
@@ -285,7 +285,7 @@ class DefaultRawEmulatorOutput(RawEmulatorOutput):
 
 
 class RadioRawEmulatorOutput(RawEmulatorOutput):
-    """A sub data-class that makes it easier to access the raw emulator output.
+    """A simple sub data-class that makes it easier to access the raw emulator output.
 
     Parameters
     ----------
@@ -293,11 +293,9 @@ class RadioRawEmulatorOutput(RawEmulatorOutput):
         The raw output array from the emulator.
     """
 
-    def __init__(self, output: np.ndarray):
+    output: np.ndarray
 
-        self.output = output
-        self.properties = emulator_properties(emulator="radio_background")
-        super().__init__()
+    properties = emulator_properties(emulator="radio_background")
 
     @property
     def Tb(self) -> np.ndarray:
