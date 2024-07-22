@@ -92,7 +92,7 @@ class EmulatorOutput:
 
 
 @dataclass(frozen=True)
-class DefaultEmulatorOutput:
+class DefaultEmulatorOutput(EmulatorOutput):
     """A simple class that makes it easier to access the corrected emulator output."""
 
     Tb: np.ndarray
@@ -124,7 +124,7 @@ class DefaultEmulatorOutput:
 
 
 @dataclass(frozen=True)
-class RadioEmulatorOutput:
+class RadioEmulatorOutput(EmulatorOutput):
     """A simple class that makes it easier to access the corrected emulator output."""
 
     Tb: np.ndarray
