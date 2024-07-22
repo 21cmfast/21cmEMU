@@ -173,7 +173,7 @@ class RawEmulatorOutput:
 
 @dataclass(frozen=True)
 class DefaultRawEmulatorOutput(RawEmulatorOutput):
-    """A simple sub data-class that makes it easier to access the raw emulator output.
+    """A sub data-class that makes it easier to access the raw emulator output.
 
     Parameters
     ----------
@@ -181,8 +181,10 @@ class DefaultRawEmulatorOutput(RawEmulatorOutput):
         The raw output array from the emulator.
     """
 
-    output: np.ndarray
-    properties = emulator_properties(emulator="default")
+    def __init__(self, output: np.ndarray):
+        self.output = output
+        self.properties = emulator_properties(emulator="default")
+        super().__init__()
 
     @property
     def Tb(self) -> np.ndarray:
@@ -283,7 +285,7 @@ class DefaultRawEmulatorOutput(RawEmulatorOutput):
 
 
 class RadioRawEmulatorOutput(RawEmulatorOutput):
-    """A simple sub data-class that makes it easier to access the raw emulator output.
+    """A sub data-class that makes it easier to access the raw emulator output.
 
     Parameters
     ----------
@@ -291,9 +293,11 @@ class RadioRawEmulatorOutput(RawEmulatorOutput):
         The raw output array from the emulator.
     """
 
-    output: np.ndarray
+    def __init__(self, output: np.ndarray):
 
-    properties = emulator_properties(emulator="radio_background")
+        self.output = output
+        self.properties = emulator_properties(emulator="radio_background")
+        super().__init__()
 
     @property
     def Tb(self) -> np.ndarray:
