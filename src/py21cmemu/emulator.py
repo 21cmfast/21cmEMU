@@ -64,7 +64,7 @@ class Emulator:
 
             model = Radio_Emulator()
             model.load_state_dict(
-                torch.load("./models/radio_background/Radio_Backgrdoun_Emu_Weights"),
+                torch.load("./models/radio_background/Radio_Background_Emu_Weights"),
                 map_location=device,
             )
             model.eval()
