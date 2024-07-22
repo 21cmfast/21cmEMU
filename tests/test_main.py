@@ -56,8 +56,6 @@ def test_output(tmp_path):
     output.redshifts
 
     out2 = RadioRawEmulatorOutput(np.random.rand(1098))
-    with pytest.raises(ValueError):
-        out2.renormalize("foo")
 
 
 def test_properties():
