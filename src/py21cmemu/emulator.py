@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -62,9 +63,12 @@ class Emulator:
             torch.set_default_device(device)
             from .models.radio_background.model import Radio_Emulator
 
+            here = Path(__file__).parent
             model = Radio_Emulator()
             model.load_state_dict(
-                torch.load("./models/radio_background/Radio_Background_Emu_Weights"),
+                torch.load(
+                    here / "models/radio_background/Radio_Background_Emu_Weights"
+                ),
                 map_location=device,
             )
             model.eval()
