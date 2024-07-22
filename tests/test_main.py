@@ -8,7 +8,8 @@ from typeguard import suppress_type_checks
 
 from py21cmemu import Emulator
 from py21cmemu.config import CONFIG
-from py21cmemu.outputs import RawEmulatorOutput
+from py21cmemu.outputs import DefaultRawEmulatorOutput
+from py21cmemu.outputs import RadioRawEmulatorOutput
 
 
 def test_output(tmp_path):
@@ -42,7 +43,7 @@ def test_output(tmp_path):
     assert "xHI" not in check
     assert "theta" not in check
 
-    out2 = RawEmulatorOutput(np.random.rand(1098))
+    out2 = DefaultRawEmulatorOutput(np.random.rand(1098))
     with pytest.raises(ValueError):
         out2.renormalize("foo")
 
@@ -53,6 +54,10 @@ def test_output(tmp_path):
     output.UVLF_redshifts
     output.PS_redshifts
     output.redshifts
+
+    out2 = RadioRawEmulatorOutput(np.random.rand(1098))
+    with pytest.raises(ValueError):
+        out2.renormalize("foo")
 
 
 def test_properties():
