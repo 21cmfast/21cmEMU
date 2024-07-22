@@ -178,11 +178,11 @@ class Radio_Emulator(nn.Module):
 
     def __init__(
         self,
-        nlayers: list = (10, 10, 5, 5, 3),
-        nnodes: list = (1500, 1000, 500, 64 * 20, 300),
-        out_len: list = (103, 103, 103, 25 * 20, 1),
+        nlayers: tuple = (10, 10, 5, 5, 3),
+        nnodes: tuple = (1500, 1000, 500, 64 * 20, 300),
+        out_len: tuple = (103, 103, 103, 25 * 20, 1),
         input_len: int = 5,
-        ps_inp_shape: list = (64, 5, 4),
+        ps_inp_shape: tuple = (64, 5, 4),
     ):
         super().__init__()
         self.ps_inp_shape = ps_inp_shape
