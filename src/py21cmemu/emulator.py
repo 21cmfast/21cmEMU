@@ -116,7 +116,11 @@ class Emulator:
         if self.which_emulator == "default":
             emu = DefaultRawEmulatorOutput(self.model.predict(theta, verbose=verbose))
         if self.which_emulator == "radio_background":
-            emu = RadioRawEmulatorOutput(self.model(theta))
+            import torch
+
+            emu = RadioRawEmulatorOutput(
+                self.model(torch.Tensor(theta)).detach().cpu().numpy()
+            )
 
         emu = emu.get_renormalized()
 
