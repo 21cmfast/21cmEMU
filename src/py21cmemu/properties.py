@@ -129,11 +129,11 @@ class RadioBackgroundEmulatorProperties(EmulatorProperties):
         }
 
         COSMO_PARAMS = {
-            "SIGMA_8": 0.82,
-            "hlittle": 0.6774,
-            "OMm": 0.3075,
-            "OMb": 0.0486,
-            "POWER_INDEX": 0.97,
+            "SIGMA_8": 0.8102,
+            "hlittle": 0.6766,
+            "OMm": 0.30964144154550644,
+            "OMb": 0.04897468161869667,
+            "POWER_INDEX": 0.9665,
         }
 
         FLAG_OPTIONS = {

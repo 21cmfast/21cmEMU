@@ -117,8 +117,8 @@ def test_inputs():
 
     # Test for single dict
     single_param = {}
-    arr = np.zeros(len(DefaultEmulatorInput.astro_param_keys))
-    for k, i in enumerate(DefaultEmulatorInput.astro_param_keys):
+    arr = np.zeros(len(DefaultEmulatorInput().astro_param_keys))
+    for k, i in enumerate(DefaultEmulatorInput().astro_param_keys):
         single_param[i] = np.random.rand()
         arr[k] = single_param[i]
 
@@ -163,7 +163,7 @@ def test_inputs():
     # Test undo_normalisation
 
     arr = (
-        np.random.rand(len(DefaultEmulatorInput.astro_param_keys))
+        np.random.rand(len(DefaultEmulatorInput().astro_param_keys))
         * (limits[:, 1] - limits[:, 0])
         + limits[:, 0]
     )
