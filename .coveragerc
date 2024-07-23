@@ -5,6 +5,7 @@ omit =
     models/
     tests/
     */tmp/*
+    */site-packages/py21cmemu/*
 
 [run]
 branch = True
@@ -13,3 +14,4 @@ omit =
     models/
     tests/
     */tmp/*
+    */site-packages/py21cmemu/*
