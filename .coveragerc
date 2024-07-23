@@ -6,3 +6,4 @@ source = src/py21cmemu/
 omit =
     models/
     tests/
+    tmp/
