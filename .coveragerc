@@ -1,6 +1,5 @@
 
 [path]
-source = src/py21cmemu/
 omit =
     models/
     tests/
@@ -9,7 +8,6 @@ omit =
 
 [run]
 branch = True
-source_pkgs = py21cmemu
 omit =
     models/
     tests/
