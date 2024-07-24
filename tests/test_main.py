@@ -6,9 +6,12 @@ import numpy as np
 import pytest
 from typeguard import suppress_type_checks
 
+from py21cmemu import DefaultEmulatorInput
 from py21cmemu import Emulator
+from py21cmemu import RadioEmulatorInput
 from py21cmemu.config import CONFIG
 from py21cmemu.outputs import DefaultRawEmulatorOutput
+from py21cmemu.properties import emulator_properties
 
 
 @pytest.mark.parametrize("emu_type", ["default", "radio_background"])
@@ -78,19 +81,22 @@ def test_properties():
     properties.logTr_mean
 
 
-def test_inputs():
+@pytest.mark.parametrize("emu_type", ["default", "radio_background"])
+def test_inputs(emu_type):
     """Test that we perform parameter normalization properly."""
-    from py21cmemu import DefaultEmulatorInput
-    from py21cmemu import RadioEmulatorInput
-    from py21cmemu.properties import emulator_properties
+    properties = emulator_properties(emulator=emu_type)
 
-    properties = emulator_properties()
+    if emu_type == "radio_background":
+        emu_in = RadioEmulatorInput()
+        limits = properties.limits
+        npars = len(limits)
+    else:
+        emu_in = DefaultEmulatorInput()
+        limits = properties.limits.copy()
+        limits[7, :] *= 1000.0  # keV to eV
+        npars = len(limits)
 
-    emu_in = DefaultEmulatorInput()
-    limits = properties.limits.copy()
-    limits[7, :] *= 1000.0  # keV to eV
-
-    single_param = np.random.rand(9)
+    single_param = np.random.rand(npars)
     inp = emu_in.make_param_array(single_param, normed=True)
 
     assert (inp == single_param).all(), "Single param 1D array not normalized properly."
@@ -101,7 +107,7 @@ def test_inputs():
         inp <= limits[:, 1]
     ).all(), "Single param 1D array dimensions not restored properly."
 
-    single_param = np.random.rand(9).reshape((1, 9))
+    single_param = np.random.rand(npars).reshape((1, npars))
     inp = emu_in.make_param_array(single_param, normed=True)
 
     assert (inp == single_param).all(), "Single param array not normalized properly."
@@ -113,7 +119,7 @@ def test_inputs():
     ).all(), "Single param array dimensions not restored properly."
 
     # Test for many params at once, array
-    many_params = np.random.rand(9 * 5).reshape((5, 9))
+    many_params = np.random.rand(npars * 5).reshape((5, npars))
 
     inp = emu_in.make_param_array(many_params, normed=True)
 
@@ -129,8 +135,8 @@ def test_inputs():
 
     # Test for single dict
     single_param = {}
-    arr = np.zeros(len(DefaultEmulatorInput().astro_param_keys))
-    for k, i in enumerate(DefaultEmulatorInput().astro_param_keys):
+    arr = np.zeros(len(emu_in.astro_param_keys))
+    for k, i in enumerate(emu_in.astro_param_keys):
         single_param[i] = np.random.rand()
         arr[k] = single_param[i]
 
@@ -175,8 +181,7 @@ def test_inputs():
     # Test undo_normalisation
 
     arr = (
-        np.random.rand(len(DefaultEmulatorInput().astro_param_keys))
-        * (limits[:, 1] - limits[:, 0])
+        np.random.rand(len(emu_in.astro_param_keys)) * (limits[:, 1] - limits[:, 0])
         + limits[:, 0]
     )
     arr[7] *= 1000  # keV to eV
@@ -192,7 +197,7 @@ def test_inputs():
 
     # Test make_list_of_dicts
 
-    pars = np.random.rand(10 * 9).reshape((10, 9))
+    pars = np.random.rand(10 * npars).reshape((10, npars))
 
     inp = emu_in.make_list_of_dicts(pars, normed=True)
 
@@ -204,23 +209,12 @@ def test_inputs():
         with suppress_type_checks():
             emu_in.make_param_array(7, normed=True)
 
-    arr = np.random.rand(9 * 5).reshape((5, 9))
+    arr = np.random.rand(npars * 5).reshape((5, npars))
     arr_tup = [tuple(i) for i in arr]
     with pytest.raises(TypeError):
         emu_in.make_param_array(arr_tup, normed=True)
 
     properties = emulator_properties("radio_background")
-
-    emu_in = RadioEmulatorInput()
-    arr = np.random.rand(5 * 5).reshape((5, 5))
-    with pytest.raises(ValueError):
-        emu_in.make_param_array(arr_tup, normed=True)
-
-    emu_in.make_param_array(arr, normed=True)
-
-    arr_tup = [tuple(i) for i in arr]
-    with pytest.raises(TypeError):
-        emu_in.make_param_array(arr_tup, normed=True)
 
 
 def test_config(tmp_path):
