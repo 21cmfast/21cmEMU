@@ -8,6 +8,7 @@ omit =
 
 [run]
 branch = True
+source = py21cmemu
 omit =
     models/
     tests/
