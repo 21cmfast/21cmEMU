@@ -16,15 +16,6 @@ from .properties import emulator_properties
 class EmulatorOutput:
     """A simple class that makes it easier to access the corrected emulator output."""
 
-    Tb: np.ndarray
-    xHI: np.ndarray
-    Ts: np.ndarray
-    PS: np.ndarray
-    tau: np.ndarray
-    UVLFs: np.ndarray
-
-    properties = emulator_properties
-
     def keys(self) -> Generator[str, None, None]:
         """Yield the keys of the main data products."""
         for k in dc.fields(self):
@@ -40,37 +31,24 @@ class EmulatorOutput:
         return getattr(self, key)
 
     @property
-    def k(self) -> np.ndarray:
-        """The k-values of the power spectra."""
-        return self.properties.ks_cut
-
-    @property
-    def Muv(self) -> np.ndarray:
-        """The Muv-values of the UVLFs."""
-        # Crop the M_UV to -20 to -10 range
-        m = np.logical_and(
-            self.properties.UVLFs_MUVs <= -10, self.properties.UVLFs_MUVs >= -20
-        )
-        return self.properties.UVLFs_MUVs[m]
-
-    @property
-    def UVLF_redshifts(self) -> np.ndarray:
-        """The redshifts of the UVLFs."""
-        return self.properties.uv_lf_zs
-
-    @property
-    def PS_redshifts(self) -> np.ndarray:
-        """The redshifts of the power spectra."""
-        return self.properties.zs_cut
-
-    @property
     def redshifts(self) -> np.ndarray:
         """The redshifts of all quantities except the PS."""
         return self.properties.zs
 
-    def squeeze(self):
-        """Return a new EmulatorOutput with all dimensions of length 1 removed."""
-        return EmulatorOutput(**{k: np.squeeze(v) for k, v in self.items()})
+    @property
+    def PS_redshifts(self) -> np.ndarray:
+        """The redshifts for the PS."""
+        return self.properties.PS_zs
+
+    @property
+    def PS_ks(self) -> np.ndarray:
+        """The ks [MPC^{-1}] for the PS."""
+        return self.properties.PS_ks
+
+    @property
+    def k(self) -> np.ndarray:
+        """The ks [MPC^{-1}] for the PS."""
+        return self.properties.PS_ks
 
     def write(
         self,
@@ -114,18 +92,59 @@ class EmulatorOutput:
 
 
 @dataclass(frozen=True)
-class RawEmulatorOutput:
-    """A simple data-class that makes it easier to access the raw emulator output.
+class DefaultEmulatorOutput(EmulatorOutput):
+    """A simple class that makes it easier to access the corrected emulator output."""
 
-    Parameters
-    ----------
-    output : np.ndarray
-        The raw output array from the emulator.
-    """
+    Tb: np.ndarray
+    xHI: np.ndarray
+    Ts: np.ndarray
+    PS: np.ndarray
+    tau: np.ndarray
+    UVLFs: np.ndarray
+
+    properties = emulator_properties(emulator="default")
+
+    @property
+    def Muv(self) -> np.ndarray:
+        """The Muv-values of the UVLFs."""
+        # Crop the M_UV to -20 to -10 range
+        m = np.logical_and(
+            self.properties.UVLFs_MUVs <= -10, self.properties.UVLFs_MUVs >= -20
+        )
+        return self.properties.UVLFs_MUVs[m]
+
+    @property
+    def UVLF_redshifts(self) -> np.ndarray:
+        """The redshifts of the UVLFs."""
+        return self.properties.uv_lf_zs
+
+    def squeeze(self):
+        """Return a new EmulatorOutput with all dimensions of length 1 removed."""
+        return DefaultEmulatorOutput(**{k: np.squeeze(v) for k, v in self.items()})
+
+
+@dataclass(frozen=True)
+class RadioEmulatorOutput(EmulatorOutput):
+    """A simple class that makes it easier to access the corrected emulator output."""
+
+    Tb: np.ndarray
+    xHI: np.ndarray
+    Tr: np.ndarray
+    PS: np.ndarray
+    tau: np.ndarray
+
+    properties = emulator_properties(emulator="radio_background")
+
+    def squeeze(self):
+        """Return a new EmulatorOutput with all dimensions of length 1 removed."""
+        return RadioEmulatorOutput(**{k: np.squeeze(v) for k, v in self.items()})
+
+
+@dataclass(frozen=True)
+class RawEmulatorOutput:
+    """A super data-class that makes it easier to access the raw emulator output."""
 
     output: np.ndarray
-
-    properties = emulator_properties
 
     @property
     def nz(self) -> int:
@@ -136,6 +155,30 @@ class RawEmulatorOutput:
     def nparams(self) -> int:
         """Number of sets of parameters in the output."""
         return self.output.shape[0]
+
+    @property
+    def PS_nz(self) -> int:
+        """Number of redshifts in the output."""
+        return np.array(self.properties.PS_zs).shape[0]
+
+    @property
+    def PS_nk(self) -> int:
+        """Number of redshifts in the output."""
+        return np.array(self.properties.PS_ks).shape[0]
+
+
+@dataclass(frozen=True)
+class DefaultRawEmulatorOutput(RawEmulatorOutput):
+    """A simple sub data-class that makes it easier to access the raw emulator output.
+
+    Parameters
+    ----------
+    output : np.ndarray
+        The raw output array from the emulator.
+    """
+
+    output: np.ndarray
+    properties = emulator_properties(emulator="default")
 
     @property
     def Tb(self) -> np.ndarray:
@@ -211,7 +254,7 @@ class RawEmulatorOutput:
 
         other = {
             k.name: getattr(self, k.name)
-            for k in dc.fields(EmulatorOutput)
+            for k in dc.fields(DefaultEmulatorOutput)
             if k.name not in renorm
         }
 
@@ -232,4 +275,88 @@ class RawEmulatorOutput:
         out["Ts"] = 10 ** out["Ts"]
         out["tau"] = 10 ** out["tau"]
 
-        return EmulatorOutput(**out).squeeze()
+        return DefaultEmulatorOutput(**out).squeeze()
+
+
+class RadioRawEmulatorOutput(RawEmulatorOutput):
+    """A simple sub data-class that makes it easier to access the raw emulator output.
+
+    Parameters
+    ----------
+    output : np.ndarray
+        The raw output array from the emulator.
+    """
+
+    output: np.ndarray
+
+    properties = emulator_properties(emulator="radio_background")
+
+    @property
+    def Tb(self) -> np.ndarray:
+        """Mean 21cm brightness temperature in mK as a function of redshift."""
+        return self.output[:, : self.nz]
+
+    @property
+    def Tr(self) -> np.ndarray:
+        """Radio temperature in K as a function of redshift."""
+        return self.output[:, self.nz : 2 * self.nz]
+
+    @property
+    def xHI(self) -> np.ndarray:
+        """Neutral fraction as a function of redshift."""
+        return self.output[:, 2 * self.nz : 3 * self.nz]
+
+    @property
+    def PS(self) -> np.ndarray:
+        r""":math:`\Delta^{2}_{21} [\rm{mK}^2]` as a function of redshift and k."""
+        return self.output[:, 3 * self.nz : -1].reshape(
+            (self.output.shape[0], self.PS_nz, self.PS_nk)
+        )
+
+    @property
+    def tau(self) -> np.ndarray:
+        """The optical depth of reionization."""
+        return self.output[:, -1]
+
+    def get_renormalized(self) -> EmulatorOutput:
+        """Get the output with normalized quantities re-normalized.
+
+        Returns
+        -------
+        EmulatorOutput
+            The emulator output with normalized quantities re-normalized back to
+            physical units.
+        """
+        # Restore dimensions
+        # Renormalize stuff that needs renormalization
+        out = {}
+
+        out["Tb"] = (
+            -(
+                10
+                ** ((self.Tb * self.properties.logTb_std) + self.properties.logTb_mean)
+            )
+            + self.properties.Tb_scale
+        )
+        out["Tr"] = 10 ** (
+            (self.Tr * self.properties.logTr_std) + self.properties.logTr_mean
+        )
+        out["PS"] = 10 ** (
+            (self.PS * self.properties.logPS_std) + self.properties.logPS_mean
+        )
+
+        # zs axis was flipped.
+        # I'll flip the global summaries instead to keep the zs in increasing order.
+        out["xHI"] = self.xHI[:, ::-1]
+        out["Tb"] = out["Tb"][:, ::-1]
+        out["Tr"] = out["Tr"][:, ::-1]
+
+        out["tau"] = 10 ** (self.tau)
+
+        other = {
+            k.name: getattr(self, k.name)
+            for k in dc.fields(RadioEmulatorOutput)
+            if k.name not in out.keys()
+        }
+
+        return RadioEmulatorOutput(**{**out, **other}).squeeze()

@@ -8,7 +8,7 @@ from typing import Union
 
 import numpy as np
 
-from .properties import emulator_properties as properties
+from .properties import emulator_properties
 
 
 SingleParamVecType = Union[Dict[str, float], np.ndarray, Sequence[float]]
@@ -18,17 +18,8 @@ ParamVecType = Union[Sequence[SingleParamVecType], SingleParamVecType]
 class EmulatorInput:
     """Class for handling emulator inputs."""
 
-    astro_param_keys = (
-        "F_STAR10",
-        "ALPHA_STAR",
-        "F_ESC10",
-        "ALPHA_ESC",
-        "M_TURN",
-        "t_STAR",
-        "L_X",
-        "NU_X_THRESH",
-        "X_RAY_SPEC_INDEX",
-    )
+    def __init__(self, emulator: str = "default"):
+        self.properties = emulator_properties(emulator=emulator)
 
     def _format_single_theta_vector(self, theta: SingleParamVecType) -> np.ndarray:
         if len(theta) != len(self.astro_param_keys):
@@ -113,6 +104,25 @@ class EmulatorInput:
         theta = self.make_param_array(theta, normed=normed)
         return [dict(zip(self.astro_param_keys, theta[i])) for i in range(len(theta))]
 
+
+class DefaultEmulatorInput(EmulatorInput):
+    """Class for handling emulator inputs."""
+
+    def __init__(self):
+        """Class for handling emulator inputs."""
+        self.astro_param_keys = (
+            "F_STAR10",
+            "ALPHA_STAR",
+            "F_ESC10",
+            "ALPHA_ESC",
+            "M_TURN",
+            "t_STAR",
+            "L_X",
+            "NU_X_THRESH",
+            "X_RAY_SPEC_INDEX",
+        )
+        super().__init__(emulator="default")
+
     def normalize(self, theta: np.ndarray) -> np.ndarray:
         """Normalize the parameters.
 
@@ -129,8 +139,8 @@ class EmulatorInput:
         """
         theta_woutdims = theta.copy()
         theta_woutdims[:, 7] /= 1000
-        theta_woutdims -= properties.limits[:, 0]
-        theta_woutdims /= properties.limits[:, 1] - properties.limits[:, 0]
+        theta_woutdims -= self.properties.limits[:, 0]
+        theta_woutdims /= self.properties.limits[:, 1] - self.properties.limits[:, 0]
         return theta_woutdims
 
     def undo_normalization(self, theta: np.ndarray) -> np.ndarray:
@@ -148,7 +158,59 @@ class EmulatorInput:
             Un-normalized parameters, with shape (n_batch, n_params).
         """
         theta_wdims = theta.copy()
-        theta_wdims *= properties.limits[:, 1] - properties.limits[:, 0]
-        theta_wdims += properties.limits[:, 0]
+        theta_wdims *= self.properties.limits[:, 1] - self.properties.limits[:, 0]
+        theta_wdims += self.properties.limits[:, 0]
         theta_wdims[:, 7] *= 1000
+        return theta_wdims
+
+
+class RadioEmulatorInput(EmulatorInput):
+    """Class for handling radio background emulator inputs."""
+
+    def __init__(self):
+        self.astro_param_keys = (
+            "fR_mini",
+            "L_X_MINI",
+            "F_STAR7_MINI",
+            "F_ESC7_MINI",
+            "A_LW",
+        )
+        super().__init__(emulator="radio_background")
+
+    def normalize(self, theta: np.ndarray) -> np.ndarray:
+        """Normalize the parameters.
+
+        Parameters
+        ----------
+        theta : np.ndarray
+            Input parameters, strictly in 2D array format, with shape
+            (n_batch, n_params).
+
+        Returns
+        -------
+        np.ndarray
+            Normalized parameters, with shape (n_batch, n_params).
+        """
+        theta_woutdims = theta.copy()
+        theta_woutdims -= self.properties.limits[:, 0]
+        theta_woutdims /= self.properties.limits[:, 1] - self.properties.limits[:, 0]
+        return theta_woutdims
+
+    def undo_normalization(self, theta: np.ndarray) -> np.ndarray:
+        """Undo the normalization of the parameters.
+
+        Parameters
+        ----------
+        theta : np.ndarray
+            Input parameters, strictly in 2D array format, with shape
+            (n_batch, n_params).
+
+        Returns
+        -------
+        np.ndarray
+            Un-normalized parameters, with shape (n_batch, n_params).
+        """
+        theta_wdims = theta.copy()
+        theta_wdims *= self.properties.limits[:, 1] - self.properties.limits[:, 0]
+        theta_wdims += self.properties.limits[:, 0]
         return theta_wdims
