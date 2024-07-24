@@ -3,10 +3,11 @@
 source =
     src/
     */site-packages/
+
 omit =
-    */models/radio_background/*
+    */models/radio_background/model.py
     tests/
-    */tmp/*
+    */tmp/
 
 [run]
 branch = True
@@ -14,7 +15,7 @@ source = py21cmemu
 omit =
     */models/radio_background/model.py
     tests/
-    */tmp/*
+    */tmp/
 
 [report]
 # Regexes for lines to exclude from consideration
