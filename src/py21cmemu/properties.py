@@ -50,7 +50,19 @@ class DefaultEmulatorProperties(EmulatorProperties):
         self.tau_err = all_emulator_numbers["tau_err"]
         self.UVLFs_err = all_emulator_numbers["UVLFs_err"]
         self.UVLFs_logerr = all_emulator_numbers["UVLFs_logerr"]
-
+        self.parameter_labels = np.array(
+            [
+                r"$\log_{10} f_{*,10}$",
+                r"$\alpha_\ast$",
+                r"$\log_{10} f_{\rm esc, 10}$",
+                r"$\alpha_{\rm esc}$",
+                r"$\log_{10}M_{\rm turn}$",
+                r"$t_{\ast}$",
+                r"$\log_{10}L_{\rm X<2keV}/{\rm SFR}$",
+                r"$E_0$",
+                r"$\alpha_{\rm X}$",
+            ]
+        )
         USER_PARAMS = {
             "BOX_LEN": 250,
             "DIM": 512,
@@ -121,6 +133,13 @@ class RadioBackgroundEmulatorProperties(EmulatorProperties):
             self.Tb_err = f["Tb_err"]
             self.xHI_err = f["xHI_err"]
             self.tau_err = f["tau_err"]
+        self.parameter_labels = [
+            r"log$_{10}$ f$_{\rm R,mini}$",
+            r"log$_{10}$L$_{\rm X, mini}$",
+            r"log$_{10}$F$_{\ast,mini}$",
+            r"log$_{10}$F$_{\rm esc, mini}$",
+            r"A$_{\rm LW}$",
+        ]
 
         USER_PARAMS = {
             "HII_DIM": 50,
