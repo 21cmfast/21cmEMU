@@ -80,6 +80,9 @@ def test_properties():
     properties = emulator_properties(emulator="radio_background")
     properties.logTr_mean
 
+    with pytest.raises(ValueError):
+        properties = emulator_properties(emulator="foo")
+
 
 @pytest.mark.parametrize("emu_type", ["default", "radio_background"])
 def test_inputs(emu_type):
