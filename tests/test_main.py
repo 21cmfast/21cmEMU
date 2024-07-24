@@ -184,13 +184,15 @@ def test_inputs(emu_type):
         np.random.rand(len(emu_in.astro_param_keys)) * (limits[:, 1] - limits[:, 0])
         + limits[:, 0]
     )
-    arr[7] *= 1000  # keV to eV
+    if emu_type == "default":
+        arr[7] *= 1000  # keV to eV
 
     inp = emu_in.make_param_array(arr, normed=False)
 
     assert (arr == inp).all(), "Single param array w norm failed."
 
-    arr[7] /= 1000  # eV to keV
+    if emu_type == "default":
+        arr[7] /= 1000  # eV to keV
     inp = emu_in.make_param_array(arr, normed=True)
 
     assert inp.min() >= 0 and inp.max() <= 1, "Single param array w norm undo failed."
