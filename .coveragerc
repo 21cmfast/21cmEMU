@@ -1,16 +1,14 @@
 
 [path]
 omit =
-    models/
+    */models/radio_background/*
     tests/
     */tmp/*
-    */site-packages/py21cmemu/*
 
 [run]
 branch = True
 source = src/py21cmemu
 omit =
-    models/
+    */models/radio_background/*
     tests/
     */tmp/*
-    */site-packages/py21cmemu/*
