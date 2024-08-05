@@ -16,12 +16,12 @@ from .properties import emulator_properties
 class EmulatorOutput:
     """A simple class that makes it easier to access the corrected emulator output."""
 
-    def keys(self) -> Generator[str, None, None]:
+    def keys(self) -> Generator[str]:
         """Yield the keys of the main data products."""
         for k in dc.fields(self):
             yield k.name
 
-    def items(self) -> Generator[tuple[str, np.ndarray], None, None]:
+    def items(self) -> Generator[tuple[str, np.ndarray]]:
         """Yield the keys and values of the main data products, like a dict."""
         for k in self.keys():
             yield k, getattr(self, k)
