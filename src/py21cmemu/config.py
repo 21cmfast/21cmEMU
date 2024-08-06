@@ -80,15 +80,15 @@ class Config:
         """Get the string representation of the config file."""
         return str(self.config)
 
-    def keys(self) -> Generator[str, None, None]:
+    def keys(self) -> Generator[str]:
         """Yield the keys in the config file."""
         yield from self.config.keys()
 
-    def values(self) -> Generator[Any, None, None]:
+    def values(self) -> Generator[Any]:
         """Yield the values in the config file."""
         yield from self.config.values()
 
-    def items(self) -> Generator[tuple[str, Any], None, None]:
+    def items(self) -> Generator[tuple[str, Any]]:
         """Yield the keys and values of the main data products, like a dict."""
         yield from self.config.items()
 
@@ -98,7 +98,7 @@ class Config:
         self.config_file.write_text(toml.dumps(self.config))
 
     @contextmanager
-    def use(self, **kw) -> Generator[None, None, None]:
+    def use(self, **kw) -> Generator[None]:
         """Use configuration values temporarily."""
         old = {k: self[k] for k in kw}
         self.update(**kw)
