@@ -2,7 +2,7 @@ appdirs==1.4.4
 furo==2024.8.6
 ipython>=7.0.0
 myst_parser==4.0.0
-nbsphinx==0.9.5
+nbsphinx==0.9.6
 numpy>=1.20.0
 py21cmemu>=1.0.5.dev0
 scipy>=1.7.0
