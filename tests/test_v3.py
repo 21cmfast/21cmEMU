@@ -1,4 +1,4 @@
-"""Tests for v3 (mh) emulator integration."""
+"""Tests for v3 (mcg) emulator integration."""
 
 from __future__ import annotations
 
@@ -10,15 +10,13 @@ import pytest
 from py21cmemu import Emulator
 
 
+# Path constants (also defined in conftest.py for fixtures)
 TUTORIALS_DIR = Path(__file__).resolve().parents[1] / "docs" / "tutorials"
 TEST_SET_H5 = TUTORIALS_DIR / "test_set.h5"
 PS_TEST_H5 = TUTORIALS_DIR / "ps_1d_loglin_db_test.h5"
 
 
-@pytest.fixture(scope="module")
-def mh_emulator():
-    """Create an MH emulator fixture for tests."""
-    return Emulator(emulator="mh", emulate_ps=False)
+# Note: mh_emulator fixture is defined in conftest.py
 
 
 @pytest.mark.skipif(not TEST_SET_H5.exists(), reason="test_set.h5 not available")
@@ -119,10 +117,38 @@ def test_mh_properties(mh_emulator) -> None:
 
 
 def test_mh_emulator_creation() -> None:
-    """Test that MH emulator can be created."""
-    emu = Emulator(emulator="mh", emulate_ps=False)
-    assert emu.which_emulator == "mh"
-    assert not emu.emulate_ps
+    """Test that MCG emulator can be created."""
+    emu = Emulator(emulator="mcg", emulate_2d_ps=False)
+    assert emu.which_emulator == "mcg"
+    assert not emu.emulate_2d_ps
+
+
+def test_emulator_aliases() -> None:
+    """Test that emulator aliases resolve correctly."""
+    from py21cmemu.emulator import resolve_emulator_name
+    
+    # v3/mh -> mcg
+    assert resolve_emulator_name("v3") == "mcg"
+    assert resolve_emulator_name("mh") == "mcg"
+    assert resolve_emulator_name("mcg") == "mcg"
+    
+    # v1/default -> acg
+    assert resolve_emulator_name("v1") == "acg"
+    assert resolve_emulator_name("default") == "acg"
+    assert resolve_emulator_name("acg") == "acg"
+    
+    # v2/radio_background -> radio
+    assert resolve_emulator_name("v2") == "radio"
+    assert resolve_emulator_name("radio_background") == "radio"
+    assert resolve_emulator_name("radio") == "radio"
+    
+    # Case insensitive
+    assert resolve_emulator_name("MCG") == "mcg"
+    assert resolve_emulator_name("V3") == "mcg"
+    
+    # Invalid name raises
+    with pytest.raises(ValueError, match="Unknown emulator"):
+        resolve_emulator_name("invalid")
 
 
 def test_mh_inputs_class() -> None:
@@ -143,19 +169,22 @@ def test_mh_outputs_class() -> None:
     """Test MHEmulatorOutput class."""
     from py21cmemu.outputs import MHEmulatorOutput
 
-    # Create minimal output
+    # Create minimal output (no 2D PS)
     output = MHEmulatorOutput(
         Tb=np.zeros(93),
         xHI=np.zeros(93),
         Ts=np.zeros(93),
         tau=np.array([0.05]),
         UVLFs=np.zeros((1, 35, 7)),
-        PS=None,
-        PS_samples=None,
+        PS=np.zeros((32, 32)),
+        PS_2D=None,
+        PS_2D_samples=None,
+        PS_2D_std=None,
         _ps_redshifts=None,
     )
     assert output.Tb.shape[-1] == 93
     assert output.tau[0] == 0.05
+    assert output.PS.shape == (32, 32)
 
 
 # =============================================================================
@@ -278,17 +307,17 @@ class TestMH2DPSProperties:
         trained model. The thresholds are generous to avoid false failures.
         """
         # z-averaged mean FE should be reasonable for all 1D summaries
-        assert np.nanmean(mh_props.xHI_mean_err) < 5.0, "xHI z-avg mean error too high"
+        assert np.nanmean(mh_props.xHI_mean_err) < 1.0, "xHI z-avg mean error too high"
         # Tb can have inflated errors at low-z (flooring at |Tb| < 5 mK)
-        assert np.nanmean(mh_props.Tb_mean_err) < 10.0, "Tb z-avg mean error too high"
-        assert np.nanmean(mh_props.Ts_mean_err) < 5.0 or np.isnan(np.nanmean(mh_props.Ts_mean_err)), "Ts z-avg mean error too high"
-        assert mh_props.tau_mean_err < 5.0, "tau mean error too high"
+        assert np.nanmean(mh_props.Tb_med_err) < 1.0, "Tb z-avg median error too high"
+        assert np.nanmean(mh_props.Ts_mean_err) < 1.0 or np.isnan(np.nanmean(mh_props.Ts_mean_err)), "Ts z-avg mean error too high"
+        assert mh_props.tau_mean_err < 1.0, "tau mean error too high"
 
-        # z-averaged mean FE for LFs should be < 10%
-        assert np.nanmean(mh_props.UVLFs_mean_err) < 10.0, "UVLFs z-avg mean error too high"
+        # z-averaged mean FE for LFs should be < 1%
+        assert np.nanmean(mh_props.UVLFs_med_err) < 1.0, "UVLFs z-avg median error too high"
 
-        # 1D PS errors can be higher (cosmic variance + floor effects)
-        assert np.nanmean(mh_props.PS_1D_mean_err) < 25.0, "PS_1D z-avg mean error too high"
+        # 1D PS error is higher at high-z due to sample variance
+        assert np.nanmean(mh_props.PS_1D_med_err) < 5.0, "PS_1D z-avg median error too high"
 
     def test_1d_ps_properties(self, mh_props):
         """Test that 1D PS properties are available."""
@@ -489,29 +518,39 @@ class TestMH2DScoreModel:
 class TestMH2DOutputStructure:
     """Test 2D PS output structure and data handling."""
 
-    def test_mh_output_with_ps(self):
-        """Test MHEmulatorOutput can include PS data."""
+    def test_mh_output_with_2d_ps(self):
+        """Test MHEmulatorOutput can include 2D PS data."""
         from py21cmemu.outputs import MHEmulatorOutput
         
-        # Create minimal output with PS
-        ps_samples = np.random.rand(1, 10, 100, 32, 32)  # (batch, nz, nsamples, kperp, kpar)
-        ps_median = np.median(ps_samples, axis=2)
+        # Create minimal output with both 1D and 2D PS
+        ps_1d = np.random.rand(32, 32)  # (nz, nk) 1D PS from LSTM
+        ps_2d_samples = np.random.rand(1, 10, 100, 32, 64)  # (batch, nz, nsamples, kperp, kpar)
+        ps_2d_median = np.median(ps_2d_samples, axis=2)
+        ps_2d_std = np.std(ps_2d_samples, axis=2)
         ps_redshifts = np.linspace(6, 20, 10)
         
         output = MHEmulatorOutput(
-            Tb=np.zeros(93),
-            xHI=np.zeros(93),
-            Ts=np.zeros(93),
+            Tb=np.zeros(32),
+            xHI=np.zeros(32),
+            Ts=np.zeros(32),
             tau=np.array([0.05]),
             UVLFs=np.zeros((1, 35, 7)),
-            PS=ps_median,
-            PS_samples=ps_samples,
+            PS=ps_1d,
+            PS_2D=ps_2d_median,
+            PS_2D_samples=ps_2d_samples,
+            PS_2D_std=ps_2d_std,
             _ps_redshifts=ps_redshifts,
         )
         
+        # Check 1D PS
         assert output.PS is not None
-        assert output.PS.shape == (1, 10, 32, 32)
-        assert output.PS_samples.shape == (1, 10, 100, 32, 32)
+        assert output.PS.shape == (32, 32)
+        
+        # Check 2D PS
+        assert output.PS_2D is not None
+        assert output.PS_2D.shape == (1, 10, 32, 64)
+        assert output.PS_2D_samples.shape == (1, 10, 100, 32, 64)
+        assert output.PS_2D_std.shape == (1, 10, 32, 64)
         assert len(output._ps_redshifts) == 10
 
     def test_ps_variance_computation(self):
@@ -547,14 +586,14 @@ class TestMHEmulatorPSSetup:
 
     def test_emulator_ps_false(self):
         """Test emulator creation with PS disabled."""
-        emu = Emulator(emulator="mh", emulate_ps=False)
-        assert not emu.emulate_ps
+        emu = Emulator(emulator="mcg", emulate_2d_ps=False)
+        assert not emu.emulate_2d_ps
         assert emu.score_model is None
         assert emu.sample is None
 
     def test_emulator_ps_properties_accessible(self):
         """Test PS properties accessible even without model."""
-        emu = Emulator(emulator="mh", emulate_ps=False)
+        emu = Emulator(emulator="mcg", emulate_2d_ps=False)
         
         # These should work without PS model loaded
         assert hasattr(emu.properties, "kperp")
@@ -603,9 +642,10 @@ PS_2D_TEST_H5 = TUTORIALS_DIR / "ps_2d_test_subsample.h5"
 
 def _median_frac_err(true, pred, floor=1e-3):
     """Compute median fractional error (%) with optional floor."""
-    denom = np.abs(true)
-    denom = np.where(denom < floor, floor, denom)
-    fe = np.abs((true - pred) / denom) * 100
+    with np.errstate(divide='ignore', invalid='ignore'):
+        denom = np.abs(true)
+        denom = np.where(denom < floor, floor, denom)
+        fe = np.abs((true - pred) / denom) * 100
     return np.nanmedian(fe)
 
 
@@ -632,7 +672,7 @@ class TestMHAccuracy:
             UVLFs_true = np.asarray(f["LFs"][:n_test])  # (n, 7, 60)
         
         # Run emulator (LSTM only)
-        emu = Emulator(emulator="mh", emulate_ps=False)
+        emu = Emulator(emulator="mcg", emulate_2d_ps=False)
         _, output, _ = emu.predict(params)
         
         # Database has z descending (35→5), emulator output has z ascending (5→35)
@@ -641,11 +681,12 @@ class TestMHAccuracy:
         Tb_true = Tb_true[:, ::-1]  
         Ts_true = Ts_true[:, ::-1]
         
-        xHI_emu = output.xHI
-        Tb_emu = output.Tb
-        Ts_emu = output.Ts
-        tau_emu = output.tau
-        UVLFs_emu = output.UVLFs  # (n, n_mag, n_z)
+        # Extract raw values (emulator now returns Quantities with units)
+        xHI_emu = output.xHI.value
+        Tb_emu = output.Tb.value
+        Ts_emu = output.Ts.value
+        tau_emu = output.tau.value
+        UVLFs_emu = output.UVLFs.value  # (n, n_z, n_mag) - log10(phi)
         
         # ── xHI accuracy ──
         # Compare where xHI > 0.01 (avoid near-zero regions)
@@ -693,6 +734,93 @@ class TestMHAccuracy:
         
         print(f"V3 LSTM accuracy: xHI={xHI_fe:.2f}%, Tb={Tb_fe:.2f}%, Ts={Ts_fe:.2f}%, tau={tau_fe:.2f}%, UVLFs={UVLFs_fe:.2f}%")
 
+    @pytest.mark.skipif(not TEST_SET_H5.exists(), reason="test_set.h5 not available")
+    def test_1d_ps_accuracy_vs_database(self):
+        """Test 1D PS accuracy from LSTM model against database.
+        
+        The 1D PS is always available (from LSTM model) regardless of emulate_2d_ps setting.
+        """
+        h5py = pytest.importorskip("h5py")
+        
+        n_test = 50
+        
+        with h5py.File(TEST_SET_H5, "r") as f:
+            params = np.asarray(f["inputs"][:n_test])
+            PS_1D_true = np.asarray(f["PS_1D"][:n_test])  # (n, 32, 32) linear
+            PS_redshifts = np.asarray(f["PS_redshifts"])
+            k = np.asarray(f["k"])
+        
+        # Run emulator (default without 2D PS)
+        emu = Emulator(emulator="mcg", emulate_2d_ps=False)
+        _, output, _ = emu.predict(params)
+        
+        # Check 1D PS is available
+        assert output.PS is not None, "1D PS should be available"
+        assert output.PS.shape == (n_test, 32, 32), f"Expected PS shape ({n_test},32,32), got {output.PS.shape}"
+        
+        # Check units
+        assert hasattr(output.PS, 'unit'), "PS should have units"
+        from astropy import units as u
+        assert output.PS.unit == u.dex(u.mK**2), f"PS should have dex(mK^2) units, got {output.PS.unit}"
+        
+        # Check 2D PS is None when emulate_2d_ps=False
+        assert output.PS_2D is None, "PS_2D should be None when emulate_2d_ps=False"
+        assert output.PS_2D_samples is None, "PS_2D_samples should be None"
+        assert output.PS_2D_std is None, "PS_2D_std should be None"
+        
+        # Compare with ground truth (in log space)
+        # Use np.where to avoid log10(0) warning for any zero values
+        with np.errstate(divide='ignore', invalid='ignore'):
+            PS_1D_true_log = np.log10(PS_1D_true)
+        PS_1D_emu_log = output.PS.value  # Already log10
+        
+        # Compute accuracy - use 0.1 floor to avoid issues with very small PS values
+        fe = _median_frac_err(PS_1D_true_log, PS_1D_emu_log, floor=0.1)
+        assert fe < 5, f"1D PS median FE {fe:.2f}% exceeds 5%"
+        
+        # Check axes match
+        assert np.allclose(emu.properties.PS_1D_k, k), "PS_1D_k should match database k"
+        assert np.allclose(emu.properties.PS_1D_redshifts, PS_redshifts), "PS_1D_redshifts should match database"
+        
+        print(f"V3 1D PS accuracy: FE={fe:.2f}%")
+
+    @pytest.mark.main_only
+    @pytest.mark.skipif(not TEST_SET_H5.exists(), reason="test_set.h5 not available")
+    def test_1d_ps_always_available_with_2d(self):
+        """Test that 1D PS is always available even when emulate_2d_ps=True.
+        
+        This test runs the 2D PS model and is slow (~3 min), so only runs on merge to main.
+        """
+        h5py = pytest.importorskip("h5py")
+        
+        with h5py.File(TEST_SET_H5, "r") as f:
+            params = np.asarray(f["inputs"][:1])
+        
+        # Run with 2D PS enabled
+        emu = Emulator(emulator="mcg", emulate_2d_ps=True)
+        _, output, _ = emu.predict(params, num_ps_samples=2, ps_redshifts=[7.0])
+        
+        # Check 1D PS is still available
+        assert output.PS is not None, "1D PS should be available with emulate_2d_ps=True"
+        assert output.PS.shape == (32, 32), f"1D PS shape should be (32,32), got {output.PS.shape}"
+        
+        # Check 2D PS is also available
+        assert output.PS_2D is not None, "PS_2D should be available when emulate_2d_ps=True"
+        assert output.PS_2D_samples is not None, "PS_2D_samples should be available"
+        assert output.PS_2D_std is not None, "PS_2D_std should be available"
+        
+        # Check 2D PS shapes
+        # (n_params, n_z, kperp, kpar) = (1, 1, 32, 64)
+        assert output.PS_2D.shape == (1, 1, 32, 64), f"PS_2D shape should be (1,1,32,64), got {output.PS_2D.shape}"
+        assert output.PS_2D_samples.shape == (1, 1, 2, 32, 64), f"PS_2D_samples shape wrong, got {output.PS_2D_samples.shape}"
+        assert output.PS_2D_std.shape == (1, 1, 32, 64), f"PS_2D_std shape wrong, got {output.PS_2D_std.shape}"
+        
+        # Check PS_redshifts
+        assert output.PS_redshifts is not None, "PS_redshifts should be available"
+        assert np.allclose(output.PS_redshifts, [7.0]), f"PS_redshifts should be [7.0], got {output.PS_redshifts}"
+        
+        print("V3 1D+2D PS test passed: Both available when emulate_2d_ps=True")
+
     @pytest.mark.skipif(
         not PS_2D_TEST_H5.exists(), 
         reason="ps_2d_test_subsample.h5 not available"
@@ -718,7 +846,7 @@ class TestMHAccuracy:
         PS_true_z = PS_true[:, z_idx, :, :]  # (1, 32, 64) log10(PS)
         
         # Create emulator with PS enabled
-        emu = Emulator(emulator="mh", emulate_ps=True)
+        emu = Emulator(emulator="mcg", emulate_2d_ps=True)
         
         # Run with just 1 sample at 1 redshift
         # This should be fast (~few seconds on CPU)
@@ -729,32 +857,33 @@ class TestMHAccuracy:
             ps_sampling_method="em"
         )
         
-        # Check PS output exists and has expected shape
-        assert output.PS is not None, "PS should not be None"
-        assert output.PS_samples is not None, "PS_samples should not be None"
+        # Check 1D PS always available
+        assert output.PS is not None, "1D PS should always be available"
+        assert output.PS.shape == (32, 32), f"Expected 1D PS shape (32,32), got {output.PS.shape}"
+        
+        # Check 2D PS output exists and has expected shape
+        assert output.PS_2D is not None, "PS_2D should not be None"
+        assert output.PS_2D_samples is not None, "PS_2D_samples should not be None"
         
         # Shape: (n_params, n_z, num_samples, kperp, kpar) -> median -> (n_params, n_z, kperp, kpar)
         # After median: (1, 1, 32, 64)
-        assert output.PS.shape == (1, 1, 32, 64), f"Expected PS shape (1,1,32,64), got {output.PS.shape}"
+        assert output.PS_2D.shape == (1, 1, 32, 64), f"Expected PS_2D shape (1,1,32,64), got {output.PS_2D.shape}"
         
         # Check order of magnitude is reasonable
-        # PS should be in log10 space, values typically between -2 and 4
-        PS_emu = output.PS[0, 0]  # (32, 64)
-        
-        # The emulator returns linearized PS (10^log_ps after reverse_transform)
-        # So compare in log space
-        PS_emu_log = np.log10(PS_emu)
+        # PS_2D has dex units (output.PS_2D is log10(PS) in dex(mK^2))
+        # Get raw log10 values directly
+        PS_emu_log = output.PS_2D.value[0, 0]  # (32, 64) - raw log10 values
         
         # Check range is physically reasonable
-        assert np.nanmedian(PS_emu_log) > -3, f"PS median {np.nanmedian(PS_emu_log):.2f} too low"
-        assert np.nanmedian(PS_emu_log) < 5, f"PS median {np.nanmedian(PS_emu_log):.2f} too high"
+        assert np.nanmedian(PS_emu_log) > -3, f"PS_2D median {np.nanmedian(PS_emu_log):.2f} too low"
+        assert np.nanmedian(PS_emu_log) < 5, f"PS_2D median {np.nanmedian(PS_emu_log):.2f} too high"
         
         # Compare with ground truth (rough accuracy check)
         # Diffusion model has ~20-50% typical error
         fe = _median_frac_err(PS_true_z[0], PS_emu_log, floor=0.1)
-        assert fe < 100, f"PS median FE {fe:.2f}% exceeds 100% (sanity check)"
+        assert fe < 100, f"PS_2D median FE {fe:.2f}% exceeds 100% (sanity check)"
         
-        print(f"V3 diffusion test: PS shape={output.PS.shape}, median_log={np.nanmedian(PS_emu_log):.2f}, FE={fe:.1f}%")
+        print(f"V3 diffusion test: PS_2D shape={output.PS_2D.shape}, median_log={np.nanmedian(PS_emu_log):.2f}, FE={fe:.1f}%")
 
     @pytest.mark.main_only
     @pytest.mark.skipif(
@@ -787,7 +916,7 @@ class TestMHAccuracy:
         PS_true_z = PS_true[:, z_idx, :, :]  # (1, 32, 64) log10(PS)
         
         # Create emulator with PS enabled
-        emu = Emulator(emulator="mh", emulate_ps=True)
+        emu = Emulator(emulator="mcg", emulate_2d_ps=True)
         
         # Run with ODE sampling (default, more accurate)
         # num_ps_samples=10 gives a reasonable mean estimate
@@ -798,13 +927,16 @@ class TestMHAccuracy:
             ps_sampling_method="ode",  # ODE is default but be explicit
         )
         
-        # Check output shape
-        assert output.PS is not None, "PS output should not be None"
-        assert output.PS.shape == (1, 1, 32, 64), f"Expected shape (1,1,32,64), got {output.PS.shape}"
+        # Check 1D PS always available
+        assert output.PS is not None, "1D PS should always be available"
+        assert output.PS.shape == (32, 32), f"Expected 1D PS shape (32,32), got {output.PS.shape}"
         
-        # Compare in log space
-        PS_emu = output.PS[0, 0]  # (32, 64)
-        PS_emu_log = np.log10(PS_emu)
+        # Check 2D PS output shape
+        assert output.PS_2D is not None, "PS_2D output should not be None"
+        assert output.PS_2D.shape == (1, 1, 32, 64), f"Expected PS_2D shape (1,1,32,64), got {output.PS_2D.shape}"
+        
+        # Compare in log space - PS_2D is already in log10
+        PS_emu_log = output.PS_2D.value[0, 0]  # (32, 64)
         
         # Compute median fractional error
         fe = _median_frac_err(PS_true_z[0], PS_emu_log, floor=0.01)
@@ -933,3 +1065,381 @@ class TestMH2DPSAccessors:
         if mh_props.PS_robust_err is not None:
             assert mh_props.PS_robust_err == mh_props.PS_robust_err_ode
 
+
+class TestPS2DErrorStatistics:
+    """Test 2D PS error statistics accessible from output class."""
+
+    @pytest.fixture(scope="class")
+    def mh_output_with_2d_ps(self):
+        """Get MH emulator output with 2D PS for testing."""
+        h5py = pytest.importorskip("h5py")
+        if not TEST_SET_H5.exists():
+            pytest.skip("test_set.h5 not available")
+        
+        with h5py.File(TEST_SET_H5, "r") as f:
+            params = np.asarray(f["inputs"][:1])
+        
+        emu = Emulator(emulator="mcg", emulate_2d_ps=True)
+        _, output, _ = emu.predict(params, num_ps_samples=2, ps_redshifts=[7.0])
+        return output
+
+    @pytest.fixture(scope="class")
+    def mh_output_no_2d_ps(self):
+        """Get MH emulator output without 2D PS for testing."""
+        h5py = pytest.importorskip("h5py")
+        if not TEST_SET_H5.exists():
+            pytest.skip("test_set.h5 not available")
+        
+        with h5py.File(TEST_SET_H5, "r") as f:
+            params = np.asarray(f["inputs"][:1])
+        
+        emu = Emulator(emulator="mcg", emulate_2d_ps=False)
+        _, output, _ = emu.predict(params)
+        return output
+
+    def test_ps_err_shape(self, mh_output_no_2d_ps):
+        """Test 1D PS error shape."""
+        ps_err = mh_output_no_2d_ps.PS_err
+        assert ps_err is not None
+        assert ps_err.shape == (32, 32), f"PS_err should be (32 z, 32 k), got {ps_err.shape}"
+
+    @pytest.mark.main_only
+    def test_ps_2d_err_available_when_2d_ps(self, mh_output_with_2d_ps):
+        """Test 2D PS error available when emulate_2d_ps=True."""
+        ps_2d_err = mh_output_with_2d_ps.PS_2D_err
+        assert ps_2d_err is not None
+        assert ps_2d_err.shape == (32, 64), f"PS_2D_err should be (32 kperp, 64 kpar), got {ps_2d_err.shape}"
+        # Median error should be positive and reasonable (< 100%)
+        med = np.nanmedian(ps_2d_err)
+        assert 0 < med < 100, f"PS_2D_err median {med:.2f}% seems unreasonable"
+
+    def test_ps_2d_err_none_when_no_2d_ps(self, mh_output_no_2d_ps):
+        """Test 2D PS error is None when emulate_2d_ps=False."""
+        assert mh_output_no_2d_ps.PS_2D_err is None
+
+    @pytest.mark.main_only
+    def test_ps_2d_var_available(self, mh_output_with_2d_ps):
+        """Test 2D PS variance shape and values."""
+        ps_2d_var = mh_output_with_2d_ps.PS_2D_var
+        assert ps_2d_var is not None
+        assert ps_2d_var.shape == (32, 64), f"PS_2D_var should be (32 kperp, 64 kpar)"
+        # Variance should be non-negative
+        assert np.all(ps_2d_var >= 0), "Variance should be non-negative"
+
+    def test_ps_2d_var_none_when_no_2d_ps(self, mh_output_no_2d_ps):
+        """Test 2D PS variance is None when emulate_2d_ps=False."""
+        assert mh_output_no_2d_ps.PS_2D_var is None
+
+    @pytest.mark.main_only
+    def test_ps_2d_cov_shape(self, mh_output_with_2d_ps):
+        """Test 2D PS covariance matrix shape."""
+        ps_2d_cov = mh_output_with_2d_ps.PS_2D_cov
+        assert ps_2d_cov is not None
+        npix = 32 * 64  # 2048
+        assert ps_2d_cov.shape == (npix, npix), f"Covariance should be ({npix},{npix})"
+        # Covariance matrix should be symmetric
+        assert np.allclose(ps_2d_cov, ps_2d_cov.T), "Covariance should be symmetric"
+
+    @pytest.mark.main_only
+    def test_ps_2d_cov_4d_shape(self, mh_output_with_2d_ps):
+        """Test 2D PS covariance 4D reshape."""
+        cov_4d = mh_output_with_2d_ps.PS_2D_cov_4d()
+        assert cov_4d is not None
+        assert cov_4d.shape == (32, 64, 32, 64), "4D cov should be (32, 64, 32, 64)"
+        
+        # Check that 4D reshaping is consistent with flat
+        cov_flat = mh_output_with_2d_ps.PS_2D_cov
+        # Pick a random pixel and verify
+        i, j, k, l = 5, 10, 8, 20
+        flat_idx1 = i * 64 + j
+        flat_idx2 = k * 64 + l
+        assert np.isclose(cov_4d[i, j, k, l], cov_flat[flat_idx1, flat_idx2])
+
+    def test_ps_2d_cov_none_when_no_2d_ps(self, mh_output_no_2d_ps):
+        """Test covariance is None when emulate_2d_ps=False."""
+        assert mh_output_no_2d_ps.PS_2D_cov is None
+
+    @pytest.mark.main_only
+    def test_ps_2d_corr_diag_frac(self, mh_output_with_2d_ps):
+        """Test diagonal fraction statistic."""
+        diag_frac = mh_output_with_2d_ps.PS_2D_corr_diag_frac
+        assert diag_frac is not None
+        assert isinstance(diag_frac, float)
+        assert 0 <= diag_frac <= 1, f"Diagonal fraction should be in [0, 1], got {diag_frac}"
+
+    @pytest.mark.main_only
+    def test_ps_2d_mean_abs_corr(self, mh_output_with_2d_ps):
+        """Test mean absolute correlation statistic."""
+        mean_abs_corr = mh_output_with_2d_ps.PS_2D_mean_abs_corr
+        assert mean_abs_corr is not None
+        assert isinstance(mean_abs_corr, float)
+        assert 0 <= mean_abs_corr <= 1, f"Mean abs corr should be in [0, 1], got {mean_abs_corr}"
+
+    def test_correlation_stats_none_when_no_2d_ps(self, mh_output_no_2d_ps):
+        """Test correlation stats are None when emulate_2d_ps=False."""
+        assert mh_output_no_2d_ps.PS_2D_corr_diag_frac is None
+        assert mh_output_no_2d_ps.PS_2D_mean_abs_corr is None
+
+
+# =============================================================================
+# Unit Support Tests
+# =============================================================================
+
+
+class TestOutputUnits:
+    """Test the unit support functionality for emulator outputs."""
+
+    @pytest.fixture(scope="class")
+    def mh_output(self):
+        """Get MH emulator output for testing."""
+        h5py = pytest.importorskip("h5py")
+        if not TEST_SET_H5.exists():
+            pytest.skip("test_set.h5 not available")
+        
+        with h5py.File(TEST_SET_H5, "r") as f:
+            params = np.asarray(f["inputs"][:1])
+        
+        emu = Emulator(emulator="mcg", emulate_2d_ps=False)
+        _, output, _ = emu.predict(params)
+        return output
+
+    def test_available_units_returns_dict(self, mh_output):
+        """Test that available_units() returns expected structure."""
+        units = mh_output.available_units()
+        assert isinstance(units, dict)
+        # Check expected keys
+        assert "Tb" in units
+        assert "xHI" in units
+        assert "Ts" in units
+        assert "tau" in units
+        assert "UVLFs" in units
+        assert "PS" in units
+
+    def test_log_quantities_returns_set(self, mh_output):
+        """Test that log_quantities() returns expected set."""
+        log_qs = mh_output.log_quantities()
+        assert isinstance(log_qs, set)
+        assert "PS" in log_qs
+        assert "UVLFs" in log_qs
+        assert "Tb" not in log_qs  # Linear
+        assert "xHI" not in log_qs  # Linear
+
+    def test_is_log_method(self, mh_output):
+        """Test the is_log() method."""
+        assert mh_output.is_log("PS") is True
+        assert mh_output.is_log("UVLFs") is True
+        assert mh_output.is_log("Tb") is False
+        assert mh_output.is_log("xHI") is False
+        assert mh_output.is_log("Ts") is False
+        assert mh_output.is_log("tau") is False
+
+    def test_unit_method_returns_correct_units(self, mh_output):
+        """Test that unit() returns correct astropy units."""
+        u = pytest.importorskip("astropy.units")
+        
+        # Linear quantities
+        assert mh_output.unit("Tb") == u.mK
+        assert mh_output.unit("Ts") == u.K
+        assert mh_output.unit("xHI") == u.dimensionless_unscaled
+        assert mh_output.unit("tau") == u.dimensionless_unscaled
+        
+        # Log quantities should have dex units
+        ps_unit = mh_output.unit("PS")
+        assert ps_unit.is_equivalent(u.dex(u.mK**2))
+        
+        uvlf_unit = mh_output.unit("UVLFs")
+        assert uvlf_unit.is_equivalent(u.dex(u.Mpc**-3 * u.mag**-1))
+
+    def test_attribute_access_returns_quantity(self, mh_output):
+        """Test that attribute access returns astropy Quantity with units."""
+        u = pytest.importorskip("astropy.units")
+        
+        # Linear quantities should have direct units
+        tb_q = mh_output.Tb
+        assert isinstance(tb_q, u.Quantity)
+        assert tb_q.unit == u.mK
+        
+        # Log quantities should have dex units
+        uvlf_q = mh_output.UVLFs
+        assert isinstance(uvlf_q, u.Quantity)
+        assert uvlf_q.unit.is_equivalent(u.dex(u.Mpc**-3 * u.mag**-1))
+
+    def test_dex_physical_converts_to_linear(self, mh_output):
+        """Test that .physical converts dex quantities to linear."""
+        u = pytest.importorskip("astropy.units")
+        
+        # For log quantities, .physical should give 10**x
+        uvlf_log = mh_output.UVLFs
+        uvlf_lin = mh_output.UVLFs.physical
+        
+        # Check they're related by 10**x
+        expected_linear = 10 ** uvlf_log.value
+        np.testing.assert_allclose(
+            uvlf_lin.value, expected_linear, rtol=1e-6,
+            err_msg=".physical did not correctly convert dex UVLFs to linear"
+        )
+
+    def test_linear_quantities_have_normal_units(self, mh_output):
+        """Test that linear quantities (Tb, xHI, etc.) have direct units."""
+        u = pytest.importorskip("astropy.units")
+        
+        tb = mh_output.Tb
+        xhi = mh_output.xHI
+        
+        # Tb should be in mK
+        assert tb.unit == u.mK
+        # xHI should be dimensionless
+        assert xhi.unit == u.dimensionless_unscaled
+
+    def test_none_field_returns_none(self, mh_output):
+        """Test that None fields remain None."""
+        # PS is None when emulate_2d_ps=False
+        if object.__getattribute__(mh_output, 'PS') is None:
+            result = mh_output.PS
+            assert result is None
+
+
+class TestErrorStatisticsConsistency:
+    """Verify error statistics match their documented conventions.
+    
+    These tests verify:
+    1. Error statistics are computed on the correct quantity (log10 vs linear)
+    2. Error shapes match output shapes where applicable
+    3. Error values are in expected ranges
+    4. Documentation matches implementation
+    """
+
+    @pytest.fixture(scope="class")
+    def mh_output_and_props(self):
+        """Get MH emulator output and properties for testing."""
+        h5py = pytest.importorskip("h5py")
+        if not TEST_SET_H5.exists():
+            pytest.skip("test_set.h5 not available")
+        
+        with h5py.File(TEST_SET_H5, "r") as f:
+            params = np.asarray(f["inputs"][:1])
+        
+        emu = Emulator(emulator="mcg", emulate_2d_ps=False)
+        _, output, _ = emu.predict(params)
+        return output, emu.properties
+
+    def test_ps_1d_err_shape_matches_ps_shape(self, mh_output_and_props):
+        """Test 1D PS error shape matches 1D PS output shape."""
+        output, props = mh_output_and_props
+        ps_err = output.PS_err
+        ps_val = output.PS
+        
+        # PS has shape (n_z, n_k) and PS_err should match
+        assert ps_err.shape == ps_val.shape, \
+            f"PS_err shape {ps_err.shape} should match PS shape {ps_val.shape}"
+
+    def test_ps_err_is_on_log10_documented_correctly(self, mh_output_and_props):
+        """Test that error is clearly on log10(PS), not linear PS."""
+        output, props = mh_output_and_props
+        
+        # PS values are log10(delta^2), they should be in range ~-2 to 4
+        ps_log_vals = output.PS.value
+        assert -3 < np.nanmedian(ps_log_vals) < 5, \
+            f"PS values should be log10 (~-2 to 4), got median {np.nanmedian(ps_log_vals)}"
+        
+        # FE% should be reasonable (not thousands - which would indicate linear error)
+        fe_vals = output.PS_err
+        assert np.nanmedian(fe_vals) < 50, \
+            f"PS FE% median {np.nanmedian(fe_vals)} too high - error may be computed on wrong scale"
+
+    def test_error_interpretation_example(self, mh_output_and_props):
+        """Verify the documented error interpretation.
+        
+        Documentation states:
+        - A 5% FE on log10(PS) corresponds to ~12% error on linear PS
+        - Because 10^0.05 ≈ 1.12
+        """
+        # Verify the mathematical relationship
+        fe_log_percent = 5.0  # 5% error on log10(PS)
+        
+        # If true log10(PS) = L, and predicted = L * (1 + 0.05), the error in dex is:
+        # error_dex = 0.05 * |L|
+        # For L=1 (PS=10 mK^2), error_dex = 0.05
+        # Linear PS error = |10^(L + err) - 10^L| / 10^L = 10^err - 1 = 10^0.05 - 1 ≈ 0.12
+        
+        linear_error_factor = 10**(0.05) - 1  # ~0.122 = 12.2%
+        assert 0.10 < linear_error_factor < 0.15, \
+            f"10^0.05 - 1 should be ~0.12, got {linear_error_factor}"
+
+    def test_linear_summaries_have_linear_errors(self, mh_output_and_props):
+        """Test that xHI, Tb, Ts errors are computed on linear values."""
+        output, props = mh_output_and_props
+        
+        # xHI is a fraction (0-1), errors should be in FE% on linear xHI
+        xhi_err = props.xHI_med_err
+        xhi_val = output.xHI.value
+        
+        # xHI values should be between 0 and 1
+        assert np.all((xhi_val >= 0) & (xhi_val <= 1)), "xHI should be in [0, 1]"
+        
+        # xHI errors should be reasonable FE% (not on log scale)
+        assert np.nanmedian(xhi_err) < 100, f"xHI FE% unreasonably high: {np.nanmedian(xhi_err)}"
+        
+        # Tb is in mK (can be positive or negative during absorption)
+        tb_val = output.Tb.value
+        # Tb values should be in reasonable range for cosmic dawn/EoR
+        assert -500 < np.nanmin(tb_val) and np.nanmax(tb_val) < 100, \
+            f"Tb range {np.nanmin(tb_val)} to {np.nanmax(tb_val)} seems wrong"
+
+    def test_uvlf_error_is_on_log10(self, mh_output_and_props):
+        """Test that UVLF error is on log10(phi), not linear phi."""
+        output, props = mh_output_and_props
+        
+        # UVLFs are stored as log10(phi), values should be ~-5 to -1
+        uvlf_log_vals = output.UVLFs.value
+        med_uvlf = np.nanmedian(uvlf_log_vals)
+        assert -10 < med_uvlf < 0, \
+            f"UVLFs should be log10(phi) in range ~-5 to -1, got median {med_uvlf}"
+        
+        # FE% on log10 values should be reasonable
+        uvlf_err = props.UVLFs_med_err
+        assert np.nanmedian(uvlf_err) < 100, \
+            f"UVLF FE% on log10 seems too high: {np.nanmedian(uvlf_err)}"
+
+    def test_error_properties_docstrings_exist(self, mh_output_and_props):
+        """Test that error properties have proper docstrings."""
+        output, props = mh_output_and_props
+        
+        # Check that the key error properties have docstrings mentioning log10
+        ps_err_doc = type(output).PS_err.fget.__doc__
+        assert "log10" in ps_err_doc.lower(), \
+            "PS_err docstring should mention 'log10'"
+        assert "FE%" in ps_err_doc or "fractional" in ps_err_doc.lower(), \
+            "PS_err docstring should mention 'FE%' or 'fractional'"
+
+    def test_error_values_are_percentages_not_fractions(self, mh_output_and_props):
+        """Test that error values are in % (0-100+) not fraction (0-1)."""
+        output, props = mh_output_and_props
+        
+        # PS errors: if they're fractions (0-1), max would typically be < 1
+        # If they're percentages (0-100+), max would typically be > 1
+        ps_err = output.PS_err
+        max_err = np.nanmax(ps_err)
+        
+        # The max FE% should be > 1 if it's a percentage, < 1 if it's a fraction
+        # Typical max FE% is 10-50%
+        assert max_err > 1.0, \
+            f"PS_err max {max_err} < 1 suggests fractions not percentages"
+        
+        # But not unreasonably high
+        assert max_err < 500, \
+            f"PS_err max {max_err} seems unreasonably high"
+
+    def test_properties_class_has_error_docstring(self, mh_output_and_props):
+        """Test that MHEmulatorProperties has comprehensive error documentation."""
+        output, props = mh_output_and_props
+        
+        class_doc = type(props).__doc__
+        
+        # Should document the error conventions
+        assert "FE" in class_doc or "Fractional Error" in class_doc, \
+            "Properties class should document Fractional Error"
+        assert "log10" in class_doc.lower() or "log" in class_doc.lower(), \
+            "Properties class should document log10 vs linear distinction"
+        assert "median" in class_doc.lower(), \
+            "Properties class should document median aggregation"

@@ -80,19 +80,20 @@ parameters instead of 9.
     from py21cmemu import Emulator
 
     # Create v3 emulator (without 2D PS for faster predictions)
-    emu = Emulator(emulator="mh", emulate_ps=False)
+    emu = Emulator(emulator="mcg", emulate_2d_ps=False)
 
     # Use 11 parameters for the minihalo model
     import numpy as np
     theta = np.random.rand(11*3).reshape((3, 11))
     theta, output, errors = emu.predict(theta)
 
-    # Access outputs
-    print(output.Tb.shape)      # Brightness temperature
-    print(output.xHI.shape)     # Neutral fraction
-    print(output.Ts.shape)      # Spin temperature
-    print(output.UVLFs.shape)   # UV luminosity functions
-    print(output.tau)           # Optical depth
+    # Access outputs with units (astropy Quantities)
+    print(output.Tb.shape)      # Brightness temperature [mK]
+    print(output.xHI.shape)     # Neutral fraction [dimensionless]
+    print(output.Ts.shape)      # Spin temperature [K]
+    print(output.UVLFs.shape)   # UV luminosity functions [dex(Mpc^-3 mag^-1)]
+    print(output.tau)           # Optical depth [dimensionless]
+    print(output.PS.shape)      # 1D Power spectrum [dex(mK^2)]
 
 The v3 parameter keys are:
 
@@ -100,5 +101,61 @@ The v3 parameter keys are:
 
     ['F_STAR10', 'ALPHA_STAR', 't_STAR', 'F_ESC10', 'ALPHA_ESC',
      'F_STAR7_MINI', 'F_ESC7_MINI', 'L_X', 'L_X_MINI', 'A_LW', 'NU_X_THRESH']
+
+Output Units
+------------
+
+All output quantities are returned as astropy ``Quantity`` objects with units attached:
+
+**Linear quantities** (physical units):
+
+- ``Tb``: Brightness temperature [mK]
+- ``xHI``: Neutral hydrogen fraction [dimensionless, 0-1]
+- ``Ts``: Spin temperature [K]
+- ``tau``: Optical depth [dimensionless]
+
+**Logarithmic quantities** (dex units, i.e., log10 of physical values):
+
+- ``PS``: 1D power spectrum [dex(mK²)] = log10(Δ²)
+- ``PS_2D``: 2D power spectrum [dex(mK²)] = log10(Δ²)
+- ``UVLFs``: UV luminosity functions [dex(Mpc⁻³ mag⁻¹)] = log10(φ)
+
+To convert log quantities to linear, use ``.physical``:
+
+.. code-block:: python
+
+    # Get power spectrum in linear mK^2
+    ps_linear = output.PS.physical
+
+Error Statistics
+----------------
+
+Error statistics are accessible via properties like ``output.PS_err``. All errors are
+**Fractional Errors (FE%)** computed as:
+
+.. math::
+
+    \\text{FE\\%} = \\frac{|\\text{true} - \\text{predicted}|}{|\\text{true}|} \\times 100
+
+**IMPORTANT**: Power spectrum errors are computed on **log10(PS)**, not linear PS.
+
+A 5% FE on log10(PS) corresponds to approximately 12% error on linear PS, because
+a 5% uncertainty in the exponent multiplies the result by 10^0.05 ≈ 1.12.
+
+Available error statistics:
+
+- ``PS_err``: Median FE% on 1D PS log10 values, shape (32 z, 32 k)
+- ``PS_2D_err``: Median FE% on 2D PS log10 values, shape (32 kperp, 64 kpar)
+- ``PS_2D_var``: Variance of FE% across test set
+- ``PS_2D_cov``: Full covariance matrix of errors between pixels
+
+To compute absolute error in log10 units at each pixel:
+
+.. code-block:: python
+
+    abs_err_dex = output.PS_err / 100.0 * output.PS.value
+
+See ``MHEmulatorProperties`` for comprehensive documentation of all error statistics,
+aggregation methods (median vs mean), and interpretation guidance.
 
 Continue on to the tutorials to see how to make plots of the output (first tutorial) and how to use ``21cmFAST`` in conjunction with ``21cmEMU`` for analytic calculations of :math:`\\tau_e` and UV luminosity functions.

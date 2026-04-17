@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
+import astropy.units as u
 import numpy as np
 import torch
 
@@ -15,12 +16,26 @@ from .inputs import DefaultEmulatorInput
 from .inputs import MHEmulatorInput
 from .inputs import ParamVecType
 from .inputs import RadioEmulatorInput
+from .outputs import ACGEmulatorErrors
 from .outputs import DefaultRawEmulatorOutput
 from .outputs import EmulatorOutput
+from .outputs import MHEmulatorErrors
 from .outputs import MHRawEmulatorOutput
+from .outputs import RadioEmulatorErrors
 from .outputs import RadioRawEmulatorOutput
-from .properties import get_emulator_properties
-from .properties import emulator_properties
+from .properties import (
+    DEFAULT_EMULATOR,
+    EMULATOR_ACG,
+    EMULATOR_CONFIG,
+    EMULATOR_MCG,
+    EMULATOR_RADIO,
+    emulator_properties,
+    get_emulator_properties,
+    resolve_emulator_name,
+)
+
+if TYPE_CHECKING:
+    from .sde import VPSDE
 
 
 log = logging.getLogger(__name__)
@@ -31,40 +46,63 @@ class Emulator:
 
     Parameters
     ----------
-    version : str, optional
-        Emulator version to use/download, default is 'latest'.
     emulator : str, optional
-        Emulator to use. Options are: 'radio_background' and 'default'.
-        The radio background emulator is the emulator used in Cang+24
-        It is a model that predicts the radio background
-        temperature :math:`T_{\rm r} \rm{[K]}`,
-        the global IGM neutral fraction :math:`\overline{x}_{\rm HI}`,
-        the global 21-cm brightness temperature :math:`T{\rm b} \rm{[mK]}`,
-        the 21-cm spherically-averaged power spectrum :math:`P(k) \rm{[mK^2]}`, and
-        the Thomson scattering optical depth :math:`\tau`.
-        It has five input parameters:
-        ["fR_mini", "L_X_MINI",  "F_STAR7_MINI", "F_ESC7_MINI", "A_LW"]
-        See 21cmFAST documentation for more information about the input parameters.
+        Which emulator to use. Default is 'mcg' (v3).
 
-        The default emulator is the emulator described in Breitman+23.
-        It emulates six summary statistics with 9 input astrophysical parameters.
+        Available emulators:
+
+        +---------+---------+-------------+--------+-----------------------------+
+        | Name    | Aliases | Paper       | Params | Outputs                     |
+        +=========+=========+=============+========+=============================+
+        | ``mcg`` | v3, mh  | [upcoming]  | 11     | Tb, xHI, Ts, tau, 2D-PS,    |
+        |         |         |             |        | UVLFs                       |
+        +---------+---------+-------------+--------+-----------------------------+
+        | ``acg`` | v1      | Breitman+24 | 9      | Tb, xHI, Ts, tau, 1D-PS,    |
+        |         |         |             |        | UVLFs                       |
+        +---------+---------+-------------+--------+-----------------------------+
+        | ``radio``| v2     | Cang+24     | 5      | Tb, xHI, Tr, tau, 1D-PS     |
+        +---------+---------+-------------+--------+-----------------------------+
+
+        - **mcg** (Molecular Cooling Galaxies): Full 11-parameter emulator
+          including mini-halos/molecular cooling galaxies. Predicts 2D power
+          spectrum P(k_perp, k_par) using a score-based diffusion model.
+
+        - **acg** (Atomic Cooling Galaxies): Original 9-parameter emulator
+          for atomic cooling galaxies only. Predicts 1D spherically-averaged
+          power spectrum P(k).
+
+        - **radio**: Radio background emulator with 5 parameters. Predicts
+          radio temperature Tr instead of spin temperature Ts.
+
+    version : str, optional
+        Data version to use/download for the 'acg' emulator. Default is 'latest'.
+    emulate_2d_ps : bool, optional
+        Whether to emulate the 2D power spectrum (for 'mcg' only). Default is False
+        since the 2D PS score model is slower than the LSTM. When False, the 1D PS
+        from the LSTM model is used.
+    model_path : str, optional
+        Custom path to model weights (for 'mcg' score model only).
+    PS_scale : float, optional
+        Custom PS normalization scale (for 'mcg' only).
+    PS_bias : float, optional
+        Custom PS normalization bias (for 'mcg' only).
     """
 
     def __init__(
         self,
-        emulator: str = "default",
+        emulator: str = DEFAULT_EMULATOR,
         version: str = "latest",
-        emulate_ps: bool = True,
+        emulate_2d_ps: bool = False,
         model_path: str | None = None,
         PS_scale: float | None = None,
         PS_bias: float | None = None,
     ):
 
-        self.which_emulator = emulator
-        self.emulate_ps = emulate_ps
+        self.which_emulator = resolve_emulator_name(emulator)
+        self.emulate_2d_ps = emulate_2d_ps
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-        if self.which_emulator == "default":
+        if self.which_emulator == EMULATOR_ACG:
             get_emu_data(version=version)
             
             # Load bundled PyTorch model
@@ -74,7 +112,7 @@ class Emulator:
             model = load_converted_model(str(model_path), self.device)
             self.inputs = DefaultEmulatorInput()
 
-        elif self.which_emulator == "radio_background":
+        elif self.which_emulator == EMULATOR_RADIO:
             from .models.radio_background.model import Radio_Emulator
 
             here = Path(__file__).parent
@@ -89,13 +127,13 @@ class Emulator:
             model.eval()
             self.inputs = RadioEmulatorInput()
 
-        elif self.which_emulator == "mh":
+        elif self.which_emulator == EMULATOR_MCG:
             from .models.MHs.lstm_model import MH_Emulator
             from .models.MHs.score_model import UNet
             from .sample_pytorch import GetEMSampler, GetODESampler
             from .sde import VPSDE
 
-            self.properties = get_emulator_properties(emulator="mh")
+            self.properties = get_emulator_properties(emulator=EMULATOR_MCG)
             here = Path(__file__).parent
 
             # Model config matching production_ema training
@@ -116,7 +154,7 @@ class Emulator:
 
             self.score_model = None
             self.sample = None
-            if self.emulate_ps:
+            if self.emulate_2d_ps:
                 ps_model_path = (
                     Path(model_path)
                     if model_path is not None
@@ -145,16 +183,9 @@ class Emulator:
             self.inputs = MHEmulatorInput()
             model = self.lstm_model
 
-        else:
-            raise ValueError(
-                "Please supply one of the following emulator names:"
-                + "'default', 'radio_background' or 'mh'. "
-                + f"{emulator} is not a valid emulator name."
-            )
-
         self.model = model
-        if self.which_emulator != "mh":
-            self.properties = emulator_properties(emulator=emulator)
+        if self.which_emulator != EMULATOR_MCG:
+            self.properties = emulator_properties(emulator=self.which_emulator)
 
     def __getattr__(self, name: str) -> Any:
         """Allow access to emulator properties directly from the emulator object."""
@@ -206,7 +237,7 @@ class Emulator:
         errors : dict
             The mean error on the test set (i.e. independent of theta).
         """
-        if self.which_emulator == "default":
+        if self.which_emulator == EMULATOR_ACG:
             theta = self.inputs.make_param_array(astro_params, normed=True)
             # PyTorch inference
             theta_t = torch.tensor(theta, dtype=torch.float32, device=self.device)
@@ -217,7 +248,7 @@ class Emulator:
             errors = self.get_errors(emu, theta)
             return theta, emu, errors
 
-        if self.which_emulator == "radio_background":
+        if self.which_emulator == EMULATOR_RADIO:
             theta = self.inputs.make_param_array(astro_params, normed=True)
             emu = RadioRawEmulatorOutput(
                 self.model(torch.tensor(theta, dtype=torch.float32, device=self.device))
@@ -231,7 +262,7 @@ class Emulator:
 
         theta_PS = (
             self.inputs.make_param_array(astro_params, normed=True, kind="PS")
-            if self.emulate_ps
+            if self.emulate_2d_ps
             else None
         )
         theta_LSTM = self.inputs.make_param_array(astro_params, normed=True, kind="LSTM")
@@ -241,7 +272,7 @@ class Emulator:
         with torch.no_grad():
             predicted = list(self.lstm_model(theta_lstm_t))
 
-        if self.emulate_ps:
+        if self.emulate_2d_ps:
             if ps_redshifts is None:
                 ps_redshifts = self.properties.default_ps_redshifts
             n_zs = len(ps_redshifts)
@@ -318,67 +349,40 @@ class Emulator:
         theta_lstm: np.ndarray | None = None,
         theta_ps: np.ndarray | None = None,
         ps_sampling_method: str | None = None,
-    ) -> dict[str, np.ndarray]:
+    ) -> ACGEmulatorErrors | RadioEmulatorErrors | MHEmulatorErrors:
         """Calculate the emulator error on its outputs.
 
         Parameters
         ----------
-        emu : dict
-            Dict containing the emulator predictions, defined in Emulator.predict
-        theta : dict
-            Dict containing the normalized parameters, also defined in Emulator.predict
+        emu : EmulatorOutput
+            The emulator output to compute errors for.
+        theta_lstm : np.ndarray, optional
+            Normalized LSTM parameters (for MH emulator).
+        theta_ps : np.ndarray, optional
+            Normalized PS parameters (for MH emulator with 2D PS).
+        ps_sampling_method : str, optional
+            Sampling method for 2D PS: 'em' or 'ode'.
 
         Returns
         -------
-        The mean error on the test set (i.e. independent of theta) with all units
-        restored and logs removed.
+        EmulatorErrors
+            ACGEmulatorErrors, RadioEmulatorErrors, or MHEmulatorErrors
+            depending on the emulator type. All provide dict-like access.
+        
+        See Also
+        --------
+        ACGEmulatorErrors : Errors for ACG/Default (v1) emulator.
+        RadioEmulatorErrors : Errors for Radio (v2) emulator.
+        MHEmulatorErrors : Errors for MH/MCG (v3) emulator.
         """
-        # For now, we return the mean emulator error (obtained from the test set) for
-        # each summary. All errors are the median absolute difference between test set
-        # and prediction AFTER units have been restored AND log has been removed.
-        if self.which_emulator == "default":
-            return {
-                "PS_err": self.PS_err,
-                "Tb_err": self.Tb_err,
-                "xHI_err": self.xHI_err,
-                "Ts_err": self.Ts_err,
-                "UVLFs_err": self.UVLFs_err,
-                "UVLFs_logerr": self.UVLFs_logerr,
-                "tau_err": self.tau_err,
-            }
-        elif self.which_emulator == "radio_background":
-            return {
-                "PS_err": self.PS_err,
-                "Tb_err": self.Tb_err,
-                "xHI_err": self.xHI_err,
-                "Tr_err": self.Tr_err,
-                "tau_err": self.tau_err,
-            }
+        if self.which_emulator == EMULATOR_ACG:
+            return ACGEmulatorErrors.from_properties(self.properties)
+        elif self.which_emulator == EMULATOR_RADIO:
+            return RadioEmulatorErrors.from_properties(self.properties)
 
-        m = np.logical_and(self.properties.UVLFs_MUVs <= -10, self.properties.UVLFs_MUVs >= -20)
-        
-        # Select method-specific PS error if available and method specified
-        if ps_sampling_method == "ode":
-            ps_med_err = self.properties.PS_med_err_ode
-        else:  # default to EM
-            ps_med_err = self.properties.PS_med_err_em
-        
-        # Handle PS error - may have shape mismatch between LSTM PS and score model error
-        if emu.PS is not None:
-            try:
-                ps_err = ps_med_err / 100.0 * emu.PS
-            except ValueError:
-                # Shape mismatch - use scalar median error instead
-                ps_err = np.nanmedian(ps_med_err) / 100.0 * emu.PS
-        else:
-            ps_err = np.nan
-        
-        return {
-            "PS_err": ps_err,
-            "Tb_err": self.Tb_med_err / 100.0 * np.abs(emu.Tb),
-            "xHI_err": self.xHI_med_err / 100.0 * emu.xHI,
-            "Ts_err": self.Ts_med_err / 100.0 * emu.Ts,
-            "UVLFs_err": np.swapaxes(self.UVLFs_med_err[m] / 100.0, 1, 0) * 10 ** emu.UVLFs,
-            "UVLFs_logerr": np.swapaxes(self.UVLFs_med_logerr[m] / 100.0, 1, 0) * np.abs(emu.UVLFs),
-            "tau_err": self.tau_med_err / 100.0 * emu.tau,
-        }
+        # For MH emulator, use output-dependent absolute errors
+        return MHEmulatorErrors.from_output(
+            output=emu,
+            properties=self.properties,
+            ps_sampling_method=ps_sampling_method or "em",
+        )

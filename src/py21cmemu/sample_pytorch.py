@@ -157,11 +157,34 @@ class GetEMSampler:
     ):
         self.sde = sde
         self.shape = shape
+        self.n_samples = shape[1]  # Number of samples per parameter set
         self.single_batch_shape = (shape[0], 1, shape[2], shape[3])
         self.inverse_scaler = inverse_scaler
         self.denoise = denoise
         self.eps = eps
         self.device = device
+
+    def _em_sample_once(
+        self,
+        model: torch.nn.Module,
+        score_fn,
+        predictor,
+        corrector,
+        timesteps,
+        cdn: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        """Generate a single sample for each parameter in the batch."""
+        x = self.sde.prior_sampling(self.single_batch_shape).to(self.device)
+
+        for t_val in timesteps:
+            vec_t = torch.ones(self.single_batch_shape[0], device=self.device) * t_val
+            x, x_mean = corrector.update_fn(x, vec_t, x_cdn=None, cdn=cdn)
+            x, x_mean = predictor.update_fn(x, vec_t, x_cdn=None, cdn=cdn)
+
+        result = x_mean if self.denoise else x
+        if self.inverse_scaler is not None:
+            result = self.inverse_scaler(result)
+        return result
 
     def em_sampler(
         self,
@@ -175,12 +198,12 @@ class GetEMSampler:
 
         Args:
             model: Trained score model.
-            z: Optional latent code to generate samples from.
-            x_cdn: Optional conditional input image.
+            z: Optional latent code (not used, kept for API compatibility).
+            x_cdn: Optional conditional input image (not used).
             cdn: Conditional parameter vector (batch, n_params).
 
         Returns:
-            samples: Tensor of shape (N_params, 1, H, W).
+            samples: Tensor of shape (N_params, N_samples, H, W).
         """
         with torch.no_grad():
             score_fn = get_score_fn(self.sde, model, train=False, continuous=True)
@@ -189,14 +212,6 @@ class GetEMSampler:
             )
             corrector = NoneCorrector(self.sde, score_fn)
 
-            # Initialise from prior
-            if z is None:
-                x = self.sde.prior_sampling(self.single_batch_shape).to(self.device)
-            else:
-                x = z.to(self.device)
-
-            if x_cdn is not None:
-                x_cdn = x_cdn.to(self.device)
             if cdn is not None:
                 cdn = cdn.to(self.device)
 
@@ -204,19 +219,16 @@ class GetEMSampler:
                 self.sde.T, self.eps, self.sde.N, device=self.device
             )
 
-            for t_val in timesteps:
-                vec_t = (
-                    torch.ones(self.single_batch_shape[0], device=self.device) * t_val
+            # Generate n_samples independent samples
+            all_samples = []
+            for _ in range(self.n_samples):
+                sample = self._em_sample_once(
+                    model, score_fn, predictor, corrector, timesteps, cdn=cdn
                 )
-                # Corrector step (no-op)
-                x, x_mean = corrector.update_fn(x, vec_t, x_cdn=x_cdn, cdn=cdn)
-                # Predictor step
-                x, x_mean = predictor.update_fn(x, vec_t, x_cdn=x_cdn, cdn=cdn)
+                all_samples.append(sample)
 
-            result = x_mean if self.denoise else x
-
-            if self.inverse_scaler is not None:
-                result = self.inverse_scaler(result)
+            # Stack: (n_samples, N_params, 1, H, W) -> (N_params, n_samples, H, W)
+            result = torch.cat(all_samples, dim=1)
 
             gc.collect()
             torch.cuda.empty_cache()

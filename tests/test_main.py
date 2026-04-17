@@ -17,6 +17,12 @@ from py21cmemu.outputs import DefaultRawEmulatorOutput
 from py21cmemu.properties import emulator_properties
 
 
+def test_default_emulator_is_mcg():
+    """Test that the default emulator is mcg (v3)."""
+    emu = Emulator(emulate_2d_ps=False)  # No explicit emulator arg
+    assert emu.which_emulator == "mcg"
+
+
 @pytest.mark.parametrize("emu_type", ["default", "radio_background"])
 def test_output(tmp_path, emu_type):
     """Test outputs.py and emulator.py."""
@@ -40,7 +46,9 @@ def test_output(tmp_path, emu_type):
     for i in output.keys():
         output_keys.append(i)
     assert len(check.keys()) == len(output_keys) + 1
-    assert (check["PS"] == output.PS).all()
+    # Compare raw values (output.PS is a Quantity with units)
+    ps_values = output.PS.value if hasattr(output.PS, 'value') else output.PS
+    assert (check["PS"] == ps_values).all()
 
     with pytest.raises(ValueError):
         output.write(write_dir / "test_writing.npz", clobber=False)
@@ -77,12 +85,31 @@ def test_properties():
     """Test that the properties are loaded correctly."""
     from py21cmemu.properties import emulator_properties
 
+    # Default is now mcg (v3)
     properties = emulator_properties()
+    assert hasattr(properties, 'lstm_limits')  # MCG-specific
+    
+    # Test canonical names
+    properties = emulator_properties(emulator="acg")
     properties.limits
-
-    properties = emulator_properties(emulator="radio_background")
+    
+    properties = emulator_properties(emulator="radio")
     properties.logTr_mean
-
+    
+    properties = emulator_properties(emulator="mcg")
+    properties.lstm_limits
+    
+    # Test legacy aliases still work
+    properties = emulator_properties(emulator="default")  # -> acg
+    properties.limits
+    
+    properties = emulator_properties(emulator="radio_background")  # -> radio
+    properties.logTr_mean
+    
+    properties = emulator_properties(emulator="mh")  # -> mcg
+    properties.lstm_limits
+    
+    # Invalid name raises
     with pytest.raises(ValueError):
         properties = emulator_properties(emulator="foo")
 
@@ -346,7 +373,7 @@ def test_v1_pytorch_model():
 
 def test_v1_pytorch_vs_emulator():
     """Test that v1 PyTorch model gives same results through Emulator API."""
-    emu = Emulator(emulator='default')
+    emu = Emulator(emulator='acg')  # aka v1/default
     
     # Test prediction
     params = {
@@ -451,11 +478,8 @@ def test_v1_emulator_vs_database():
     PS_true = test_data["PS"]     # (100, 60, 12)
     
     # Run emulator
-    emu = Emulator(emulator="default")
+    emu = Emulator(emulator="acg")  # Test ACG (v1) emulator specifically
     _, output, _ = emu.predict(X_test)
-    
-    # Convert tau to log10 for comparison (emulator returns linear tau)
-    tau_emu_log = np.log10(output.tau)
     
     # Calculate median fractional errors (%)
     def median_frac_err(true, pred, floor=1e-3):
@@ -466,19 +490,23 @@ def test_v1_emulator_vs_database():
     
     # xHI: Should be very accurate where xHI > 0.01
     mask = xHI_true > 0.01
-    xHI_fe = median_frac_err(xHI_true[mask], output.xHI[mask])
+    xHI_vals = output.xHI.value if hasattr(output.xHI, 'value') else output.xHI
+    xHI_fe = median_frac_err(xHI_true[mask], xHI_vals[mask])
     assert xHI_fe < 5, f"xHI median FE {xHI_fe:.2f}% exceeds 5%"
     
     # Tb: Median FE should be < 10% for most cases
-    Tb_fe = median_frac_err(Tb_true, output.Tb, floor=1.0)
+    Tb_vals = output.Tb.value if hasattr(output.Tb, 'value') else output.Tb
+    Tb_fe = median_frac_err(Tb_true, Tb_vals, floor=1.0)
     assert Tb_fe < 15, f"Tb median FE {Tb_fe:.2f}% exceeds 15%"
     
     # tau: Log-space comparison
-    tau_fe = median_frac_err(tau_true, tau_emu_log, floor=0.01)
+    tau_vals = output.tau.value if hasattr(output.tau, 'value') else output.tau
+    tau_fe = median_frac_err(tau_true, np.log10(tau_vals), floor=0.01)
     assert tau_fe < 5, f"tau median FE {tau_fe:.2f}% exceeds 5%"
     
     # PS: Log power spectrum (test data is log10, emulator returns linear)
-    PS_emu_log = np.log10(output.PS)
+    PS_vals = output.PS.value if hasattr(output.PS, 'value') else output.PS
+    PS_emu_log = np.log10(PS_vals)
     PS_fe = median_frac_err(PS_true, PS_emu_log)
     assert PS_fe < 20, f"PS median FE {PS_fe:.2f}% exceeds 20%"
     

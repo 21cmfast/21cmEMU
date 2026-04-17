@@ -1,10 +1,114 @@
-"""A module definining the static properties of the Emulator."""
+"""A module defining the static properties of the Emulator.
+
+This module provides:
+- Emulator naming configuration (canonical names, aliases)
+- EmulatorProperties classes for each emulator variant
+- Error statistics and normalization constants
+"""
 
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
+
+if TYPE_CHECKING:
+    from typing import Any
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Emulator Configuration
+# ══════════════════════════════════════════════════════════════════════════════
+# This is the single source of truth for emulator naming.
+
+# Canonical emulator names (physics-based)
+EMULATOR_ACG: str = "acg"       # Atomic Cooling Galaxies only (Breitman+24)
+EMULATOR_RADIO: str = "radio"   # Radio background (Cang+24)
+EMULATOR_MCG: str = "mcg"       # Molecular Cooling Galaxies / Mini-halos
+
+# Default emulator
+DEFAULT_EMULATOR: str = EMULATOR_MCG
+
+# Emulator configuration: maps canonical name to metadata
+EMULATOR_CONFIG: dict[str, dict[str, Any]] = {
+    EMULATOR_ACG: {
+        "aliases": ["v1", "default"],
+        "n_params": 9,
+        "paper": "Breitman+24",
+        "outputs": ["Tb", "xHI", "Ts", "tau", "PS", "UVLFs"],
+    },
+    EMULATOR_RADIO: {
+        "aliases": ["v2", "radio_background"],
+        "n_params": 5,
+        "paper": "Cang+24",
+        "outputs": ["Tb", "xHI", "Tr", "tau", "PS"],
+    },
+    EMULATOR_MCG: {
+        "aliases": ["v3", "mh"],
+        "n_params": 11,
+        "paper": "[upcoming]",
+        "outputs": ["Tb", "xHI", "Ts", "tau", "PS", "PS_2D", "UVLFs"],
+    },
+}
+
+# Build aliases map from config (both directions)
+_EMULATOR_ALIASES: dict[str, str] = {}
+for canonical, config in EMULATOR_CONFIG.items():
+    _EMULATOR_ALIASES[canonical] = canonical  # Self-map
+    for alias in config["aliases"]:
+        _EMULATOR_ALIASES[alias] = canonical
+
+
+def resolve_emulator_name(name: str) -> str:
+    """Resolve an emulator name or alias to its canonical name.
+    
+    Parameters
+    ----------
+    name : str
+        Emulator name or alias (case-insensitive).
+    
+    Returns
+    -------
+    str
+        Canonical emulator name ('acg', 'radio', or 'mcg').
+    
+    Raises
+    ------
+    ValueError
+        If the name is not a valid emulator or alias.
+    
+    Examples
+    --------
+    >>> resolve_emulator_name("v3")
+    'mcg'
+    >>> resolve_emulator_name("mh")
+    'mcg'
+    >>> resolve_emulator_name("default")
+    'acg'
+    """
+    canonical = _EMULATOR_ALIASES.get(name.lower())
+    if canonical is None:
+        valid = sorted(set(_EMULATOR_ALIASES.keys()))
+        raise ValueError(f"Unknown emulator '{name}'. Valid options: {valid}")
+    return canonical
+
+
+def get_emulator_aliases(emulator: str) -> list[str]:
+    """Get all aliases for an emulator, including the canonical name.
+    
+    Parameters
+    ----------
+    emulator : str
+        Emulator name (canonical or alias).
+    
+    Returns
+    -------
+    list[str]
+        List of all valid names for this emulator.
+    """
+    canonical = resolve_emulator_name(emulator)
+    return [canonical] + EMULATOR_CONFIG[canonical]["aliases"]
 
 
 class EmulatorProperties:
@@ -174,12 +278,119 @@ class RadioBackgroundEmulatorProperties(EmulatorProperties):
 
 
 class MHEmulatorProperties(EmulatorProperties):
-    """A class that contains the properties of the minihalo (v3) emulator.
+    """Properties and error statistics for the minihalo (v3) emulator.
     
-    This loads constants from two separate files:
-    - lstm_emulator_constants.npz: LSTM model (summaries + 1D PS)
-    - score_model_constants.npz: 2D PS score model
+    This class loads constants from two separate files:
+    
+    - ``lstm_emulator_constants.npz``: LSTM model (summaries + 1D PS)
+    - ``score_model_constants.npz``: 2D PS score model
+    
+    Error Statistics Conventions
+    ----------------------------
+    All error statistics are **Fractional Errors (FE%)** computed as::
+    
+        FE% = |true - predicted| / |true| × 100
+    
+    A floor is applied to the denominator to avoid division by small values:
+    
+    - xHI: floor at 0.01 (reionization fraction)
+    - Tb: floor at 5 mK (brightness temperature) 
+    - Ts: no floor (spin temperature)
+    - tau: no floor (optical depth)
+    - UVLFs: floor at 0.01 (log10 values)
+    - PS: floor at 0.01 (log10 values)
+    
+    Aggregation Methods
+    -------------------
+    There are three types of aggregation statistics:
+    
+    **med_err** (Median FE%):
+        ``median(FE across all test samples at each (z,k) pixel)``
+        
+        Most robust to outliers. This is the primary error metric.
+    
+    **mean_err** (Mean FE%):
+        ``mean(FE across all test samples at each (z,k) pixel)``
+        
+        Sensitive to outliers but preserves total error budget.
+    
+    **std_err** (Standard Deviation of FE%):
+        ``std(FE across all test samples at each (z,k) pixel)``
+        
+        Characterizes the spread of errors at each pixel.
+    
+    Log vs Linear Quantities
+    ------------------------
+    The emulator works in log10 space for certain quantities:
+    
+    **Log10 quantities** (errors computed on log10(value)):
+        - PS (power spectrum): values are log10(Δ² / mK²)
+        - UVLFs: values are log10(φ / Mpc⁻³ mag⁻¹)
+        - tau: values are log10(τ), converted to linear on output
+    
+    **Linear quantities** (errors computed on physical values):
+        - xHI: neutral hydrogen fraction (0-1)
+        - Tb: brightness temperature (mK)
+        - Ts: spin temperature (K)
+    
+    Important: ``PS_med_err`` gives FE% on **log10(PS)**, not on linear PS.
+    To interpret: a 5% FE on log10(PS) ≈ 5% uncertainty in the exponent,
+    corresponding to ~12% uncertainty in linear PS (10^0.05 ≈ 1.12).
+    
+    Per-Pixel vs Global Statistics
+    ------------------------------
+    **Per-pixel arrays** (e.g., ``PS_med_err`` shape (32, 64)):
+        Error at each (kperp, kpar) pixel, computed as median across test set.
+    
+    **Global scalars** (e.g., ``PS_global_median_err``):
+        Single-number summary. Computed as::
+        
+            median(median(FE at each pixel across test set) across all pixels)
+        
+        This is median-of-medians: first median over test samples at each pixel,
+        then median over all pixels.
+    
+    **Two-stage robust error** (e.g., ``PS_robust_err``):
+        ``median_over_samples(median_over_pixels(FE within each sample))``
+        
+        First summarize each test sample to one number (median across pixels),
+        then take median across samples. Most robust to outlier parameter sets.
+    
+    Covariance Statistics
+    ---------------------
+    The covariance matrix ``PS_cov`` characterizes error correlations:
+    
+    - Shape: (n_pixels, n_pixels) = (32×64, 32×64) = (2048, 2048)
+    - Units: FE%² (covariance of fractional error)
+    - ``diag_frac``: fraction of variance on diagonal (near 1 = uncorrelated)
+    - ``mean_abs_corr``: mean |correlation| off-diagonal
+    
+    Attributes
+    ----------
+    PS_med_err : ndarray, shape (32, 64)
+        Median FE% at each (kperp, kpar) pixel for 2D PS, on **log10(PS)**.
+    PS_mean_err : ndarray, shape (32, 64)
+        Mean FE% at each pixel for 2D PS, on log10(PS).
+    PS_std_err : ndarray, shape (32, 64)
+        Standard deviation of FE% at each pixel for 2D PS.
+    PS_1D_med_err : ndarray, shape (32, 32)
+        Median FE% at each (z, k) pixel for 1D PS, on **log10(PS)**.
+    PS_var : ndarray, shape (32, 64)
+        Variance of FE% at each pixel (units: FE%²).
+    PS_cov : ndarray, shape (2048, 2048)
+        Covariance matrix of FE% between all pixel pairs.
+    diag_frac : float
+        Fraction of total variance on the diagonal of covariance matrix.
+    mean_abs_corr : float
+        Mean absolute off-diagonal correlation coefficient.
+    xHI_med_err, Tb_med_err, Ts_med_err : ndarray, shape (n_z,)
+        Per-redshift median FE% for linear summaries.
+    tau_med_err : float
+        Median FE% for optical depth (scalar).
+    UVLFs_med_err : ndarray, shape (n_Muv, n_z)
+        Per-(Muv, z) median FE% for UV luminosity functions, on **log10(φ)**.
     """
+
 
     @property
     def normalized_quantities(self) -> list[str]:
@@ -272,6 +483,16 @@ class MHEmulatorProperties(EmulatorProperties):
         self.UVLFs_mean_err = np.array(lstm_data["UVLFs_mean_err"])
         self.UVLFs_std_err = np.array(lstm_data["UVLFs_std_err"])
         self.UVLFs_med_logerr = np.array(lstm_data["UVLFs_med_logerr"])
+        # Linear LF errors (error on phi = 10^log10(phi))
+        if "UVLFs_lin_med_err" in lstm_data:
+            self.UVLFs_lin_med_err = np.array(lstm_data["UVLFs_lin_med_err"])
+            self.UVLFs_lin_mean_err = np.array(lstm_data["UVLFs_lin_mean_err"])
+            self.UVLFs_lin_std_err = np.array(lstm_data["UVLFs_lin_std_err"])
+        else:
+            # For older constants files without linear errors, use None
+            self.UVLFs_lin_med_err = None
+            self.UVLFs_lin_mean_err = None
+            self.UVLFs_lin_std_err = None
         
         # 1D PS errors (shape: 32 z, 32 k)
         self.PS_1D_med_err = np.array(lstm_data["PS_med_err"])
@@ -324,9 +545,14 @@ class MHEmulatorProperties(EmulatorProperties):
             self.PS_std_err_em = self.PS_std_err
             self.PS_std_err_ode = self.PS_std_err
         
-        # === 2D PS variance and covariance (from score model) ===
-        # Variance: mean variance across test set (shape: H, W)
-        # Default to ODE
+        # === 2D PS variance and covariance of emulator errors ===
+        # These statistics characterize the error distribution of the score model
+        # at each (kperp, kpar) pixel. All are computed on the fractional error
+        # (FE%) of log10(PS), averaged over the test set.
+        #
+        # Variance: shape (32 kperp, 64 kpar), units FE%^2
+        #   Mean variance of FE at each pixel across the test set.
+        #   sqrt(PS_var) gives typical spread of error at each pixel.
         if "PS_var_ode" in score_data:
             self.PS_var_ode = np.array(score_data["PS_var_ode"])
             self.PS_var = self.PS_var_ode
@@ -339,8 +565,11 @@ class MHEmulatorProperties(EmulatorProperties):
         else:
             self.PS_var_em = None
         
-        # Covariance: mean covariance matrix across test set (shape: H*W, H*W)
-        # Default to ODE
+        # Covariance: shape (2048, 2048) = (32*64, 32*64), units FE%^2
+        #   Mean covariance of FE between all pixel pairs.
+        #   Pixels are flattened by raveling (32, 64) -> (2048,).
+        #   To reshape: cov.reshape(32, 64, 32, 64) gives cov[i, j, k, l] =
+        #   covariance between pixels (kperp_i, kpar_j) and (kperp_k, kpar_l).
         if "PS_cov_ode" in score_data:
             self.PS_cov_ode = np.array(score_data["PS_cov_ode"])
             self.PS_cov = self.PS_cov_ode
@@ -353,8 +582,13 @@ class MHEmulatorProperties(EmulatorProperties):
         else:
             self.PS_cov_em = None
         
-        # === 2D PS correlation statistics (from score model) ===
-        # Diagonal fraction: fraction of total variance on covariance diagonal
+        # === 2D PS correlation statistics ===
+        # Summary statistics characterizing pixel-to-pixel error correlations.
+        #
+        # Diagonal fraction: fraction of total covariance variance on diagonal.
+        #   diag_frac = sum(diag(cov)) / sum(cov)
+        #   Values near 1 mean errors are nearly pixel-independent;
+        #   low values indicate significant spatial correlations.
         if "diag_frac_ode" in score_data:
             self.diag_frac_ode = float(score_data["diag_frac_ode"])
             self.diag_frac = self.diag_frac_ode
@@ -367,7 +601,9 @@ class MHEmulatorProperties(EmulatorProperties):
         else:
             self.diag_frac_em = None
         
-        # Mean absolute off-diagonal correlation
+        # Mean absolute off-diagonal correlation: mean |r_ij| for i != j
+        #   where r_ij is the Pearson correlation between pixels i and j.
+        #   Measures typical strength of error correlations.
         if "mean_abs_corr_ode" in score_data:
             self.mean_abs_corr_ode = float(score_data["mean_abs_corr_ode"])
             self.mean_abs_corr = self.mean_abs_corr_ode
@@ -476,22 +712,31 @@ class MHEmulatorProperties(EmulatorProperties):
         return getattr(self, attr_name, None)
 
 
-def emulator_properties(emulator: str = "default") -> EmulatorProperties:
-    """Return the properties of the corresponding emulator."""
-    if emulator == "default":
+def emulator_properties(emulator: str = EMULATOR_MCG) -> EmulatorProperties:
+    """Return the properties of the corresponding emulator.
+
+    Parameters
+    ----------
+    emulator
+        Emulator name or alias. See :class:`~py21cmemu.Emulator` for the
+        full list of available emulators and aliases.
+
+    Returns
+    -------
+    EmulatorProperties
+        Properties object for the specified emulator.
+    """
+    canonical = resolve_emulator_name(emulator)
+    if canonical == EMULATOR_ACG:
         return DefaultEmulatorProperties()
-    elif emulator == "radio_background":
+    elif canonical == EMULATOR_RADIO:
         return RadioBackgroundEmulatorProperties()
-    elif emulator == "mh":
+    elif canonical == EMULATOR_MCG:
         return MHEmulatorProperties()
-    else:
-        raise ValueError(
-            "Please supply one of the following emulator names: 'default'"
-            + "or 'radio_background' or 'mh'. "
-            + f"{emulator} is not a valid emulator name."
-        )
+    # Should never reach here due to resolve_emulator_name validation
+    raise ValueError(f"Unknown emulator: {emulator}")
 
 
-def get_emulator_properties(emulator: str = "default") -> EmulatorProperties:
+def get_emulator_properties(emulator: str = EMULATOR_MCG) -> EmulatorProperties:
     """Alias for compatibility with v3 helper modules."""
     return emulator_properties(emulator=emulator)

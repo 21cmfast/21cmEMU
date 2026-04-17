@@ -3,8 +3,28 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
+from typing import TYPE_CHECKING
 
+import numpy as np
 import pytest
+
+if TYPE_CHECKING:
+    from py21cmemu import Emulator
+    from py21cmemu.outputs import MHEmulatorOutput
+    from py21cmemu.properties import MHEmulatorProperties
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Test Data Paths
+# ══════════════════════════════════════════════════════════════════════════════
+
+# All test data files live in docs/tutorials/
+_TUTORIALS_DIR = Path(__file__).parent.parent / "docs" / "tutorials"
+
+TEST_SET_H5 = _TUTORIALS_DIR / "test_set.h5"
+PS_2D_TEST_H5 = _TUTORIALS_DIR / "ps_2d_test_subsample.h5"
+PS_1D_LOGLIN_H5 = _TUTORIALS_DIR / "ps_1d_loglin_db_test.h5"
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
@@ -57,3 +77,70 @@ def pytest_collection_modifyitems(
         if "main_only" in item.keywords:
             if not (run_slow or (is_ci and is_main_merge)):
                 item.add_marker(skip_main_only)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Shared Fixtures
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+@pytest.fixture(scope="session")
+def test_set_h5_path() -> Path:
+    """Return path to test_set.h5, skip if not available."""
+    if not TEST_SET_H5.exists():
+        pytest.skip("test_set.h5 not available")
+    return TEST_SET_H5
+
+
+@pytest.fixture(scope="session")
+def ps_2d_test_h5_path() -> Path:
+    """Return path to ps_2d_test_subsample.h5, skip if not available."""
+    if not PS_2D_TEST_H5.exists():
+        pytest.skip("ps_2d_test_subsample.h5 not available")
+    return PS_2D_TEST_H5
+
+
+@pytest.fixture(scope="session")
+def test_params(test_set_h5_path) -> np.ndarray:
+    """Load test parameters from test_set.h5."""
+    h5py = pytest.importorskip("h5py")
+    with h5py.File(test_set_h5_path, "r") as f:
+        params = np.asarray(f["inputs"][:5])
+    return params
+
+
+@pytest.fixture(scope="session")
+def single_test_param(test_set_h5_path) -> np.ndarray:
+    """Load a single test parameter from test_set.h5."""
+    h5py = pytest.importorskip("h5py")
+    with h5py.File(test_set_h5_path, "r") as f:
+        params = np.asarray(f["inputs"][:1])
+    return params
+
+
+@pytest.fixture(scope="module")
+def mh_emulator() -> "Emulator":
+    """Create MH emulator without 2D PS (fast)."""
+    from py21cmemu import Emulator
+    return Emulator(emulator="mcg", emulate_2d_ps=False)
+
+
+@pytest.fixture(scope="module")
+def mh_emulator_with_2d_ps() -> "Emulator":
+    """Create MH emulator with 2D PS enabled (slow)."""
+    from py21cmemu import Emulator
+    return Emulator(emulator="mcg", emulate_2d_ps=True)
+
+
+@pytest.fixture(scope="module")
+def mh_properties() -> "MHEmulatorProperties":
+    """Get MH emulator properties."""
+    from py21cmemu.properties import get_emulator_properties
+    return get_emulator_properties(emulator="mcg")
+
+
+@pytest.fixture(scope="module")
+def mh_output_no_2d_ps(mh_emulator, single_test_param) -> "MHEmulatorOutput":
+    """Get MH emulator output without 2D PS."""
+    _, output, _ = mh_emulator.predict(single_test_param)
+    return output

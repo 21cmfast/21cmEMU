@@ -1,4 +1,119 @@
-"""Module containing functionality for handling emulator inputs."""
+"""Module containing functionality for handling emulator inputs.
+
+Input Parameters by Emulator
+============================
+
+All parameters can be supplied as dicts (recommended) or as numpy arrays/lists
+in the order specified below. The emulator accepts values in 21cmFAST units
+(no astropy.units needed).
+
+MCG Emulator (mcg/v3)
+---------------------
+11 parameters (6 are in log10 space in internal representation):
+
++---------------+---------------------------+---------+---------------------+
+| Key           | Description               | Unit    | Valid Range         |
++===============+===========================+=========+=====================+
+| F_STAR10      | Star formation efficiency | linear  | [0.01, 9.5]         |
+|               | at 10^10 M_sun            |         |                     |
++---------------+---------------------------+---------+---------------------+
+| ALPHA_STAR    | Power-law index of star   | linear  | [0.0, 1.17]         |
+|               | formation efficiency      |         |                     |
++---------------+---------------------------+---------+---------------------+
+| t_STAR        | Star formation timescale  | linear  | [0.01, 1.0]         |
+|               | in units of Hubble time   |         |                     |
++---------------+---------------------------+---------+---------------------+
+| F_ESC10       | Escape fraction at        | linear  | [0.001, 1.0]        |
+|               | 10^10 M_sun               |         |                     |
++---------------+---------------------------+---------+---------------------+
+| ALPHA_ESC     | Power-law index of escape | linear  | [-1.0, 1.0]         |
+|               | fraction                  |         |                     |
++---------------+---------------------------+---------+---------------------+
+| F_STAR7_MINI  | Star formation efficiency | linear  | [0.0001, 0.1]       |
+|               | for mini-halos at 10^7 M  |         |                     |
++---------------+---------------------------+---------+---------------------+
+| F_ESC7_MINI   | Escape fraction for       | linear  | [0.001, 0.1]        |
+|               | mini-halos at 10^7 M_sun  |         |                     |
++---------------+---------------------------+---------+---------------------+
+| L_X           | X-ray luminosity          | log10   | [38, 43] log10(erg  |
+|               | per SFR for ACG           | (erg/s  | s^-1 M_sun^-1 yr)   |
+|               |                           | /M_sun  |                     |
+|               |                           | /yr)    |                     |
++---------------+---------------------------+---------+---------------------+
+| L_X_MINI      | X-ray luminosity          | log10   | [39, 44] log10(erg  |
+|               | per SFR for MCG           |         | s^-1 M_sun^-1 yr)   |
++---------------+---------------------------+---------+---------------------+
+| NU_X_THRESH   | X-ray energy threshold    | eV      | [100, 1500]         |
++---------------+---------------------------+---------+---------------------+
+| SIGMA_8       | Amplitude of matter       | linear  | [0.76, 0.85]        |
+|               | fluctuations              |         |                     |
++---------------+---------------------------+---------+---------------------+
+
+ACG Emulator (acg/v1)
+---------------------
+9 parameters for atomic cooling galaxies:
+
++---------------+---------------------------+---------+---------------------+
+| Key           | Description               | Unit    | Valid Range         |
++===============+===========================+=========+=====================+
+| F_STAR10      | log10 star formation eff. | log10   | [-3.0, 0.0]         |
++---------------+---------------------------+---------+---------------------+
+| ALPHA_STAR    | Power-law index           | linear  | [-0.5, 1.0]         |
++---------------+---------------------------+---------+---------------------+
+| F_ESC10       | log10 escape fraction     | log10   | [-3.0, 0.0]         |
++---------------+---------------------------+---------+---------------------+
+| ALPHA_ESC     | Escape fraction index     | linear  | [-1.0, 0.5]         |
++---------------+---------------------------+---------+---------------------+
+| M_TURN        | log10 turnover halo mass  | log10   | [8.0, 10.0]         |
+|               |                           | M_sun   |                     |
++---------------+---------------------------+---------+---------------------+
+| t_STAR        | Star formation timescale  | linear  | [0.01, 1.0]         |
++---------------+---------------------------+---------+---------------------+
+| L_X           | log10 X-ray luminosity    | log10   | [38, 42]            |
++---------------+---------------------------+---------+---------------------+
+| NU_X_THRESH   | X-ray energy threshold    | keV     | [0.1, 1.5]          |
++---------------+---------------------------+---------+---------------------+
+| X_RAY_SPEC    | X-ray spectral index      | linear  | [-1.0, 3.0]         |
+| _INDEX        |                           |         |                     |
++---------------+---------------------------+---------+---------------------+
+
+Radio Emulator (radio/v2)
+-------------------------
+5 parameters for radio background:
+
++---------------+---------------------------+---------+---------------------+
+| Key           | Description               | Unit    | Valid Range         |
++===============+===========================+=========+=====================+
+| fR_mini       | log10 radio efficiency    | log10   | [-2, 6]             |
++---------------+---------------------------+---------+---------------------+
+| L_X_MINI      | log10 X-ray luminosity    | log10   | [33, 45]            |
++---------------+---------------------------+---------+---------------------+
+| F_STAR7_MINI  | log10 star formation eff. | log10   | [-5, 0]             |
++---------------+---------------------------+---------+---------------------+
+| F_ESC7_MINI   | log10 escape fraction     | log10   | [-6, -1]            |
++---------------+---------------------------+---------+---------------------+
+| A_LW          | Lyman-Werner feedback     | linear  | [0, 10]             |
++---------------+---------------------------+---------+---------------------+
+
+Example
+-------
+>>> from py21cmemu import Emulator
+>>> emu = Emulator(emulator="mcg")
+>>> params = {
+...     'F_STAR10': 0.05,
+...     'ALPHA_STAR': 0.5,
+...     't_STAR': 0.5,
+...     'F_ESC10': 0.1,
+...     'ALPHA_ESC': 0.0,
+...     'F_STAR7_MINI': 0.001,
+...     'F_ESC7_MINI': 0.01,
+...     'L_X': 40.0,
+...     'L_X_MINI': 40.0,
+...     'NU_X_THRESH': 500,
+...     'SIGMA_8': 0.82,
+... }
+>>> thetas, output, errors = emu.predict(params)
+"""
 
 from __future__ import annotations
 
