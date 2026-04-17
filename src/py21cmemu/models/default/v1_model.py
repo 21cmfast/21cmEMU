@@ -13,12 +13,11 @@ Total: 1098 values
 
 from __future__ import annotations
 
-from typing import Dict, List, OrderedDict
+from typing import Dict
 from collections import OrderedDict as OD
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 
 class DefaultEmulatorV1(nn.Module):

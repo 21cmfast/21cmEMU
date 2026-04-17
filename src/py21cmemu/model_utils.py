@@ -62,7 +62,7 @@ def get_score_fn(sde, model, train=False, continuous=False):
         # For VP-trained models, t=0 corresponds to the lowest noise level
         time = t * (sde.N - 1)
         score = model_fn(x, time, x_cdn=x_cdn, cdn=cdn)
-        std = sde.sqrt_one_minus_alphas_cumprod.to(labels.device)[labels.long()]
+        std = sde.sqrt_one_minus_alphas_cumprod.to(x.device)[time.long()]
 
       score = -score / std[:, None, None, None]
       return score

@@ -66,9 +66,15 @@ from scipy.special import expit
 
 from .properties import emulator_properties
 
+if TYPE_CHECKING:
+    from .properties import (
+        DefaultEmulatorProperties,
+        MHEmulatorProperties,
+        RadioBackgroundEmulatorProperties,
+    )
+
 # Astropy units - required dependency
 import astropy.units as u
-from astropy.units import Quantity
 
 
 # ──────────────────────────────────────────────────────────────────────────────

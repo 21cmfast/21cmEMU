@@ -342,7 +342,6 @@ def test_get_emulator_no_internet():
 def test_v1_pytorch_model():
     """Test v1 PyTorch model directly."""
     from py21cmemu.models.default.v1_pytorch import DefaultEmulatorV1, load_converted_model
-    import torch
 
     # Test model architecture
     model = DefaultEmulatorV1(negative_slope=0.1)
@@ -440,7 +439,6 @@ def test_v1_tensorflow_vs_pytorch_equivalence():
     tf_output = tf_model.predict(test_input, verbose=0)
     
     # PyTorch prediction
-    import torch
     with torch.no_grad():
         pt_output = pt_model(torch.from_numpy(test_input)).numpy()
     

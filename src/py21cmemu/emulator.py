@@ -6,11 +6,9 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-import astropy.units as u
 import numpy as np
 import torch
 
-from .config import CONFIG
 from .get_emulator import get_emu_data
 from .inputs import DefaultEmulatorInput
 from .inputs import MHEmulatorInput
@@ -26,7 +24,6 @@ from .outputs import RadioRawEmulatorOutput
 from .properties import (
     DEFAULT_EMULATOR,
     EMULATOR_ACG,
-    EMULATOR_CONFIG,
     EMULATOR_MCG,
     EMULATOR_RADIO,
     emulator_properties,
@@ -35,7 +32,7 @@ from .properties import (
 )
 
 if TYPE_CHECKING:
-    from .sde import VPSDE
+    pass
 
 
 log = logging.getLogger(__name__)

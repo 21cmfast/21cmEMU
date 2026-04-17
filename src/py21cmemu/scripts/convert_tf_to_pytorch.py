@@ -50,8 +50,7 @@ from __future__ import annotations
 import argparse
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any
-from collections import OrderedDict
+from typing import Dict, List, Any
 
 import numpy as np
 import torch
@@ -306,7 +305,7 @@ def convert_keras_to_pytorch(
     n_params = dense_layers[0]['weights'][0].shape[0]
     
     if verbose:
-        print(f"\nDetected architecture:")
+        print("\nDetected architecture:")
         print(f"  Input dim: {n_params}")
         print(f"  Shared hidden: {shared_dims}")
         print(f"  Output heads: {output_heads}")

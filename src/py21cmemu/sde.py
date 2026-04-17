@@ -1,15 +1,14 @@
-"""From Yang Song's score_sde/sde_lib.py
-Abstract SDE classes, Reverse SDE, and VE/VP SDEs."""
+"""Abstract SDE classes, Reverse SDE, and VE/VP SDEs.
+
+From Yang Song's score_sde/sde_lib.py
+"""
+
 import abc
+
 import numpy as np
 import torch
+
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-
-
-"""Abstract SDE classes, Reverse SDE, and VE/VP SDEs."""
-import abc
-import torch
-import numpy as np
 
 
 class SDE(abc.ABC):

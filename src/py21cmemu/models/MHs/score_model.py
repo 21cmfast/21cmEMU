@@ -20,7 +20,7 @@ from einops import rearrange, reduce
 from einops.layers.torch import Rearrange
 
 import torch
-from torch import nn, einsum
+from torch import nn
 import torch.nn.functional as F
 
 

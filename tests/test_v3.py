@@ -437,7 +437,6 @@ class TestMH2DScoreModel:
 
     def test_score_model_creation(self):
         """Test UNet can be created without loading weights."""
-        import torch
         from py21cmemu.models.MHs.score_model import UNet
         
         model = UNet(
@@ -832,7 +831,6 @@ class TestMHAccuracy:
         and produces outputs of expected shape and reasonable magnitude.
         """
         h5py = pytest.importorskip("h5py")
-        import torch
         
         # Load a single parameter set
         with h5py.File(PS_2D_TEST_H5, "r") as f:
@@ -1122,7 +1120,7 @@ class TestPS2DErrorStatistics:
         """Test 2D PS variance shape and values."""
         ps_2d_var = mh_output_with_2d_ps.PS_2D_var
         assert ps_2d_var is not None
-        assert ps_2d_var.shape == (32, 64), f"PS_2D_var should be (32 kperp, 64 kpar)"
+        assert ps_2d_var.shape == (32, 64), "PS_2D_var should be (32 kperp, 64 kpar)"
         # Variance should be non-negative
         assert np.all(ps_2d_var >= 0), "Variance should be non-negative"
 
@@ -1150,10 +1148,10 @@ class TestPS2DErrorStatistics:
         # Check that 4D reshaping is consistent with flat
         cov_flat = mh_output_with_2d_ps.PS_2D_cov
         # Pick a random pixel and verify
-        i, j, k, l = 5, 10, 8, 20
+        i, j, k, m = 5, 10, 8, 20
         flat_idx1 = i * 64 + j
-        flat_idx2 = k * 64 + l
-        assert np.isclose(cov_4d[i, j, k, l], cov_flat[flat_idx1, flat_idx2])
+        flat_idx2 = k * 64 + m
+        assert np.isclose(cov_4d[i, j, k, m], cov_flat[flat_idx1, flat_idx2])
 
     def test_ps_2d_cov_none_when_no_2d_ps(self, mh_output_no_2d_ps):
         """Test covariance is None when emulate_2d_ps=False."""
@@ -1266,7 +1264,7 @@ class TestOutputUnits:
 
     def test_dex_physical_converts_to_linear(self, mh_output):
         """Test that .physical converts dex quantities to linear."""
-        u = pytest.importorskip("astropy.units")
+        pytest.importorskip("astropy.units")
         
         # For log quantities, .physical should give 10**x
         uvlf_log = mh_output.UVLFs
@@ -1355,8 +1353,7 @@ class TestErrorStatisticsConsistency:
         - Because 10^0.05 ≈ 1.12
         """
         # Verify the mathematical relationship
-        fe_log_percent = 5.0  # 5% error on log10(PS)
-        
+        # 5% error on log10(PS) means:
         # If true log10(PS) = L, and predicted = L * (1 + 0.05), the error in dex is:
         # error_dex = 0.05 * |L|
         # For L=1 (PS=10 mK^2), error_dex = 0.05

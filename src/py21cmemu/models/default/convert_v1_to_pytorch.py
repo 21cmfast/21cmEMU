@@ -24,7 +24,7 @@ import argparse
 import logging
 from pathlib import Path
 from collections import OrderedDict as OD
-from typing import Dict, List, Tuple, Any
+from typing import Dict, List, Tuple
 
 import numpy as np
 import torch
