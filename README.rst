@@ -26,6 +26,12 @@
 
 An emulator of 21cmFAST summaries.
 
+Supported emulator families:
+
+    * v1 ``default`` (PyTorch runtime)
+    * v2 ``radio_background`` (PyTorch)
+    * v3 ``mh`` (minihalo, PyTorch)
+
 Emulate the following summary statistics:
     * 21-cm power spectrum
     * 21-cm global brightness temperature

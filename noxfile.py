@@ -10,25 +10,16 @@ from textwrap import dedent
 import nox
 
 
-try:
-    from nox_poetry import Session
-    from nox_poetry import session
-except ImportError:
-    message = f"""\
-    Nox failed to import the 'nox-poetry' package.
-
-    Please install it using the following command:
-
-    {sys.executable} -m pip install nox-poetry"""
-    raise SystemExit(dedent(message)) from None
+# Use standard nox session type
+Session = nox.Session
+session = nox.session
 
 
 package = "py21cmemu"
-python_versions = ["3.10", "3.9", "3.8"]
+python_versions = ["3.12", "3.11", "3.10"]
 nox.needs_version = ">= 2021.6.6"
 nox.options.sessions = (
     "pre-commit",
-    "safety",
     "mypy",
     "tests",
     "typeguard",
@@ -139,14 +130,6 @@ def precommit(session: Session) -> None:
         activate_virtualenv_in_precommit_hooks(session)
 
 
-@session(python=python_versions[0])
-def safety(session: Session) -> None:
-    """Scan dependencies for insecure packages."""
-    requirements = session.poetry.export_requirements()
-    session.install("safety")
-    session.run("safety", "check", "--full-report", f"--file={requirements}")
-
-
 @session(python=python_versions)
 def mypy(session: Session) -> None:
     """Type-check using mypy."""
@@ -162,8 +145,19 @@ def mypy(session: Session) -> None:
 def tests(session: Session) -> None:
     """Run the test suite."""
     session.install("coverage[toml]", "pytest", "pygments", "typeguard", ".")
+    
+    # Determine if we should run slow tests (on merge to main)
+    args = list(session.posargs)
+    github_ref = os.environ.get("GITHUB_REF", "")
+    github_base_ref = os.environ.get("GITHUB_BASE_REF", "")
+    
+    # Run slow tests on push to main or when base ref is main (merge)
+    if github_ref == "refs/heads/main" or github_base_ref == "main":
+        if "--run-slow" not in args:
+            args.append("--run-slow")
+    
     try:
-        session.run("coverage", "run", "--parallel", "-m", "pytest", *session.posargs)
+        session.run("coverage", "run", "--parallel", "-m", "pytest", *args)
     finally:
         if session.interactive:
             session.notify("coverage", posargs=[])

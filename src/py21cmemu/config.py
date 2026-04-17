@@ -50,6 +50,14 @@ class Config:
         return Path(self["data-path"]) / "21cmEMU" / "21cmEMU"
 
     @property
+    def pytorch_models_path(self) -> Path:
+        """Get the path to the PyTorch converted models (not git-managed)."""
+        path = Path(self["data-path"]) / "pytorch_models"
+        if not path.exists():
+            path.mkdir(parents=True, exist_ok=True)
+        return path
+
+    @property
     def data_path(self) -> Path:
         """Get the path to the data directory."""
         return Path(self["data-path"])
@@ -60,6 +68,9 @@ class Config:
 
     def __setitem__(self, key: str, value: Any):
         """Set a value in the config file."""
+        # Convert Path objects to strings to avoid toml serialization issues
+        if isinstance(value, Path):
+            value = str(value)
         self.config[key] = value
         self.config_file.write_text(toml.dumps(self.config))
 
@@ -94,6 +105,8 @@ class Config:
 
     def update(self, **kw) -> None:
         """Update the config file with new values."""
+        # Convert Path objects to strings to avoid toml serialization issues
+        kw = {k: str(v) if isinstance(v, Path) else v for k, v in kw.items()}
         self.config.update(**kw)
         self.config_file.write_text(toml.dumps(self.config))
 

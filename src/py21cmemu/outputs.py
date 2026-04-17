@@ -360,3 +360,168 @@ class RadioRawEmulatorOutput(RawEmulatorOutput):
         }
 
         return RadioEmulatorOutput(**{**out, **other}).squeeze()
+
+
+@dataclass(frozen=True)
+class MHEmulatorOutput(EmulatorOutput):
+    """A simple class that makes it easier to access v3 emulator output."""
+
+    Tb: np.ndarray
+    xHI: np.ndarray
+    Ts: np.ndarray
+    tau: np.ndarray
+    UVLFs: np.ndarray
+    PS: np.ndarray | None
+    PS_samples: np.ndarray | None
+    _ps_redshifts: np.ndarray | None
+
+    properties = emulator_properties(emulator="mh")
+
+    @property
+    def PS_redshifts(self) -> np.ndarray | None:
+        """Override base class to return stored redshifts."""
+        return self._ps_redshifts
+
+    @property
+    def kperp(self) -> np.ndarray:
+        return self.properties.kperp
+
+    @property
+    def kpar(self) -> np.ndarray:
+        return self.properties.kpar
+
+    @property
+    def Nmodes(self) -> np.ndarray:
+        return self.properties.Nmodes
+
+    @property
+    def PS_err(self) -> np.ndarray:
+        if self.PS is None:
+            return np.nan
+        return self.properties.PS_med_err / 100.0 * self.PS
+
+    @property
+    def Muv(self) -> np.ndarray:
+        m = np.logical_and(
+            self.properties.UVLFs_MUVs <= -10, self.properties.UVLFs_MUVs >= -20
+        )
+        return self.properties.UVLFs_MUVs[m]
+
+    @property
+    def UVLF_redshifts(self) -> np.ndarray:
+        return self.properties.uv_lf_zs
+
+    @property
+    def redshifts(self) -> np.ndarray:
+        return self.properties.redshifts[::-1]
+
+    def squeeze(self):
+        return MHEmulatorOutput(**{k: np.squeeze(v) for k, v in self.items()})
+
+
+@dataclass(frozen=True)
+class MHRawEmulatorOutput(RawEmulatorOutput):
+    """A data class that wraps raw v3 emulator outputs."""
+
+    output: tuple
+    properties = emulator_properties(emulator="mh")
+
+    @property
+    def Tb(self) -> np.ndarray:
+        out = self.output[1]
+        return out.cpu().detach().numpy() if hasattr(out, "cpu") else out
+
+    @property
+    def xHI(self) -> np.ndarray:
+        out = self.output[0]
+        return out.cpu().detach().numpy() if hasattr(out, "cpu") else out
+
+    @property
+    def Ts(self) -> np.ndarray:
+        out = self.output[2]
+        return out.cpu().detach().numpy() if hasattr(out, "cpu") else out
+
+    @property
+    def tau(self) -> np.ndarray:
+        out = self.output[4]
+        return out.cpu().detach().numpy() if hasattr(out, "cpu") else out
+
+    @property
+    def UVLFs(self) -> np.ndarray:
+        full_UVLFs = self.output[3]
+        m = np.logical_and(
+            self.properties.UVLFs_MUVs <= -10, self.properties.UVLFs_MUVs >= -20
+        )
+        if hasattr(full_UVLFs, "cpu"):
+            return full_UVLFs.cpu().detach().numpy()[:, m, :]
+        return full_UVLFs[:, m, :]
+
+    @property
+    def PS_samples(self) -> np.ndarray:
+        return self.output[6] if len(self.output) > 6 else None
+
+    @property
+    def PS(self) -> np.ndarray:
+        # If score model PS_samples available, use median
+        if len(self.output) > 6 and self.output[6] is not None:
+            return np.median(self.output[6], axis=2)
+        # Otherwise use LSTM PS output at index 5
+        out = self.output[5]
+        if out is None:
+            return None
+        return out.cpu().detach().numpy() if hasattr(out, "cpu") else out
+
+    @property
+    def PS_redshifts(self) -> np.ndarray:
+        return self.output[7] if len(self.output) > 7 else None
+
+    @property
+    def _ps_redshifts(self) -> np.ndarray:
+        """Alias for compatibility with MHEmulatorOutput field name."""
+        return self.output[7] if len(self.output) > 7 else None
+
+    def renormalize(self, name: str):
+        if name not in self.properties.normalized_quantities:
+            raise ValueError(
+                f"Cannot renormalize {name}. It is not a normalized quantity."
+            )
+        return getattr(self.properties, f"{name}_mean") + getattr(
+            self.properties, f"{name}_std"
+        ) * getattr(self, name)
+
+    def get_renormalized(self) -> EmulatorOutput:
+        renorm = {k: self.renormalize(k) for k in self.properties.normalized_quantities}
+
+        other = {
+            k.name: getattr(self, k.name)
+            for k in dc.fields(MHEmulatorOutput)
+            if k.name not in renorm
+        }
+
+        out = {**renorm, **other}
+        # Ts has shape (B, N_z, 2) where ch0=value, ch1=validity logit
+        # Apply sigmoid to logit; where sigmoid > 0.5, Ts is valid; else NaN
+        ts_raw = out["Ts"]
+        if ts_raw.ndim > 2:
+            ts_val = ts_raw[..., 0]
+            ts_logit = ts_raw[..., 1]
+            validity = 1.0 / (1.0 + np.exp(-ts_logit))  # sigmoid
+            ts_val = np.where(validity > 0.5, ts_val, np.nan)
+        else:
+            ts_val = ts_raw
+        out["Ts"] = 10 ** ts_val.squeeze()[..., ::-1]
+        out["xHI"] = out["xHI"].squeeze()[..., ::-1]
+        out["Tb"] = out["Tb"].squeeze()[..., ::-1]
+        out["tau"] = 10 ** out["tau"]
+        out["UVLFs"] = np.swapaxes(out["UVLFs"], 2, 1)
+
+        return MHEmulatorOutput(
+            Tb=out["Tb"],
+            xHI=out["xHI"],
+            Ts=out["Ts"],
+            tau=out["tau"],
+            UVLFs=out["UVLFs"],
+            PS=out.get("PS"),
+            PS_samples=out.get("PS_samples"),
+            _ps_redshifts=out.get("_ps_redshifts"),
+        )

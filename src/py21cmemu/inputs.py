@@ -46,6 +46,7 @@ class EmulatorInput:
         self,
         astro_params: ParamVecType,
         normed: bool = True,
+        kind: str = "PS",
     ) -> np.ndarray:
         """Format the astro_params input to be a numpy array.
 
@@ -80,9 +81,9 @@ class EmulatorInput:
         if (params_normed and normed) or (not params_normed and not normed):
             return theta
         elif params_normed:
-            return self.undo_normalization(theta)
+            return self.undo_normalization(theta, kind=kind)
         else:
-            return self.normalize(theta)
+            return self.normalize(theta, kind=kind)
 
     def make_list_of_dicts(
         self, theta: ParamVecType, normed: bool = True
@@ -123,7 +124,7 @@ class DefaultEmulatorInput(EmulatorInput):
         )
         super().__init__(emulator="default")
 
-    def normalize(self, theta: np.ndarray) -> np.ndarray:
+    def normalize(self, theta: np.ndarray, kind: str = "PS") -> np.ndarray:
         """Normalize the parameters.
 
         Parameters
@@ -143,7 +144,7 @@ class DefaultEmulatorInput(EmulatorInput):
         theta_woutdims /= self.properties.limits[:, 1] - self.properties.limits[:, 0]
         return theta_woutdims
 
-    def undo_normalization(self, theta: np.ndarray) -> np.ndarray:
+    def undo_normalization(self, theta: np.ndarray, kind: str = "PS") -> np.ndarray:
         """Undo the normalization of the parameters.
 
         Parameters
@@ -177,7 +178,7 @@ class RadioEmulatorInput(EmulatorInput):
         )
         super().__init__(emulator="radio_background")
 
-    def normalize(self, theta: np.ndarray) -> np.ndarray:
+    def normalize(self, theta: np.ndarray, kind: str = "PS") -> np.ndarray:
         """Normalize the parameters.
 
         Parameters
@@ -196,7 +197,7 @@ class RadioEmulatorInput(EmulatorInput):
         theta_woutdims /= self.properties.limits[:, 1] - self.properties.limits[:, 0]
         return theta_woutdims
 
-    def undo_normalization(self, theta: np.ndarray) -> np.ndarray:
+    def undo_normalization(self, theta: np.ndarray, kind: str = "PS") -> np.ndarray:
         """Undo the normalization of the parameters.
 
         Parameters
@@ -214,3 +215,105 @@ class RadioEmulatorInput(EmulatorInput):
         theta_wdims *= self.properties.limits[:, 1] - self.properties.limits[:, 0]
         theta_wdims += self.properties.limits[:, 0]
         return theta_wdims
+
+
+class MHEmulatorInput(EmulatorInput):
+    """Class for handling minihalo emulator inputs."""
+
+    LOG_INDICES = [0, 3, 5, 6, 7, 8]
+
+    def __init__(self):
+        self.astro_param_keys = tuple(emulator_properties("mh").astro_param_keys)
+        super().__init__(emulator="mh")
+
+    def normalize(self, theta: np.ndarray, kind: str = "summaries") -> np.ndarray:
+        theta_out = theta.copy().astype(float)
+        if theta_out.min() >= 0 and theta_out.max() <= 1:
+            return theta_out
+
+        theta_out[:, self.LOG_INDICES] = np.log10(theta_out[:, self.LOG_INDICES])
+        if kind.upper() in ("LSTM", "SUMMARIES"):
+            limits = self.properties.lstm_limits[:-1]
+        elif kind.upper() in ("PS", "PS_2D"):
+            limits = self.properties.ps_limits[:-1]
+        else:
+            raise ValueError(
+                f"Unknown kind '{kind}'. Use 'summaries', 'LSTM', 'PS', or 'PS_2D'."
+            )
+
+        theta_out = (theta_out - limits[:, 0]) / (limits[:, 1] - limits[:, 0])
+        return np.clip(theta_out, 0.0, 1.0)
+
+    def undo_normalization(self, theta: np.ndarray, kind: str = "summaries") -> np.ndarray:
+        theta_out = theta.copy().astype(float)
+        if kind.upper() in ("LSTM", "SUMMARIES"):
+            limits = self.properties.lstm_limits[:-1]
+        elif kind.upper() in ("PS", "PS_2D"):
+            limits = self.properties.ps_limits[:-1]
+        else:
+            raise ValueError(
+                f"Unknown kind '{kind}'. Use 'summaries', 'LSTM', 'PS', or 'PS_2D'."
+            )
+
+        theta_out = theta_out * (limits[:, 1] - limits[:, 0]) + limits[:, 0]
+        theta_out[:, self.LOG_INDICES] = 10 ** theta_out[:, self.LOG_INDICES]
+        return theta_out
+
+    def format_theta_for_ps(self, theta: np.ndarray, ps_redshifts: np.ndarray) -> np.ndarray:
+        z_min, z_max = self.properties.ps_limits[-1]
+        normed_redshifts = (ps_redshifts - z_min) / (z_max - z_min)
+
+        n_samples = theta.shape[0]
+        n_z = len(ps_redshifts)
+        theta_rep = np.repeat(theta, n_z, axis=0)
+        z_rep = np.tile(normed_redshifts, n_samples)
+        return np.column_stack([theta_rep, z_rep])
+
+    def format_theta_for_summaries(
+        self, theta: np.ndarray, redshifts: np.ndarray | None = None
+    ) -> np.ndarray:
+        """Format normalized parameters for the summaries LSTM model.
+
+        Creates 3D array with redshifts appended, as expected by the LSTM model.
+        Shape: (n_samples, n_redshifts, n_params + 1)
+
+        Parameters
+        ----------
+        theta : np.ndarray
+            The normalized parameters, with shape (n_samples, n_params).
+            Should already be normalized using normalize(kind="summaries").
+        redshifts : np.ndarray, optional
+            The redshifts to use. If None, uses self.properties.redshifts.
+
+        Returns
+        -------
+        np.ndarray
+            The formatted theta array, with shape (n_samples, n_redshifts, n_params + 1).
+        """
+        if redshifts is None:
+            redshifts = self.properties.redshifts
+
+        # Normalize redshifts using LSTM model limits
+        z_min, z_max = self.properties.lstm_limits[-1]
+        normed_redshifts = (redshifts - z_min) / (z_max - z_min)
+
+        n_samples = theta.shape[0]
+        n_z = len(redshifts)
+
+        # Replicate parameters across redshift dimension
+        theta_3d = np.repeat(theta[:, np.newaxis, :], n_z, axis=1)  # (n_samples, n_z, n_params)
+
+        # Create redshift array and tile for all samples
+        z_array = np.tile(
+            normed_redshifts[np.newaxis, :, np.newaxis], (n_samples, 1, 1)
+        )  # (n_samples, n_z, 1)
+
+        # Append redshift as last column
+        theta_with_z = np.concatenate(
+            [theta_3d, z_array], axis=-1
+        )  # (n_samples, n_z, n_params + 1)
+
+        return theta_with_z
+
+    def format_theta(self, theta: np.ndarray, ps_redshifts: np.ndarray) -> np.ndarray:
+        return self.format_theta_for_ps(theta, ps_redshifts)

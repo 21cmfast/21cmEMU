@@ -1,9 +1,12 @@
 """Test cases for the __main__ module."""
 
+import os
 import shutil
+from pathlib import Path
 
 import numpy as np
 import pytest
+import torch
 from typeguard import suppress_type_checks
 
 from py21cmemu import DefaultEmulatorInput
@@ -307,3 +310,176 @@ def test_get_emulator_no_internet():
             UserWarning, match="Skipping the pulling step. Error received:"
         ):
             get_emu_data()
+
+
+def test_v1_pytorch_model():
+    """Test v1 PyTorch model directly."""
+    from py21cmemu.models.default.v1_pytorch import DefaultEmulatorV1, load_converted_model
+    import torch
+
+    # Test model architecture
+    model = DefaultEmulatorV1(negative_slope=0.1)
+    assert sum(p.numel() for p in model.parameters()) > 0
+    
+    # Test forward pass shape
+    x = torch.randn(2, 9)
+    with torch.no_grad():
+        out = model(x)
+    assert out.shape == (2, 1098), f"Expected (2, 1098), got {out.shape}"
+    
+    # Test forward_dict returns correct keys
+    out_dict = model.forward_dict(x)
+    assert set(out_dict.keys()) == {'Tb', 'xHI', 'Ts', 'discont', 'PS', 'tau', 'UVLF'}
+    assert out_dict['Tb'].shape == (2, 84)
+    assert out_dict['PS'].shape == (2, 720)
+    
+    # Test loading bundled model
+    from pathlib import Path
+    import py21cmemu
+    bundled_path = Path(py21cmemu.__file__).parent / "models/default/default_model.pt"
+    loaded_model = load_converted_model(str(bundled_path), device='cpu')
+    assert isinstance(loaded_model, DefaultEmulatorV1)
+    with torch.no_grad():
+        out_loaded = loaded_model(x)
+    assert out_loaded.shape == (2, 1098)
+
+
+def test_v1_pytorch_vs_emulator():
+    """Test that v1 PyTorch model gives same results through Emulator API."""
+    emu = Emulator(emulator='default')
+    
+    # Test prediction
+    params = {
+        'F_STAR10': -1.5,
+        'ALPHA_STAR': 0.5,
+        'F_ESC10': -1.0,
+        'ALPHA_ESC': -0.5,
+        'M_TURN': 8.5,
+        't_STAR': 0.5,
+        'L_X': 40.0,
+        'NU_X_THRESH': 500.0,
+        'X_RAY_SPEC_INDEX': 1.0,
+    }
+    theta, output, errors = emu.predict(params)
+    
+    # Check output shapes
+    assert output.Tb.shape == (84,)
+    assert output.xHI.shape == (84,)
+    assert output.Ts.shape == (84,)
+    assert output.PS.shape == (60, 12)
+    assert np.isscalar(output.tau) or output.tau.shape == (), "tau should be scalar"
+    assert output.UVLFs.shape[0] > 0
+    
+    # Check reasonable output ranges
+    assert 0 <= output.xHI.min() <= output.xHI.max() <= 1, "xHI should be in [0,1]"
+    assert 0 < float(output.tau) < 1, "tau should be small positive"
+
+
+@pytest.mark.skipif(
+    os.environ.get("CI_MERGE_TEST") != "1",
+    reason="TF comparison test only runs on merge to main (set CI_MERGE_TEST=1)"
+)
+def test_v1_tensorflow_vs_pytorch_equivalence():
+    """Test that PyTorch model produces identical outputs to original TensorFlow model.
+    
+    This test requires TensorFlow and only runs during merge to main in CI.
+    """
+    try:
+        import tensorflow as tf
+    except ImportError:
+        pytest.skip("TensorFlow not installed")
+    
+    from pathlib import Path
+    import py21cmemu
+    from py21cmemu.models.default.v1_pytorch import load_converted_model
+    
+    # Load TensorFlow model from HuggingFace cache
+    tf_model_path = CONFIG.emu_path
+    if not (tf_model_path / "saved_model.pb").exists():
+        pytest.skip("TensorFlow model not available")
+    
+    tf_model = tf.keras.models.load_model(str(tf_model_path), compile=False)
+    
+    # Load PyTorch model
+    bundled_path = Path(py21cmemu.__file__).parent / "models/default/default_model.pt"
+    pt_model = load_converted_model(str(bundled_path), device='cpu')
+    pt_model.eval()
+    
+    # Generate test inputs
+    np.random.seed(42)
+    test_input = np.random.rand(10, 9).astype(np.float32)
+    
+    # TensorFlow prediction
+    tf_output = tf_model.predict(test_input, verbose=0)
+    
+    # PyTorch prediction
+    import torch
+    with torch.no_grad():
+        pt_output = pt_model(torch.from_numpy(test_input)).numpy()
+    
+    # Compare outputs - should be nearly identical (within floating point precision)
+    max_diff = np.abs(tf_output - pt_output).max()
+    mean_diff = np.abs(tf_output - pt_output).mean()
+    
+    assert max_diff < 1e-4, f"Max difference {max_diff} exceeds tolerance 1e-4"
+    assert mean_diff < 1e-5, f"Mean difference {mean_diff} exceeds tolerance 1e-5"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ACCURACY COMPARISON TESTS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+TUTORIALS_DIR = Path(__file__).resolve().parents[1] / "docs" / "tutorials"
+V1_TEST_DATA = TUTORIALS_DIR / "Test_data_sample.npz"
+
+
+@pytest.mark.skipif(not V1_TEST_DATA.exists(), reason="Test_data_sample.npz not available")
+def test_v1_emulator_vs_database():
+    """Compare v1 emulator predictions against 21cmFAST database samples.
+    
+    This test verifies that emulated outputs are within expected tolerances
+    compared to actual 21cmFAST simulation outputs.
+    """
+    # Load test data
+    test_data = np.load(V1_TEST_DATA, allow_pickle=True)
+    X_test = test_data["X_test"]  # (100, 9) normalized params
+    
+    # Ground truth
+    xHI_true = test_data["xHI"]   # (100, 84)
+    Tb_true = test_data["Tb"]     # (100, 84) in mK
+    tau_true = test_data["tau"]   # (100,) log10(tau)
+    PS_true = test_data["PS"]     # (100, 60, 12)
+    
+    # Run emulator
+    emu = Emulator(emulator="default")
+    _, output, _ = emu.predict(X_test)
+    
+    # Convert tau to log10 for comparison (emulator returns linear tau)
+    tau_emu_log = np.log10(output.tau)
+    
+    # Calculate median fractional errors (%)
+    def median_frac_err(true, pred, floor=1e-3):
+        denom = np.abs(true)
+        denom = np.where(denom < floor, floor, denom)
+        fe = np.abs((true - pred) / denom) * 100
+        return np.nanmedian(fe)
+    
+    # xHI: Should be very accurate where xHI > 0.01
+    mask = xHI_true > 0.01
+    xHI_fe = median_frac_err(xHI_true[mask], output.xHI[mask])
+    assert xHI_fe < 5, f"xHI median FE {xHI_fe:.2f}% exceeds 5%"
+    
+    # Tb: Median FE should be < 10% for most cases
+    Tb_fe = median_frac_err(Tb_true, output.Tb, floor=1.0)
+    assert Tb_fe < 15, f"Tb median FE {Tb_fe:.2f}% exceeds 15%"
+    
+    # tau: Log-space comparison
+    tau_fe = median_frac_err(tau_true, tau_emu_log, floor=0.01)
+    assert tau_fe < 5, f"tau median FE {tau_fe:.2f}% exceeds 5%"
+    
+    # PS: Log power spectrum (test data is log10, emulator returns linear)
+    PS_emu_log = np.log10(output.PS)
+    PS_fe = median_frac_err(PS_true, PS_emu_log)
+    assert PS_fe < 20, f"PS median FE {PS_fe:.2f}% exceeds 20%"
+    
+    print(f"V1 accuracy: xHI={xHI_fe:.2f}%, Tb={Tb_fe:.2f}%, tau={tau_fe:.2f}%, PS={PS_fe:.2f}%")

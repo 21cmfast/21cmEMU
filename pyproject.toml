@@ -1,74 +1,89 @@
-[tool.poetry]
+[project]
 name = "py21cmEMU"
 version = "1.1.3"
 description = "Emulator of 21cmFAST summaries."
-authors = ["Daniela Breitman <daniela.breitman@sns.it>"]
-license = "MIT"
-readme = ["README.rst"]
-homepage = "https://github.com/21cmFAST/21cmEMU"
-repository = "https://github.com/21cmFAST/21cmEMU"
-documentation = "https://21cmEMU.readthedocs.io"
-packages = [
-    { include = "py21cmemu", from = "src" },
+authors = [
+    { name = "Daniela Breitman", email = "daniela.breitman@sns.it" }
 ]
+license = { text = "MIT" }
+readme = "README.rst"
+requires-python = ">=3.10"
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "License :: OSI Approved :: MIT License",
     "Operating System :: Unix",
     "Operating System :: POSIX",
     "Programming Language :: Python",
-    "Programming Language :: Python :: 3.7",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
 ]
 keywords = [
     "Epoch of Reionization",
     "Cosmology",
 ]
-[tool.poetry.urls]
+dependencies = [
+    "click>=8.0.1",
+    "numpy>=1.22.0",
+    "scipy>=1.10.1",
+    "torch>=1.9.0",
+    "h5py>=3.8.0",
+    "einops>=0.6.0",
+    "appdirs>=1.4.4",
+    "toml>=0.10.2",
+    "GitPython>=3.1.31",
+]
+
+[project.optional-dependencies]
+dev = [
+    "Pygments>=2.10.0",
+    "black>=21.10b0",
+    "coverage[toml]>=6.2",
+    "darglint>=1.8.1",
+    "flake8>=4.0.1",
+    "flake8-bandit>=2.1.2",
+    "flake8-bugbear>=21.9.2",
+    "flake8-docstrings>=1.6.0",
+    "flake8-rst-docstrings>=0.2.5",
+    "furo>=2021.11.12",
+    "isort>=5.10.1",
+    "mypy>=0.930",
+    "pep8-naming>=0.12.1",
+    "pre-commit>=2.16.0",
+    "pre-commit-hooks>=4.1.0",
+    "pytest>=6.2.5",
+    "pyupgrade>=2.29.1",
+    "sphinx>=4.3.2",
+    "sphinx-autobuild>=2021.3.14",
+    "sphinx-click>=3.0.2",
+    "typeguard>=2.13.3",
+    "xdoctest[colors]>=0.15.10",
+    "myst-parser>=0.16.1",
+    "pytest-socket",
+]
+docs = [
+    "furo>=2021.11.12",
+    "sphinx>=4.3.2",
+    "sphinx-autobuild>=2021.3.14",
+    "sphinx-click>=3.0.2",
+    "myst-parser>=0.16.1",
+]
+
+[project.scripts]
+py21cmEMU = "py21cmemu.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/21cmFAST/21cmEMU"
+Repository = "https://github.com/21cmFAST/21cmEMU"
+Documentation = "https://21cmEMU.readthedocs.io"
 Changelog = "https://github.com/21cmFAST/21cmEMU/releases"
 
-[tool.poetry.dependencies]
-python = ">=3.8,<3.12"
-click = ">=8.0.1"
-numpy = "^1.22.0"
-scipy = "^1.10.1"
-tensorflow = ">=2.4.0, <= 2.14.0"
-torch = ">=1.9.0"
-appdirs = "^1.4.4"
-toml = "^0.10.2"
-GitPython = "^3.1.31"
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-[tool.poetry.dev-dependencies]
-Pygments = ">=2.10.0"
-black = ">=21.10b0"
-coverage = {extras = ["toml"], version = ">=6.2"}
-darglint = ">=1.8.1"
-flake8 = ">=4.0.1"
-flake8-bandit = ">=2.1.2"
-flake8-bugbear = ">=21.9.2"
-flake8-docstrings = ">=1.6.0"
-flake8-rst-docstrings = ">=0.2.5"
-furo = ">=2021.11.12"
-isort = ">=5.10.1"
-mypy = ">=0.930"
-pep8-naming = ">=0.12.1"
-pre-commit = ">=2.16.0"
-pre-commit-hooks = ">=4.1.0"
-pytest = ">=6.2.5"
-pyupgrade = ">=2.29.1"
-safety = ">=1.10.3"
-sphinx = ">=4.3.2"
-sphinx-autobuild = ">=2021.3.14"
-sphinx-click = ">=3.0.2"
-typeguard = ">=2.13.3"
-xdoctest = {extras = ["colors"], version = ">=0.15.10"}
-myst-parser = {version = ">=0.16.1"}
-pytest-socket = "*"
-
-[tool.poetry.scripts]
-py21cmEMU = "py21cmemu.__main__:main"
+[tool.hatch.build.targets.wheel]
+packages = ["src/py21cmemu"]
 
 [tool.coverage.paths]
 source = ["src", "*/site-packages"]
@@ -94,6 +109,9 @@ show_column_numbers = true
 show_error_codes = true
 show_error_context = true
 
-[build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "main_only: marks tests to only run on merge to main",
+]

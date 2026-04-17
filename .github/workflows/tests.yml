@@ -1,8 +1,13 @@
 name: Tests
 
 on:
-  - push
-  - pull_request
+  push:
+    branches:
+      - main
+      - "**"
+  pull_request:
+    branches:
+      - main
 
 jobs:
   tests:
@@ -12,19 +17,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-#          - { python: "3.10", os: "ubuntu-latest", session: "safety" }
-#          - { python: "3.10", os: "ubuntu-latest", session: "mypy" }
-#          - { python: "3.9", os: "ubuntu-latest", session: "mypy" }
-#          - { python: "3.8", os: "ubuntu-latest", session: "mypy" }
-#          - { python: "3.7", os: "ubuntu-latest", session: "mypy" }
+          - { python: "3.12", os: "ubuntu-latest", session: "tests" }
+          - { python: "3.11", os: "ubuntu-latest", session: "tests" }
           - { python: "3.10", os: "ubuntu-latest", session: "tests" }
-          - { python: "3.9", os: "ubuntu-latest", session: "tests" }
-          - { python: "3.8", os: "ubuntu-latest", session: "tests" }
-#          - { python: "3.10", os: "windows-latest", session: "tests" }
-#          - { python: "3.10", os: "macos-latest", session: "tests" }
-          - { python: "3.10", os: "ubuntu-latest", session: "typeguard" }
-          - { python: "3.10", os: "ubuntu-latest", session: "xdoctest" }
-#          - { python: "3.10", os: "ubuntu-latest", session: "docs-build" }
+          - { python: "3.12", os: "ubuntu-latest", session: "typeguard" }
+          - { python: "3.12", os: "ubuntu-latest", session: "xdoctest" }
 
     env:
       NOXSESSION: ${{ matrix.session }}
@@ -35,64 +32,17 @@ jobs:
       - name: Check out the repository
         uses: actions/checkout@v4
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
       - name: Set up Python ${{ matrix.python }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python }}
-
-      - name: Upgrade pip
-        run: |
-          pip install pip
-          pip --version
-
-      - name: Upgrade pip in virtual environments
-        shell: python
-        run: |
-          import os
-          import pip
-
-          with open(os.environ["GITHUB_ENV"], mode="a") as io:
-              print(f"VIRTUALENV_PIP={pip.__version__}", file=io)
-
-      - name: Install Poetry
-        run: |
-          pipx install poetry
-          poetry --version
-          pipx inject poetry poetry-plugin-export
+        run: uv python install ${{ matrix.python }}
 
       - name: Install Nox
-        run: |
-          pipx install nox
-          pipx inject nox nox-poetry
-          nox --version
-
-      - name: Compute pre-commit cache key
-        if: matrix.session == 'pre-commit'
-        id: pre-commit-cache
-        shell: python
-        run: |
-          import hashlib
-          import sys
-
-          python = "py{}.{}".format(*sys.version_info[:2])
-          payload = sys.version.encode() + sys.executable.encode()
-          digest = hashlib.sha256(payload).hexdigest()
-          result = "${{ runner.os }}-{}-{}-pre-commit".format(python, digest[:8])
-
-          print("::set-output name=result::{}".format(result))
-
-      - name: Restore pre-commit cache
-        uses: actions/cache@v4
-        if: matrix.session == 'pre-commit'
-        with:
-          path: ~/.cache/pre-commit
-          key: ${{ steps.pre-commit-cache.outputs.result }}-${{ hashFiles('.pre-commit-config.yaml') }}
-          restore-keys: |
-            ${{ steps.pre-commit-cache.outputs.result }}-
+        run: uv tool install nox
 
       - name: Run Nox
-        run: |
-          nox --python=${{ matrix.python }}
+        run: nox --python=${{ matrix.python }}
 
       - name: Upload coverage data
         if: always() && matrix.session == 'tests'
@@ -115,27 +65,14 @@ jobs:
       - name: Check out the repository
         uses: actions/checkout@v4
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
       - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-
-      - name: Upgrade pip
-        run: |
-          pip install pip
-          pip --version
-
-      - name: Install Poetry
-        run: |
-          pipx install poetry
-          poetry --version
-          pipx inject poetry poetry-plugin-export
+        run: uv python install 3.12
 
       - name: Install Nox
-        run: |
-          pipx install nox
-          pipx inject nox nox-poetry
-          nox --version
+        run: uv tool install nox
 
       - name: Download coverage data
         uses: actions/download-artifact@v4
@@ -144,14 +81,43 @@ jobs:
           merge-multiple: true
 
       - name: Combine coverage data and display human readable report
-        run: |
-          nox --session=coverage
+        run: nox --session=coverage
 
       - name: Create coverage report
-        run: |
-          nox --session=coverage -- xml
+        run: nox --session=coverage -- xml
 
       - name: Upload coverage report
         uses: codecov/codecov-action@v5.4.2
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+
+  # TensorFlow comparison test - only runs when merging to main
+  tf-comparison:
+    name: TensorFlow vs PyTorch Comparison
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: |
+          uv pip install --system tensorflow
+          uv pip install --system ".[dev]"
+
+      - name: Install git-lfs
+        run: |
+          sudo apt-get install git-lfs
+          git lfs install
+
+      - name: Run TensorFlow comparison test
+        env:
+          CI_MERGE_TEST: "1"
+        run: pytest tests/test_main.py::test_v1_tensorflow_vs_pytorch_equivalence -v

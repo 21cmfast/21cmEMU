@@ -16,25 +16,22 @@ jobs:
         with:
           fetch-depth: 2
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
       - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-
-      - name: Upgrade pip
-        run: |
-          pip install pip
-          pip --version
-
-      - name: Install Poetry
-        run: |
-          pip install poetry
-          poetry --version
+        run: uv python install 3.12
 
       - name: Check if there is a parent commit
         id: check-parent-commit
         run: |
-          echo "::set-output name=sha::$(git rev-parse --verify --quiet HEAD^)"
+          echo "sha=$(git rev-parse --verify --quiet HEAD^)" >> $GITHUB_OUTPUT
+
+      - name: Get version from pyproject.toml
+        id: get-version
+        run: |
+          version=$(grep '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
+          echo "version=$version" >> $GITHUB_OUTPUT
 
       - name: Detect and tag new version
         id: check-version
@@ -42,18 +39,17 @@ jobs:
         uses: salsify/action-detect-and-tag-new-version@v2.0.3
         with:
           version-command: |
-            bash -o pipefail -c "poetry version | awk '{ print \$2 }'"
+            grep '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/'
 
       - name: Bump version for developmental release
         if: "! steps.check-version.outputs.tag"
         run: |
-          poetry version patch &&
-          version=$(poetry version | awk '{ print $2 }') &&
-          poetry version $version.dev.$(date +%s)
+          version=$(grep '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
+          dev_version="${version}.dev.$(date +%s)"
+          sed -i "s/^version = \".*\"/version = \"$dev_version\"/" pyproject.toml
 
       - name: Build package
-        run: |
-          poetry build --ansi
+        run: uv build
 
       - name: Publish package on PyPI
         if: steps.check-version.outputs.tag

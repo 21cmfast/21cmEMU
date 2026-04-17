@@ -173,15 +173,325 @@ class RadioBackgroundEmulatorProperties(EmulatorProperties):
         self.cosmo_params = COSMO_PARAMS
 
 
+class MHEmulatorProperties(EmulatorProperties):
+    """A class that contains the properties of the minihalo (v3) emulator.
+    
+    This loads constants from two separate files:
+    - lstm_emulator_constants.npz: LSTM model (summaries + 1D PS)
+    - score_model_constants.npz: 2D PS score model
+    """
+
+    @property
+    def normalized_quantities(self) -> list[str]:
+        """Return a list of the normalized quantities predicted by the emulator.
+        
+        Note: LSTM uses _bias/_scale naming convention; the base class looks for
+        _mean in _data keys which doesn't work here. xHI is not normalized
+        (it's already in [0, 1] range).
+        """
+        return ["Tb", "Ts", "tau", "UVLFs"]
+
+    def __init__(self):
+        here = Path(__file__).parent
+        
+        # Load LSTM model constants (summaries + 1D PS)
+        lstm_data = np.load(
+            here / "models/MHs/lstm_emulator_constants.npz", allow_pickle=True
+        )
+        self._lstm_data = lstm_data
+        # Set _data for base class compatibility (normalized_quantities property)
+        self._data = lstm_data
+        
+        # Load 2D PS score model constants
+        score_data = np.load(
+            here / "models/MHs/score_model_constants.npz", allow_pickle=True
+        )
+        self._score_data = score_data
+
+        # === Parameter info (from LSTM) ===
+        self.astro_param_keys = tuple(lstm_data["param_names"])
+        self.parameter_labels = lstm_data["param_labels"]
+
+        # === LSTM model properties ===
+        self.redshifts = lstm_data["lstm_redshifts"]
+        self.zs = self.redshifts
+        self.lstm_limits = lstm_data["LSTM_limits"]
+
+        # Normalization constants
+        self.Tb_mean = float(lstm_data["Tb_bias"])
+        self.Tb_std = float(lstm_data["Tb_scale"])
+        self.Ts_mean = float(lstm_data["Ts_allgas_bias"])
+        self.Ts_std = float(lstm_data["Ts_allgas_scale"])
+        self.tau_mean = float(lstm_data["tau_bias"])
+        self.tau_std = float(lstm_data["tau_scale"])
+
+        self.UVLFs_mean = np.array(lstm_data["UVLFs_bias"])
+        self.UVLFs_std = np.array(lstm_data["UVLFs_scale"])
+        self.UVLFs_MUVs = np.array(lstm_data["M_UV"])
+        self.uv_lf_zs = np.array(lstm_data["UVLF_zs"])
+
+        # 1D PS properties (from LSTM model)
+        self.PS_1D_k = np.array(lstm_data["PS_k"])
+        self.PS_1D_redshifts = np.array(lstm_data["PS_redshifts"])
+        self.PS_1D_bias = float(lstm_data["PS_bias"])
+        self.PS_1D_scale = float(lstm_data["PS_scale"])
+
+        # === 2D PS score model properties ===
+        self.ps_limits = score_data["PS_2D_limits"]
+        self.PS_zs = np.array(score_data["ps_redshifts"])
+        self.PS_redshifts = self.PS_zs
+        # Default redshifts for PS emulation (user can override)
+        self.default_ps_redshifts = np.array([
+            5.5, 6.97446005, 7.54906604, 7.9582024, 9.82883407,
+            10.36152691, 10.63860385, 16.66170964, 19.52022545, 24.10859229
+        ])
+        self.kperp = np.array(score_data["kperp"])
+        self.kpar = np.array(score_data["kpar"])
+        self.Nmodes = np.array(score_data["Nmodes"])
+        self.PS_bias = np.array(score_data["PS_2D_bias"])
+        self.PS_scale = np.array(score_data["PS_2D_scale"])
+
+        # === LSTM model errors (per-z arrays) ===
+        self.xHI_med_err = np.array(lstm_data["xHI_med_err"])
+        self.xHI_mean_err = np.array(lstm_data["xHI_mean_err"])
+        self.xHI_std_err = np.array(lstm_data["xHI_std_err"])
+        
+        self.Tb_med_err = np.array(lstm_data["Tb_med_err"])
+        self.Tb_mean_err = np.array(lstm_data["Tb_mean_err"])
+        self.Tb_std_err = np.array(lstm_data["Tb_std_err"])
+        
+        self.Ts_med_err = np.array(lstm_data["Ts_med_err"])
+        self.Ts_mean_err = np.array(lstm_data["Ts_mean_err"])
+        self.Ts_std_err = np.array(lstm_data["Ts_std_err"])
+        
+        self.tau_med_err = float(lstm_data["tau_med_err"])
+        self.tau_mean_err = float(lstm_data["tau_mean_err"])
+        self.tau_std_err = float(lstm_data["tau_std_err"])
+        
+        self.UVLFs_med_err = np.array(lstm_data["UVLFs_med_err"])
+        self.UVLFs_mean_err = np.array(lstm_data["UVLFs_mean_err"])
+        self.UVLFs_std_err = np.array(lstm_data["UVLFs_std_err"])
+        self.UVLFs_med_logerr = np.array(lstm_data["UVLFs_med_logerr"])
+        
+        # 1D PS errors (shape: 32 z, 32 k)
+        self.PS_1D_med_err = np.array(lstm_data["PS_med_err"])
+        self.PS_1D_mean_err = np.array(lstm_data["PS_mean_err"])
+        self.PS_1D_std_err = np.array(lstm_data["PS_std_err"])
+
+        # === 2D PS score model errors (shape: 32 kperp, 64 kpar) ===
+        # Default to ODE (more accurate sampler)
+        if "PS_med_err" in score_data:
+            self.PS_med_err = np.array(score_data["PS_med_err"])
+        elif "PS_med_err_ode" in score_data:
+            self.PS_med_err = np.array(score_data["PS_med_err_ode"])
+        else:
+            raise KeyError("PS_med_err or PS_med_err_ode required in score_model_constants.npz")
+        
+        # Method-specific errors
+        if "PS_med_err_em" in score_data:
+            self.PS_med_err_em = np.array(score_data["PS_med_err_em"])
+            self.PS_med_err_ode = np.array(score_data["PS_med_err_ode"])
+        else:
+            self.PS_med_err_em = self.PS_med_err
+            self.PS_med_err_ode = self.PS_med_err
+        
+        # 2D PS mean/std errors (default to ODE - more accurate sampler)
+        if "PS_mean_err" in score_data:
+            self.PS_mean_err = np.array(score_data["PS_mean_err"])
+        elif "PS_mean_err_ode" in score_data:
+            self.PS_mean_err = np.array(score_data["PS_mean_err_ode"])
+        else:
+            self.PS_mean_err = self.PS_med_err.copy()
+        
+        if "PS_mean_err_em" in score_data:
+            self.PS_mean_err_em = np.array(score_data["PS_mean_err_em"])
+            self.PS_mean_err_ode = np.array(score_data["PS_mean_err_ode"])
+        else:
+            self.PS_mean_err_em = self.PS_mean_err
+            self.PS_mean_err_ode = self.PS_mean_err
+        
+        if "PS_std_err" in score_data:
+            self.PS_std_err = np.array(score_data["PS_std_err"])
+        elif "PS_std_err_ode" in score_data:
+            self.PS_std_err = np.array(score_data["PS_std_err_ode"])
+        else:
+            self.PS_std_err = np.zeros_like(self.PS_med_err)
+        
+        if "PS_std_err_em" in score_data:
+            self.PS_std_err_em = np.array(score_data["PS_std_err_em"])
+            self.PS_std_err_ode = np.array(score_data["PS_std_err_ode"])
+        else:
+            self.PS_std_err_em = self.PS_std_err
+            self.PS_std_err_ode = self.PS_std_err
+        
+        # === 2D PS variance and covariance (from score model) ===
+        # Variance: mean variance across test set (shape: H, W)
+        # Default to ODE
+        if "PS_var_ode" in score_data:
+            self.PS_var_ode = np.array(score_data["PS_var_ode"])
+            self.PS_var = self.PS_var_ode
+        else:
+            self.PS_var_ode = None
+            self.PS_var = None
+        
+        if "PS_var_em" in score_data:
+            self.PS_var_em = np.array(score_data["PS_var_em"])
+        else:
+            self.PS_var_em = None
+        
+        # Covariance: mean covariance matrix across test set (shape: H*W, H*W)
+        # Default to ODE
+        if "PS_cov_ode" in score_data:
+            self.PS_cov_ode = np.array(score_data["PS_cov_ode"])
+            self.PS_cov = self.PS_cov_ode
+        else:
+            self.PS_cov_ode = None
+            self.PS_cov = None
+        
+        if "PS_cov_em" in score_data:
+            self.PS_cov_em = np.array(score_data["PS_cov_em"])
+        else:
+            self.PS_cov_em = None
+        
+        # === 2D PS correlation statistics (from score model) ===
+        # Diagonal fraction: fraction of total variance on covariance diagonal
+        if "diag_frac_ode" in score_data:
+            self.diag_frac_ode = float(score_data["diag_frac_ode"])
+            self.diag_frac = self.diag_frac_ode
+        else:
+            self.diag_frac_ode = None
+            self.diag_frac = None
+        
+        if "diag_frac_em" in score_data:
+            self.diag_frac_em = float(score_data["diag_frac_em"])
+        else:
+            self.diag_frac_em = None
+        
+        # Mean absolute off-diagonal correlation
+        if "mean_abs_corr_ode" in score_data:
+            self.mean_abs_corr_ode = float(score_data["mean_abs_corr_ode"])
+            self.mean_abs_corr = self.mean_abs_corr_ode
+        else:
+            self.mean_abs_corr_ode = None
+            self.mean_abs_corr = None
+        
+        if "mean_abs_corr_em" in score_data:
+            self.mean_abs_corr_em = float(score_data["mean_abs_corr_em"])
+        else:
+            self.mean_abs_corr_em = None
+        
+        # === 2D PS global error scalars (from score model) ===
+        # These are headline numbers summarizing emulator accuracy
+        # Default to ODE (more accurate sampler)
+        if "global_median_ode_means" in score_data:
+            self.PS_global_median_err_ode = float(score_data["global_median_ode_means"])
+            self.PS_global_median_err = self.PS_global_median_err_ode
+        else:
+            self.PS_global_median_err_ode = None
+            self.PS_global_median_err = None
+        
+        if "global_median_em_means" in score_data:
+            self.PS_global_median_err_em = float(score_data["global_median_em_means"])
+        else:
+            self.PS_global_median_err_em = None
+        
+        if "global_mean_ode_means" in score_data:
+            self.PS_global_mean_err_ode = float(score_data["global_mean_ode_means"])
+            self.PS_global_mean_err = self.PS_global_mean_err_ode
+        else:
+            self.PS_global_mean_err_ode = None
+            self.PS_global_mean_err = None
+        
+        if "global_mean_em_means" in score_data:
+            self.PS_global_mean_err_em = float(score_data["global_mean_em_means"])
+        else:
+            self.PS_global_mean_err_em = None
+        
+        # Two-stage robust error (median of sample medians - most robust to outliers)
+        if "twostage_median_of_sample_median_ode_means" in score_data:
+            self.PS_robust_err_ode = float(score_data["twostage_median_of_sample_median_ode_means"])
+            self.PS_robust_err = self.PS_robust_err_ode
+        else:
+            self.PS_robust_err_ode = None
+            self.PS_robust_err = None
+        
+        if "twostage_median_of_sample_median_em_means" in score_data:
+            self.PS_robust_err_em = float(score_data["twostage_median_of_sample_median_em_means"])
+        else:
+            self.PS_robust_err_em = None
+    
+    def get_ps_error(self, method: str = "ode", stat: str = "median") -> np.ndarray:
+        """Get 2D PS error array for the specified sampling method and statistic.
+        
+        Parameters
+        ----------
+        method : str
+            Sampling method, either "ode" (default, more accurate) or "em".
+        stat : str
+            Error statistic: "median" (or "med"), "mean", or "std".
+        
+        Returns
+        -------
+        np.ndarray
+            Error array of shape (kperp, kpar).
+        """
+        # Map "median" to "med" to match attribute names
+        stat_key = "med" if stat == "median" else stat
+        attr_name = f"PS_{stat_key}_err_{method}"
+        if hasattr(self, attr_name):
+            return getattr(self, attr_name)
+        # Fall back to default (ODE)
+        return getattr(self, f"PS_{stat_key}_err")
+    
+    def get_ps_variance(self, method: str = "ode") -> np.ndarray | None:
+        """Get 2D PS variance array for the specified sampling method.
+        
+        Parameters
+        ----------
+        method : str
+            Sampling method, either "ode" (default) or "em".
+        
+        Returns
+        -------
+        np.ndarray | None
+            Variance array of shape (kperp, kpar), or None if not available.
+        """
+        attr_name = f"PS_var_{method}"
+        return getattr(self, attr_name, None)
+    
+    def get_ps_covariance(self, method: str = "ode") -> np.ndarray | None:
+        """Get 2D PS covariance matrix for the specified sampling method.
+        
+        Parameters
+        ----------
+        method : str
+            Sampling method, either "ode" (default) or "em".
+        
+        Returns
+        -------
+        np.ndarray | None
+            Covariance matrix of shape (kperp*kpar, kperp*kpar), or None if not available.
+        """
+        attr_name = f"PS_cov_{method}"
+        return getattr(self, attr_name, None)
+
+
 def emulator_properties(emulator: str = "default") -> EmulatorProperties:
     """Return the properties of the corresponding emulator."""
     if emulator == "default":
         return DefaultEmulatorProperties()
     elif emulator == "radio_background":
         return RadioBackgroundEmulatorProperties()
+    elif emulator == "mh":
+        return MHEmulatorProperties()
     else:
         raise ValueError(
             "Please supply one of the following emulator names: 'default'"
-            + "or 'radio_background'. "
+            + "or 'radio_background' or 'mh'. "
             + f"{emulator} is not a valid emulator name."
         )
+
+
+def get_emulator_properties(emulator: str = "default") -> EmulatorProperties:
+    """Alias for compatibility with v3 helper modules."""
+    return emulator_properties(emulator=emulator)
