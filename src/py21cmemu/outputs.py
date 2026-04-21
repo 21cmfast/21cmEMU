@@ -104,7 +104,7 @@ def _get_units():
         "PS_2D_std": u.dex(u.mK**2),
         # Coordinate axes
         "redshifts": u.dimensionless_unscaled,
-        "PS_redshifts": u.dimensionless_unscaled,
+        "PS_2D_redshifts": u.dimensionless_unscaled,
         "UVLF_redshifts": u.dimensionless_unscaled,
         "kperp": u.Mpc**-1,
         "kpar": u.Mpc**-1,
@@ -128,7 +128,7 @@ def _get_log_quantities() -> set[str]:
 _UNIT_FIELDS = frozenset([
     "Tb", "xHI", "Ts", "Tr", "tau", "UVLFs", "PS", 
     "PS_2D", "PS_2D_samples", "PS_2D_std",
-    "redshifts", "PS_redshifts", "UVLF_redshifts", 
+    "redshifts", "PS_2D_redshifts", "UVLF_redshifts", 
     "kperp", "kpar", "k", "PS_ks", "Muv", "Nmodes",
 ])
 
@@ -622,8 +622,8 @@ class MHEmulatorOutput(EmulatorOutput):
     PS_2D_std : np.ndarray | None
         Std of 2D power spectrum over realizations,
         shape (batch, n_redshifts, 32 kperp, 64 kpar). Only when emulate_2d_ps=True.
-    _ps_redshifts : np.ndarray | None
-        Redshifts for the 2D PS (if different from default).
+    PS_2D_redshifts : np.ndarray | None
+        Redshifts for the 2D PS (user-specified). Only when emulate_2d_ps=True.
     """
 
     Tb: np.ndarray
@@ -635,14 +635,9 @@ class MHEmulatorOutput(EmulatorOutput):
     PS_2D: np.ndarray | None
     PS_2D_samples: np.ndarray | None
     PS_2D_std: np.ndarray | None
-    _ps_redshifts: np.ndarray | None
+    PS_2D_redshifts: np.ndarray | None
 
     properties = emulator_properties(emulator="mcg")
-
-    @property
-    def PS_redshifts(self) -> np.ndarray | None:
-        """Redshifts for the 2D PS (only when emulate_2d_ps=True)."""
-        return self._ps_redshifts
 
     @property
     def PS_1D_k(self) -> np.ndarray:
@@ -919,13 +914,8 @@ class MHRawEmulatorOutput(RawEmulatorOutput):
         return self.output[6] if len(self.output) > 6 else None
 
     @property
-    def PS_redshifts(self) -> np.ndarray | None:
+    def PS_2D_redshifts(self) -> np.ndarray | None:
         """Redshifts for 2D PS."""
-        return self.output[7] if len(self.output) > 7 else None
-
-    @property
-    def _ps_redshifts(self) -> np.ndarray | None:
-        """Alias for compatibility with MHEmulatorOutput field name."""
         return self.output[7] if len(self.output) > 7 else None
     
     @property
@@ -1005,7 +995,7 @@ class MHRawEmulatorOutput(RawEmulatorOutput):
             PS_2D=out["PS_2D"],
             PS_2D_samples=out["PS_2D_samples"],
             PS_2D_std=out["PS_2D_std"],
-            _ps_redshifts=out.get("_ps_redshifts"),
+            PS_2D_redshifts=self.PS_2D_redshifts,
         )
 
 

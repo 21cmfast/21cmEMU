@@ -180,7 +180,7 @@ def test_mh_outputs_class() -> None:
         PS_2D=None,
         PS_2D_samples=None,
         PS_2D_std=None,
-        _ps_redshifts=None,
+        PS_2D_redshifts=None,
     )
     assert output.Tb.shape[-1] == 93
     assert output.tau[0] == 0.05
@@ -538,7 +538,7 @@ class TestMH2DOutputStructure:
             PS_2D=ps_2d_median,
             PS_2D_samples=ps_2d_samples,
             PS_2D_std=ps_2d_std,
-            _ps_redshifts=ps_redshifts,
+            PS_2D_redshifts=ps_redshifts,
         )
         
         # Check 1D PS
@@ -550,7 +550,7 @@ class TestMH2DOutputStructure:
         assert output.PS_2D.shape == (1, 10, 32, 64)
         assert output.PS_2D_samples.shape == (1, 10, 100, 32, 64)
         assert output.PS_2D_std.shape == (1, 10, 32, 64)
-        assert len(output._ps_redshifts) == 10
+        assert len(output.PS_2D_redshifts) == 10
 
     def test_ps_variance_computation(self):
         """Test that PS variance can be computed from samples."""
@@ -797,7 +797,7 @@ class TestMHAccuracy:
         
         # Run with 2D PS enabled
         emu = Emulator(emulator="mcg", emulate_2d_ps=True)
-        _, output, _ = emu.predict(params, num_ps_samples=2, ps_redshifts=[7.0])
+        _, output, _ = emu.predict(params, n_realisations=2, ps_2d_redshifts=[7.0])
         
         # Check 1D PS is still available
         assert output.PS is not None, "1D PS should be available with emulate_2d_ps=True"
@@ -814,9 +814,9 @@ class TestMHAccuracy:
         assert output.PS_2D_samples.shape == (1, 1, 2, 32, 64), f"PS_2D_samples shape wrong, got {output.PS_2D_samples.shape}"
         assert output.PS_2D_std.shape == (1, 1, 32, 64), f"PS_2D_std shape wrong, got {output.PS_2D_std.shape}"
         
-        # Check PS_redshifts
-        assert output.PS_redshifts is not None, "PS_redshifts should be available"
-        assert np.allclose(output.PS_redshifts, [7.0]), f"PS_redshifts should be [7.0], got {output.PS_redshifts}"
+        # Check PS_2D_redshifts
+        assert output.PS_2D_redshifts is not None, "PS_2D_redshifts should be available"
+        assert np.allclose(output.PS_2D_redshifts, [7.0]), f"PS_2D_redshifts should be [7.0], got {output.PS_2D_redshifts}"
         
         print("V3 1D+2D PS test passed: Both available when emulate_2d_ps=True")
 
@@ -850,8 +850,8 @@ class TestMHAccuracy:
         # This should be fast (~few seconds on CPU)
         _, output, _ = emu.predict(
             params, 
-            ps_redshifts=z_test,
-            num_ps_samples=1,
+            ps_2d_redshifts=z_test,
+            n_realisations=1,
             ps_sampling_method="em"
         )
         
@@ -917,11 +917,10 @@ class TestMHAccuracy:
         emu = Emulator(emulator="mcg", emulate_2d_ps=True)
         
         # Run with ODE sampling (default, more accurate)
-        # num_ps_samples=10 gives a reasonable mean estimate
         _, output, _ = emu.predict(
             params,
-            ps_redshifts=z_test,
-            num_ps_samples=10,
+            ps_2d_redshifts=z_test,
+            n_realisations=10,
             ps_sampling_method="ode",  # ODE is default but be explicit
         )
         
@@ -944,7 +943,7 @@ class TestMHAccuracy:
         global_mean_err = props.PS_global_mean_err_ode
         
         # Single-sample FE can be much higher than population mean due to:
-        # 1. Sample variance from only num_ps_samples=10 realisations
+        # 1. Sample variance from only n_realisations=10 realisations
         # 2. Some parameter combinations are harder to predict
         # 3. Some redshifts are harder (near transition points)
         # 
@@ -1078,7 +1077,7 @@ class TestPS2DErrorStatistics:
             params = np.asarray(f["inputs"][:1])
         
         emu = Emulator(emulator="mcg", emulate_2d_ps=True)
-        _, output, _ = emu.predict(params, num_ps_samples=2, ps_redshifts=[7.0])
+        _, output, _ = emu.predict(params, n_realisations=2, ps_2d_redshifts=[7.0])
         return output
 
     @pytest.fixture(scope="class")

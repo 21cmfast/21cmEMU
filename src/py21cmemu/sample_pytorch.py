@@ -192,7 +192,6 @@ class GetEMSampler:
         z: torch.Tensor | None = None,
         x_cdn: torch.Tensor | None = None,
         cdn: torch.Tensor | None = None,
-        progress: bool = False,
     ) -> torch.Tensor:
         """Run Euler-Maruyama sampling.
 
@@ -357,7 +356,6 @@ class GetODESampler:
         z: torch.Tensor | None = None,
         x_cdn: torch.Tensor | None = None,
         cdn: torch.Tensor | None = None,
-        progress: bool = False,
         return_nfe: bool = False,
     ) -> torch.Tensor | tuple[torch.Tensor, int]:
         """Run the probability-flow ODE sampler.
@@ -367,7 +365,6 @@ class GetODESampler:
             z: Optional latent code to generate samples from.
             x_cdn: Optional conditional input image.
             cdn: Conditional parameter vector (batch, n_params).
-            progress: Unused, for API compatibility.
             return_nfe: If True, also return number of function evaluations.
 
         Returns:

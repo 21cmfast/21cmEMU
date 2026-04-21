@@ -30,7 +30,7 @@ def test_output(tmp_path, emu_type):
         npars = 5
     else:
         npars = 9
-    emu = Emulator(version="latest", emulator=emu_type)
+    emu = Emulator(emulator=emu_type)
     theta = np.random.rand(npars * 5).reshape((5, npars))
 
     theta, output, errors = emu.predict(theta)

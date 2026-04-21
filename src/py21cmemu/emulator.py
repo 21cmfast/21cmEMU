@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 import torch
 
-from .get_emulator import get_emu_data
 from .inputs import DefaultEmulatorInput
 from .inputs import MHEmulatorInput
 from .inputs import ParamVecType
@@ -71,8 +70,6 @@ class Emulator:
         - **radio**: Radio background emulator with 5 parameters. Predicts
           radio temperature Tr instead of spin temperature Ts.
 
-    version : str, optional
-        Data version to use/download for the 'acg' emulator. Default is 'latest'.
     emulate_2d_ps : bool, optional
         Whether to emulate the 2D power spectrum (for 'mcg' only). Default is False
         since the 2D PS score model is slower than the LSTM. When False, the 1D PS
@@ -88,11 +85,7 @@ class Emulator:
     def __init__(
         self,
         emulator: str = DEFAULT_EMULATOR,
-        version: str = "latest",
         emulate_2d_ps: bool = False,
-        model_path: str | None = None,
-        PS_scale: float | None = None,
-        PS_bias: float | None = None,
     ):
 
         self.which_emulator = resolve_emulator_name(emulator)
@@ -100,9 +93,7 @@ class Emulator:
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
         if self.which_emulator == EMULATOR_ACG:
-            get_emu_data(version=version)
-            
-            # Load bundled PyTorch model
+            # Load bundled PyTorch model (no download needed)
             from .models.default.v1_pytorch import load_converted_model
             here = Path(__file__).parent
             model_path = here / "models/default/default_model.pt"
@@ -152,11 +143,8 @@ class Emulator:
             self.score_model = None
             self.sample = None
             if self.emulate_2d_ps:
-                ps_model_path = (
-                    Path(model_path)
-                    if model_path is not None
-                    else here / "models/MHs/score_model_weights.pt"
-                )
+                ps_model_path = here / "models/MHs/score_model_weights.pt"
+                
                 score_model = UNet(
                     dim=(32, 64),
                     init_dim=48,
@@ -171,8 +159,8 @@ class Emulator:
                 score_model.eval()
                 self.score_model = score_model
 
-                self.ps_bias = self.properties.PS_bias if PS_bias is None else PS_bias
-                self.ps_scale = self.properties.PS_scale if PS_scale is None else PS_scale
+                self.ps_bias = self.properties.PS_bias
+                self.ps_scale = self.properties.PS_scale
                 self._vpsde_cls = VPSDE
                 self._em_sampler_cls = GetEMSampler
                 self._ode_sampler_cls = GetODESampler
@@ -192,9 +180,9 @@ class Emulator:
         self,
         astro_params: ParamVecType,
         verbose: bool = False,
-        ps_redshifts: np.ndarray | None = None,
+        ps_2d_redshifts: np.ndarray | None = None,
         n_ps_batch: int | None = None,
-        num_ps_samples: int = 100,
+        n_realisations: int = 100,
         sde: Any | None = None,
         denoise: bool = True,
         ps_sampling_method: str = "em",
@@ -210,12 +198,13 @@ class Emulator:
             (for batch evaluation).
         verbose : bool, optional
             If True, prints the emulator prediction.
-        ps_redshifts : np.ndarray, optional
-            Redshifts at which to evaluate the 2D PS (for 'mh' emulator only).
+        ps_2d_redshifts : np.ndarray, optional
+            Redshifts at which to evaluate the 2D PS (for 'mcg' emulator only).
         n_ps_batch : int, optional
             Batch size for PS sampling.
-        num_ps_samples : int, optional
-            Number of samples per conditioning (default: 100).
+        n_realisations : int, optional
+            Number of diffusion model realisations per redshift (default: 100).
+            More realisations give better uncertainty estimates but take longer.
         sde : VPSDE, optional
             SDE object for diffusion sampling.
         denoise : bool, optional
@@ -270,11 +259,11 @@ class Emulator:
             predicted = list(self.lstm_model(theta_lstm_t))
 
         if self.emulate_2d_ps:
-            if ps_redshifts is None:
-                ps_redshifts = self.properties.default_ps_redshifts
-            n_zs = len(ps_redshifts)
+            if ps_2d_redshifts is None:
+                ps_2d_redshifts = self.properties.default_ps_redshifts
+            n_zs = len(ps_2d_redshifts)
             n_params = theta_PS.shape[0]
-            theta_sbm = self.inputs.format_theta(theta_PS, ps_redshifts)
+            theta_sbm = self.inputs.format_theta(theta_PS, ps_2d_redshifts)
             if n_ps_batch is None:
                 n_ps_batch = theta_sbm.shape[0]
             if sde is None:
@@ -290,14 +279,14 @@ class Emulator:
             if ps_sampling_method == "em":
                 self.sample = self._em_sampler_cls(
                     sde,
-                    (n_ps_batch, num_ps_samples, 32, 64),
+                    (n_ps_batch, n_realisations, 32, 64),
                     device=self.device,
                     denoise=denoise,
                 ).get_em_sampler()
             else:  # ode
                 self.sample = self._ode_sampler_cls(
                     sde,
-                    (n_ps_batch, num_ps_samples, 32, 64),
+                    (n_ps_batch, n_realisations, 32, 64),
                     device=self.device,
                     denoise=denoise,
                     rtol=1e-5,
@@ -309,11 +298,11 @@ class Emulator:
             theta_sbm = theta_sbm.reshape(
                 (theta_sbm.shape[0] // n_ps_batch, n_ps_batch, theta_sbm.shape[1])
             )
-            samples_pred = self.get_pred(theta_sbm)
+            samples_pred = self.get_pred(theta_sbm, verbose=verbose)
             samples_pred = samples_pred.reshape(
-                (theta_sbm.shape[0] * n_ps_batch, num_ps_samples, 32, 64)
-            ).reshape((n_params, n_zs, num_ps_samples, 32, 64))
-            predicted.extend([samples_pred, ps_redshifts])
+                (theta_sbm.shape[0] * n_ps_batch, n_realisations, 32, 64)
+            ).reshape((n_params, n_zs, n_realisations, 32, 64))
+            predicted.extend([samples_pred, ps_2d_redshifts])
         else:
             self._current_ps_method = None
             predicted.extend([None, None])
@@ -328,14 +317,18 @@ class Emulator:
         from .utils import reverse_transform
 
         cdn = cdn.to(self.device)
-        samples = self.sample(self.score_model, cdn=cdn, progress=False).cpu().detach()
+        samples = self.sample(self.score_model, cdn=cdn).cpu().detach()
         samples_w_units = reverse_transform(samples, self.ps_scale, self.ps_bias)
         return samples_w_units.cpu().detach().numpy()
 
     @torch.no_grad()
-    def get_pred(self, cdns: np.ndarray) -> np.ndarray:
+    def get_pred(self, cdns: np.ndarray, verbose: bool = False) -> np.ndarray:
         all_preds = []
-        for i in range(cdns.shape[0]):
+        iterator = range(cdns.shape[0])
+        if verbose:
+            from tqdm import tqdm
+            iterator = tqdm(iterator, desc="Computing 2D PS", unit="batch")
+        for i in iterator:
             samples = self.get_pred_single(torch.tensor(cdns[i], dtype=torch.float32))
             all_preds.append(samples)
         return np.array(all_preds)
