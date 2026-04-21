@@ -442,7 +442,7 @@ class MHEmulatorProperties(EmulatorProperties):
         self.uv_lf_zs = np.array(lstm_data["UVLF_zs"])
 
         # 1D PS properties (from LSTM model)
-        self.PS_1D_k = np.array(lstm_data["PS_k"])
+        self.PS_1D_k = self.PS_ks = np.array(lstm_data["PS_k"])
         self.PS_1D_redshifts = np.array(lstm_data["PS_redshifts"])
         self.PS_1D_bias = float(lstm_data["PS_bias"])
         self.PS_1D_scale = float(lstm_data["PS_scale"])
