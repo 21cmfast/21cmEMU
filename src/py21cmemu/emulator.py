@@ -185,7 +185,7 @@ class Emulator:
         n_realisations: int = 100,
         sde: Any | None = None,
         denoise: bool = True,
-        ps_sampling_method: str = "em",
+        ps_sampling_method: str = "ode",
     ) -> tuple[np.ndarray | tuple[np.ndarray | None, np.ndarray], EmulatorOutput, dict[str, np.ndarray]]:
         r"""Call the emulator, evaluate it at the given parameters, restore dimensions.
 

@@ -655,6 +655,37 @@ class MHEmulatorProperties(EmulatorProperties):
             self.PS_robust_err_em = float(score_data["twostage_median_of_sample_median_em_means"])
         else:
             self.PS_robust_err_em = None
+        
+        USER_PARAMS = {
+            'HII_DIM':200,
+            'BOX_LEN':400.0,
+            'USE_INTERPOLATION_TABLES': True,
+            'USE_FFTW_WISDOM': True,
+            'PERTURB_ON_HIGH_RES': True,
+            'OUTPUT_ALL_VEL': False, 
+            'USE_RELATIVE_VELOCITIES' : True,
+            'POWER_SPECTRUM': 5,
+        }
+
+        COSMO_PARAMS = {
+            'hlittle': 0.6688,
+            'OMm': 0.321,
+            'OMb':0.04952,
+            'POWER_INDEX':0.9626,
+        }
+
+        FLAG_OPTIONS = {
+            'USE_MASS_DEPENDENT_ZETA': True,
+            'INHOMO_RECO': True,
+            'PHOTON_CONS': False,
+            'EVOLVING_R_BUBBLE_MAX': False,
+            'USE_TS_FLUCT': True,
+            'USE_MINI_HALOS': True,
+        }
+
+        self.flag_options = FLAG_OPTIONS
+        self.user_params = USER_PARAMS
+        self.cosmo_params = COSMO_PARAMS
     
     def get_ps_error(self, method: str = "ode", stat: str = "median") -> np.ndarray:
         """Get 2D PS error array for the specified sampling method and statistic.
