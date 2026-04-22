@@ -98,10 +98,10 @@ def _get_units():
         # Log quantities (dex = log10 of base unit)
         # PS is delta^2 (dimensionless power spectrum), units are mK^2
         "UVLFs": u.dex(u.Mpc**-3 * u.mag**-1),
-        "PS": u.dex(u.mK**2),
-        "PS_2D": u.dex(u.mK**2),
-        "PS_2D_samples": u.dex(u.mK**2),
-        "PS_2D_std": u.dex(u.mK**2),
+        "PS": u.mK**2,
+        "PS_2D": u.mK**2,
+        "PS_2D_samples": u.mK**2,
+        "PS_2D_std": u.mK**2,
         # Coordinate axes
         "redshifts": u.dimensionless_unscaled,
         "PS_2D_redshifts": u.dimensionless_unscaled,
@@ -910,7 +910,7 @@ class MHRawEmulatorOutput(RawEmulatorOutput):
 
     @property
     def PS_2D_samples(self) -> np.ndarray | None:
-        """2D PS samples from score model (linear, needs log10)."""
+        """2D PS samples from score model (linear in mK2)."""
         return self.output[6] if len(self.output) > 6 else None
 
     @property
@@ -968,7 +968,7 @@ class MHRawEmulatorOutput(RawEmulatorOutput):
         # Formula: log10(PS) = PS_norm * PS_1D_scale + PS_1D_bias
         ps_1d_norm = out.get("PS")
         if ps_1d_norm is not None:
-            out["PS"] = (
+            out["PS"] = 10**(
                 ps_1d_norm.squeeze() * self.properties.PS_1D_scale 
                 + self.properties.PS_1D_bias
             )
@@ -976,7 +976,7 @@ class MHRawEmulatorOutput(RawEmulatorOutput):
         # 2D PS samples from score model: convert linear -> log10
         ps_2d_samples_lin = out.get("PS_2D_samples")
         if ps_2d_samples_lin is not None:
-            out["PS_2D_samples"] = np.log10(ps_2d_samples_lin)
+            out["PS_2D_samples"] = ps_2d_samples_lin
             # Compute median and std over realizations (axis=2)
             out["PS_2D"] = np.median(out["PS_2D_samples"], axis=2)
             out["PS_2D_std"] = np.std(out["PS_2D_samples"], axis=2)
