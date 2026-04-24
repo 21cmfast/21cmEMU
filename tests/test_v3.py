@@ -16,6 +16,24 @@ TEST_SET_H5 = TUTORIALS_DIR / "test_set.h5"
 PS_TEST_H5 = TUTORIALS_DIR / "ps_1d_loglin_db_test.h5"
 
 
+def _log_convert_mh_params(params: np.ndarray) -> np.ndarray:
+    """Convert MH parameter array from linear to log10 for LOG_PARAMETERS columns.
+
+    The HDF5 test databases (test_set.h5, ps_2d_test_subsample.h5) store all
+    parameters in linear/physical space (e.g. F_STAR10 ≈ 0.09 as a fraction).
+    The emulator now expects LOG_PARAMETERS (F_STAR10, F_ESC10, F_STAR7_MINI,
+    F_ESC7_MINI, L_X, L_X_MINI) in log10 space, so we convert them here.
+    """
+    from py21cmemu.inputs import MHEmulatorInput
+
+    mh_in = MHEmulatorInput()
+    astro_keys = list(mh_in.astro_param_keys)
+    log_idx = [astro_keys.index(name) for name in mh_in.LOG_PARAMETERS]
+    out = params.copy().astype(float)
+    out[:, log_idx] = np.log10(out[:, log_idx])
+    return out
+
+
 # Note: mh_emulator fixture is defined in conftest.py
 
 
@@ -26,6 +44,7 @@ def test_mh_predict_from_tutorial_h5(mh_emulator) -> None:
 
     with h5py.File(TEST_SET_H5, "r") as f:
         params = np.asarray(f["inputs"][0:1])
+    params = _log_convert_mh_params(params)
 
     theta, output, errors = mh_emulator.predict(params)
 
@@ -50,6 +69,7 @@ def test_mh_batch_prediction(mh_emulator) -> None:
 
     with h5py.File(TEST_SET_H5, "r") as f:
         params = np.asarray(f["inputs"][:5])
+    params = _log_convert_mh_params(params)
 
     theta, output, errors = mh_emulator.predict(params)
 
@@ -68,6 +88,7 @@ def test_mh_output_shapes(mh_emulator) -> None:
 
     with h5py.File(TEST_SET_H5, "r") as f:
         params = np.asarray(f["inputs"][0:1])
+    params = _log_convert_mh_params(params)
 
     _, output, _ = mh_emulator.predict(params)
 
@@ -89,6 +110,7 @@ def test_mh_output_values(mh_emulator) -> None:
 
     with h5py.File(TEST_SET_H5, "r") as f:
         params = np.asarray(f["inputs"][0:1])
+    params = _log_convert_mh_params(params)
 
     _, output, _ = mh_emulator.predict(params)
 
@@ -158,8 +180,17 @@ def test_mh_inputs_class() -> None:
     inputs = MHEmulatorInput()
     assert len(inputs.astro_param_keys) == 11
 
-    # Test normalization
-    test_params = np.array([[1e-2, 0.5, 2.0, 1e-2, 0.7, 1e-3, 1e-3, 1e39, 1e39, 5.0, 1.0]])
+    # LOG_PARAMETERS and PARAMETERS class attributes
+    assert "F_STAR10" in inputs.LOG_PARAMETERS
+    assert "F_ESC10" in inputs.LOG_PARAMETERS
+    assert "L_X" in inputs.LOG_PARAMETERS
+    assert len(inputs.LOG_PARAMETERS) == 6
+    assert len(inputs.PARAMETERS) == 11
+
+    # Test normalization with log-space values for log parameters
+    # Order: F_STAR10, ALPHA_STAR, t_STAR, F_ESC10, ALPHA_ESC, F_STAR7_MINI, F_ESC7_MINI,
+    #        L_X, L_X_MINI, NU_X_THRESH, SIGMA_8
+    test_params = np.array([[-1.5, 0.5, 0.5, -2.0, 0.0, -3.0, -2.0, 40.0, 40.0, 500.0, 0.82]])
     normed = inputs.normalize(test_params, kind="LSTM")
     assert normed.shape == (1, 11)
     assert np.all(normed >= 0) and np.all(normed <= 1)
@@ -672,6 +703,7 @@ class TestMHAccuracy:
         
         # Run emulator (LSTM only)
         emu = Emulator(emulator="mcg", emulate_2d_ps=False)
+        params = _log_convert_mh_params(params)
         _, output, _ = emu.predict(params)
         
         # Database has z descending (35→5), emulator output has z ascending (5→35)
@@ -751,6 +783,7 @@ class TestMHAccuracy:
         
         # Run emulator (default without 2D PS)
         emu = Emulator(emulator="mcg", emulate_2d_ps=False)
+        params = _log_convert_mh_params(params)
         _, output, _ = emu.predict(params)
         
         # Check 1D PS is available
@@ -760,18 +793,18 @@ class TestMHAccuracy:
         # Check units
         assert hasattr(output.PS, 'unit'), "PS should have units"
         from astropy import units as u
-        assert output.PS.unit == u.dex(u.mK**2), f"PS should have dex(mK^2) units, got {output.PS.unit}"
+        assert output.PS.unit == u.mK**2, f"PS should have mK^2 units (linear), got {output.PS.unit}"
         
         # Check 2D PS is None when emulate_2d_ps=False
         assert output.PS_2D is None, "PS_2D should be None when emulate_2d_ps=False"
         assert output.PS_2D_samples is None, "PS_2D_samples should be None"
         assert output.PS_2D_std is None, "PS_2D_std should be None"
         
-        # Compare with ground truth (in log space)
-        # Use np.where to avoid log10(0) warning for any zero values
+        # Compare with ground truth (in log space for accuracy calculation)
+        # Convert both to log10 for comparison
         with np.errstate(divide='ignore', invalid='ignore'):
             PS_1D_true_log = np.log10(PS_1D_true)
-        PS_1D_emu_log = output.PS.value  # Already log10
+            PS_1D_emu_log = np.log10(output.PS.value)  # Convert linear to log10
         
         # Compute accuracy - use 0.1 floor to avoid issues with very small PS values
         fe = _median_frac_err(PS_1D_true_log, PS_1D_emu_log, floor=0.1)
@@ -794,6 +827,7 @@ class TestMHAccuracy:
         
         with h5py.File(TEST_SET_H5, "r") as f:
             params = np.asarray(f["inputs"][:1])
+        params = _log_convert_mh_params(params)
         
         # Run with 2D PS enabled
         emu = Emulator(emulator="mcg", emulate_2d_ps=True)
@@ -837,6 +871,7 @@ class TestMHAccuracy:
             params = np.asarray(f["input_params"][0:1])  # Single param set
             PS_true = np.asarray(f["PS_2D_64_means"][0:1])  # (1, 32, 32, 64)
             ps_redshifts = np.asarray(f["redshifts"])  # 32 redshifts
+        params = _log_convert_mh_params(params)
         
         # Pick just one redshift (middle one) for speed
         z_idx = 15
@@ -868,11 +903,12 @@ class TestMHAccuracy:
         assert output.PS_2D.shape == (1, 1, 32, 64), f"Expected PS_2D shape (1,1,32,64), got {output.PS_2D.shape}"
         
         # Check order of magnitude is reasonable
-        # PS_2D has dex units (output.PS_2D is log10(PS) in dex(mK^2))
-        # Get raw log10 values directly
-        PS_emu_log = output.PS_2D.value[0, 0]  # (32, 64) - raw log10 values
+        # PS_2D is in linear units (mK^2), convert to log10 for checks
+        PS_emu_linear = output.PS_2D.value[0, 0]  # (32, 64) - linear values
+        with np.errstate(divide='ignore', invalid='ignore'):
+            PS_emu_log = np.log10(PS_emu_linear)
         
-        # Check range is physically reasonable
+        # Check range is physically reasonable (in log10 space)
         assert np.nanmedian(PS_emu_log) > -3, f"PS_2D median {np.nanmedian(PS_emu_log):.2f} too low"
         assert np.nanmedian(PS_emu_log) < 5, f"PS_2D median {np.nanmedian(PS_emu_log):.2f} too high"
         
@@ -907,6 +943,7 @@ class TestMHAccuracy:
             params = np.asarray(f["input_params"][0:1])  # Single param set
             PS_true = np.asarray(f["PS_2D_64_means"][0:1])  # (1, 32, 32, 64) log10(PS)
             ps_redshifts = np.asarray(f["redshifts"])  # 32 redshifts
+        params = _log_convert_mh_params(params)
         
         # Pick one redshift (middle of range) for speed
         z_idx = 15
@@ -1075,6 +1112,7 @@ class TestPS2DErrorStatistics:
         
         with h5py.File(TEST_SET_H5, "r") as f:
             params = np.asarray(f["inputs"][:1])
+        params = _log_convert_mh_params(params)
         
         emu = Emulator(emulator="mcg", emulate_2d_ps=True)
         _, output, _ = emu.predict(params, n_realisations=2, ps_2d_redshifts=[7.0])
@@ -1089,6 +1127,7 @@ class TestPS2DErrorStatistics:
         
         with h5py.File(TEST_SET_H5, "r") as f:
             params = np.asarray(f["inputs"][:1])
+        params = _log_convert_mh_params(params)
         
         emu = Emulator(emulator="mcg", emulate_2d_ps=False)
         _, output, _ = emu.predict(params)
@@ -1195,6 +1234,7 @@ class TestOutputUnits:
         
         with h5py.File(TEST_SET_H5, "r") as f:
             params = np.asarray(f["inputs"][:1])
+        params = _log_convert_mh_params(params)
         
         emu = Emulator(emulator="mcg", emulate_2d_ps=False)
         _, output, _ = emu.predict(params)
@@ -1213,17 +1253,24 @@ class TestOutputUnits:
         assert "PS" in units
 
     def test_log_quantities_returns_set(self, mh_output):
-        """Test that log_quantities() returns expected set."""
+        """Test that log_quantities() returns expected set.
+        
+        Note: PS is NOT in log_quantities - it's always returned in linear units (mK^2).
+        Only UVLFs remain in log10 space.
+        """
         log_qs = mh_output.log_quantities()
         assert isinstance(log_qs, set)
-        assert "PS" in log_qs
+        assert "PS" not in log_qs  # PS is now LINEAR (mK^2)
         assert "UVLFs" in log_qs
         assert "Tb" not in log_qs  # Linear
         assert "xHI" not in log_qs  # Linear
 
     def test_is_log_method(self, mh_output):
-        """Test the is_log() method."""
-        assert mh_output.is_log("PS") is True
+        """Test the is_log() method.
+        
+        Note: PS is returned in linear units (mK^2), not log10.
+        """
+        assert mh_output.is_log("PS") is False  # PS is LINEAR
         assert mh_output.is_log("UVLFs") is True
         assert mh_output.is_log("Tb") is False
         assert mh_output.is_log("xHI") is False
@@ -1315,6 +1362,7 @@ class TestErrorStatisticsConsistency:
         
         with h5py.File(TEST_SET_H5, "r") as f:
             params = np.asarray(f["inputs"][:1])
+        params = _log_convert_mh_params(params)
         
         emu = Emulator(emulator="mcg", emulate_2d_ps=False)
         _, output, _ = emu.predict(params)
@@ -1331,13 +1379,19 @@ class TestErrorStatisticsConsistency:
             f"PS_err shape {ps_err.shape} should match PS shape {ps_val.shape}"
 
     def test_ps_err_is_on_log10_documented_correctly(self, mh_output_and_props):
-        """Test that error is clearly on log10(PS), not linear PS."""
+        """Test that error is on log10(PS), and PS is returned in linear units."""
         output, props = mh_output_and_props
         
-        # PS values are log10(delta^2), they should be in range ~-2 to 4
-        ps_log_vals = output.PS.value
+        # PS values are LINEAR (delta^2 in mK^2), range ~0.01 to 10^4
+        ps_linear_vals = output.PS.value
+        assert np.nanmedian(ps_linear_vals) > 0, \
+            f"PS values should be positive linear values, got median {np.nanmedian(ps_linear_vals)}"
+        
+        # Convert to log10 for range check
+        with np.errstate(divide='ignore', invalid='ignore'):
+            ps_log_vals = np.log10(ps_linear_vals)
         assert -3 < np.nanmedian(ps_log_vals) < 5, \
-            f"PS values should be log10 (~-2 to 4), got median {np.nanmedian(ps_log_vals)}"
+            f"log10(PS) should be in range ~-2 to 4, got median {np.nanmedian(ps_log_vals)}"
         
         # FE% should be reasonable (not thousands - which would indicate linear error)
         fe_vals = output.PS_err

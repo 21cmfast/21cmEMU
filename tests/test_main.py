@@ -31,7 +31,15 @@ def test_output(tmp_path, emu_type):
     else:
         npars = 9
     emu = Emulator(emulator=emu_type)
-    theta = np.random.rand(npars * 5).reshape((5, npars))
+    # Generate physical params via undo_normalization so input is valid for the emulator
+    if emu_type == "radio_background":
+        theta = RadioEmulatorInput().undo_normalization(
+            np.random.rand(npars * 5).reshape((5, npars))
+        )
+    else:
+        theta = DefaultEmulatorInput().undo_normalization(
+            np.random.rand(npars * 5).reshape((5, npars))
+        )
 
     theta, output, errors = emu.predict(theta)
 
@@ -121,122 +129,96 @@ def test_inputs(emu_type):
 
     if emu_type == "radio_background":
         emu_in = RadioEmulatorInput()
-        limits = properties.limits
+        limits = properties.limits.copy()
         npars = len(limits)
     else:
         emu_in = DefaultEmulatorInput()
         limits = properties.limits.copy()
-        limits[7, :] *= 1000.0  # keV to eV
+        limits[7, :] *= 1000.0  # keV to eV for NU_X_THRESH
         npars = len(limits)
 
-    single_param = np.random.rand(npars)
-    inp = emu_in.make_param_array(single_param, normed=True)
+    rng = np.random.default_rng(42)
 
-    assert (inp == single_param).all(), "Single param 1D array not normalized properly."
+    # Generate physical params via undo_normalization of random [0,1] values
+    single_phys = emu_in.undo_normalization(rng.random(npars).reshape(1, npars)).ravel()
 
-    inp = emu_in.make_param_array(single_param, normed=False)
+    # normed=True: physical params → normalized to [0,1]
+    inp = emu_in.make_param_array(single_phys, normed=True)
+    assert inp.min() >= 0 and inp.max() <= 1, "Single param 1D: normed=True should give [0,1]."
 
+    # normed=False: physical params returned unchanged and within limits
+    inp = emu_in.make_param_array(single_phys, normed=False)
+    assert np.allclose(inp.ravel(), single_phys), "Single param 1D: normed=False should return unchanged."
     assert (inp >= limits[:, 0]).all() and (
         inp <= limits[:, 1]
-    ).all(), "Single param 1D array dimensions not restored properly."
+    ).all(), "Single param 1D: physical params not within limits."
 
-    single_param = np.random.rand(npars).reshape((1, npars))
-    inp = emu_in.make_param_array(single_param, normed=True)
+    # 2D array (1, npars)
+    single_phys_2d = single_phys.reshape(1, npars)
+    inp = emu_in.make_param_array(single_phys_2d, normed=True)
+    assert inp.min() >= 0 and inp.max() <= 1, "Single 2D param: normed=True should give [0,1]."
 
-    assert (inp == single_param).all(), "Single param array not normalized properly."
-
-    inp = emu_in.make_param_array(single_param, normed=False)
-
+    inp = emu_in.make_param_array(single_phys_2d, normed=False)
     assert (inp >= limits[:, 0]).all() and (
         inp <= limits[:, 1]
-    ).all(), "Single param array dimensions not restored properly."
+    ).all(), "Single 2D param: physical params not within limits."
 
-    # Test for many params at once, array
-    many_params = np.random.rand(npars * 5).reshape((5, npars))
+    # Batch (5, npars)
+    many_phys = emu_in.undo_normalization(rng.random((5, npars)))
+    inp = emu_in.make_param_array(many_phys, normed=True)
+    assert inp.shape == (5, npars)
+    assert inp.min() >= 0 and inp.max() <= 1, "Batch: normed=True should give [0,1]."
 
-    inp = emu_in.make_param_array(many_params, normed=True)
-
-    assert (
-        (inp == many_params).ravel().all()
-    ), "Many params array not normalized properly."
-
-    inp = emu_in.make_param_array(many_params, normed=False)
-
+    inp = emu_in.make_param_array(many_phys, normed=False)
     assert np.array(
         [(i >= limits[:, 0]).all() and (i <= limits[:, 1]).all() for i in inp]
-    ).all(), "Many params array dimensions not restored properly."
+    ).all(), "Batch: physical params not within limits."
 
-    # Test for single dict
-    single_param = {}
-    arr = np.zeros(len(emu_in.astro_param_keys))
-    for k, i in enumerate(emu_in.astro_param_keys):
-        single_param[i] = np.random.rand()
-        arr[k] = single_param[i]
+    # Single dict of physical params
+    single_dict = {k: single_phys[i] for i, k in enumerate(emu_in.astro_param_keys)}
+    inp = emu_in.make_param_array(single_dict, normed=True)
+    assert inp.min() >= 0 and inp.max() <= 1, "Dict: normed=True should give [0,1]."
 
-    inp = emu_in.make_param_array(single_param, normed=True)
-
-    assert (inp == arr).all(), "Single param dict not normalized properly."
-
-    inp = emu_in.make_param_array(single_param, normed=False)
+    inp = emu_in.make_param_array(single_dict, normed=False)
     assert (inp >= limits[:, 0]).all() and (
         inp <= limits[:, 1]
-    ).all(), "Single param dict dimensions not restored properly."
+    ).all(), "Dict: normed=False physical params not within limits."
 
-    # Test for array / list of dicts
-
-    many_params_list = [single_param, single_param, single_param]
+    # List of dicts
+    many_params_list = [single_dict, single_dict, single_dict]
     inp = emu_in.make_param_array(many_params_list, normed=False)
-
     assert np.array(
         [(i >= limits[:, 0]).all() and (i <= limits[:, 1]).all() for i in inp]
-    ).all(), "Many params list of dicts dimensions not restored properly."
+    ).all(), "List of dicts: physical params not within limits."
 
-    many_params_list = np.array([single_param, single_param, single_param])
-    inp = emu_in.make_param_array(many_params_list, normed=False)
-
+    many_params_arr = np.array([single_dict, single_dict, single_dict])
+    inp = emu_in.make_param_array(many_params_arr, normed=False)
     assert np.array(
         [(i >= limits[:, 0]).all() and (i <= limits[:, 1]).all() for i in inp]
-    ).all(), "Many params array of dicts dimensions not restored properly."
+    ).all(), "Array of dicts: physical params not within limits."
 
-    # Test for list / list of lists
-    arr_list = list(arr)
+    # List / list of lists
+    arr_list = list(single_phys)
     inp = emu_in.make_param_array(arr_list, normed=True)
-
-    assert (inp == arr).all(), "Single param list not normalized properly."
+    assert inp.min() >= 0 and inp.max() <= 1, "List: normed=True should give [0,1]."
 
     many_params_list = [arr_list, arr_list, arr_list]
     inp = emu_in.make_param_array(many_params_list, normed=False)
-
     assert np.array(
         [(i >= limits[:, 0]).all() and (i <= limits[:, 1]).all() for i in inp]
-    ).all(), "Many params list of lists dimensions not restored properly."
+    ).all(), "List of lists: physical params not within limits."
 
-    # Test undo_normalisation
+    # Roundtrip: normalize → undo_normalization recovers original physical params
+    normed_out = emu_in.make_param_array(single_phys, normed=True)
+    recovered = emu_in.undo_normalization(normed_out)
+    assert np.allclose(recovered.ravel(), single_phys, rtol=1e-5), "Roundtrip normalization failed."
 
-    arr = (
-        np.random.rand(len(emu_in.astro_param_keys)) * (limits[:, 1] - limits[:, 0])
-        + limits[:, 0]
-    )
-    if emu_type == "default":
-        arr[7] *= 1000  # keV to eV
+    # make_list_of_dicts
+    phys_batch = emu_in.undo_normalization(rng.random((10, npars)))
+    emu_in.make_list_of_dicts(phys_batch, normed=True)
 
-    inp = emu_in.make_param_array(arr, normed=False)
-
-    assert (arr == inp).all(), "Single param array w norm failed."
-
-    if emu_type == "default":
-        arr[7] /= 1000  # eV to keV
-    inp = emu_in.make_param_array(arr, normed=True)
-
-    assert inp.min() >= 0 and inp.max() <= 1, "Single param array w norm undo failed."
-
-    # Test make_list_of_dicts
-
-    pars = np.random.rand(10 * npars).reshape((10, npars))
-
-    inp = emu_in.make_list_of_dicts(pars, normed=True)
-
-    arr = np.random.rand(10 * 5).reshape((5, 10))
+    # Error: wrong number of params
+    arr = rng.random((5, 10))
     with pytest.raises(ValueError):
         emu_in.make_param_array(arr, normed=True)
 
@@ -244,8 +226,8 @@ def test_inputs(emu_type):
         with suppress_type_checks():
             emu_in.make_param_array(7, normed=True)
 
-    arr = np.random.rand(npars * 5).reshape((5, npars))
-    arr_tup = [tuple(i) for i in arr]
+    # Error: list of tuples is not a supported type
+    arr_tup = [tuple(i) for i in emu_in.undo_normalization(rng.random((5, npars)))]
     with pytest.raises(TypeError):
         emu_in.make_param_array(arr_tup, normed=True)
 
@@ -477,7 +459,10 @@ def test_v1_emulator_vs_database():
     
     # Run emulator
     emu = Emulator(emulator="acg")  # Test ACG (v1) emulator specifically
-    _, output, _ = emu.predict(X_test)
+    # X_test is stored in [0,1] normalized space; convert to physical units first
+    from py21cmemu.inputs import DefaultEmulatorInput
+    X_test_phys = DefaultEmulatorInput().undo_normalization(X_test)
+    _, output, _ = emu.predict(X_test_phys)
     
     # Calculate median fractional errors (%)
     def median_frac_err(true, pred, floor=1e-3):

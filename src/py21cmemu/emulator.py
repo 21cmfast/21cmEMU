@@ -76,10 +76,12 @@ class Emulator:
         from the LSTM model is used.
     model_path : str, optional
         Custom path to model weights (for 'mcg' score model only).
-    PS_scale : float, optional
-        Custom PS normalization scale (for 'mcg' only).
-    PS_bias : float, optional
-        Custom PS normalization bias (for 'mcg' only).
+    PS_log_std : float, optional
+        Custom PS normalization std (for 'mcg' only; log10 space).
+    PS_log_mean : float, optional
+        Custom PS normalization mean (for 'mcg' only; log10 space).
+    PS_log_mean : float, optional
+        Custom PS normalization mean (for 'mcg' only; log10 space).
     """
 
     def __init__(
@@ -159,8 +161,11 @@ class Emulator:
                 score_model.eval()
                 self.score_model = score_model
 
-                self.ps_bias = self.properties.PS_bias
-                self.ps_scale = self.properties.PS_scale
+                self.ps_log_mean = self.properties.PS_log_mean
+                self.ps_log_std = self.properties.PS_log_std
+                # Backward compatibility aliases
+                self.ps_bias = self.ps_log_mean
+                self.ps_scale = self.ps_log_std
                 self._vpsde_cls = VPSDE
                 self._em_sampler_cls = GetEMSampler
                 self._ode_sampler_cls = GetODESampler
@@ -318,7 +323,7 @@ class Emulator:
 
         cdn = cdn.to(self.device)
         samples = self.sample(self.score_model, cdn=cdn).cpu().detach()
-        samples_w_units = reverse_transform(samples, self.ps_scale, self.ps_bias)
+        samples_w_units = reverse_transform(samples, self.ps_log_std, self.ps_log_mean)
         return samples_w_units.cpu().detach().numpy()
 
     @torch.no_grad()

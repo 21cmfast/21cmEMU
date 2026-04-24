@@ -9,12 +9,12 @@ in the order specified below. The emulator accepts values in 21cmFAST units
 
 MCG Emulator (mcg/v3)
 ---------------------
-11 parameters (6 are in log10 space in internal representation):
+11 parameters (6 must be provided in log10 space — see ``MHEmulatorInput.LOG_PARAMETERS``):
 
 +---------------+---------------------------+---------+---------------------+
 | Key           | Description               | Unit    | Valid Range         |
 +===============+===========================+=========+=====================+
-| F_STAR10      | Star formation efficiency | linear  | [0.01, 9.5]         |
+| F_STAR10      | Star formation efficiency | log10   | [-2.0, 1.0]         |
 |               | at 10^10 M_sun            |         |                     |
 +---------------+---------------------------+---------+---------------------+
 | ALPHA_STAR    | Power-law index of star   | linear  | [0.0, 1.17]         |
@@ -23,16 +23,16 @@ MCG Emulator (mcg/v3)
 | t_STAR        | Star formation timescale  | linear  | [0.01, 1.0]         |
 |               | in units of Hubble time   |         |                     |
 +---------------+---------------------------+---------+---------------------+
-| F_ESC10       | Escape fraction at        | linear  | [0.001, 1.0]        |
+| F_ESC10       | Escape fraction at        | log10   | [-3.0, 0.0]         |
 |               | 10^10 M_sun               |         |                     |
 +---------------+---------------------------+---------+---------------------+
 | ALPHA_ESC     | Power-law index of escape | linear  | [-1.0, 1.0]         |
 |               | fraction                  |         |                     |
 +---------------+---------------------------+---------+---------------------+
-| F_STAR7_MINI  | Star formation efficiency | linear  | [0.0001, 0.1]       |
+| F_STAR7_MINI  | Star formation efficiency | log10   | [-4.0, -1.0]        |
 |               | for mini-halos at 10^7 M  |         |                     |
 +---------------+---------------------------+---------+---------------------+
-| F_ESC7_MINI   | Escape fraction for       | linear  | [0.001, 0.1]        |
+| F_ESC7_MINI   | Escape fraction for       | log10   | [-3.0, -1.0]        |
 |               | mini-halos at 10^7 M_sun  |         |                     |
 +---------------+---------------------------+---------+---------------------+
 | L_X           | X-ray luminosity          | log10   | [38, 43] log10(erg  |
@@ -71,7 +71,7 @@ ACG Emulator (acg/v1)
 +---------------+---------------------------+---------+---------------------+
 | L_X           | log10 X-ray luminosity    | log10   | [38, 42]            |
 +---------------+---------------------------+---------+---------------------+
-| NU_X_THRESH   | X-ray energy threshold    | keV     | [0.1, 1.5]          |
+| NU_X_THRESH   | X-ray energy threshold    | eV      | [100, 1500]         |
 +---------------+---------------------------+---------+---------------------+
 | X_RAY_SPEC    | X-ray spectral index      | linear  | [-1.0, 3.0]         |
 | _INDEX        |                           |         |                     |
@@ -100,16 +100,16 @@ Example
 >>> from py21cmemu import Emulator
 >>> emu = Emulator(emulator="mcg")
 >>> params = {
-...     'F_STAR10': 0.05,
+...     'F_STAR10': -1.3,       # log10(f_*,10) — valid range [-2.0, 1.0]
 ...     'ALPHA_STAR': 0.5,
 ...     't_STAR': 0.5,
-...     'F_ESC10': 0.1,
+...     'F_ESC10': -1.0,        # log10(f_esc,10) — valid range [-3.0, 0.0]
 ...     'ALPHA_ESC': 0.0,
-...     'F_STAR7_MINI': 0.001,
-...     'F_ESC7_MINI': 0.01,
-...     'L_X': 40.0,
-...     'L_X_MINI': 40.0,
-...     'NU_X_THRESH': 500,
+...     'F_STAR7_MINI': -3.0,   # log10(f_*,7) — valid range [-4.0, -1.0]
+...     'F_ESC7_MINI': -2.0,    # log10(f_esc,7) — valid range [-3.0, -1.0]
+...     'L_X': 40.0,            # log10(erg/s/(Msun/yr))
+...     'L_X_MINI': 40.0,       # log10(erg/s/(Msun/yr))
+...     'NU_X_THRESH': 500,     # eV
 ...     'SIGMA_8': 0.82,
 ... }
 >>> thetas, output, errors = emu.predict(params)
@@ -192,13 +192,9 @@ class EmulatorInput:
             [self._format_single_theta_vector(theta) for theta in astro_params]
         )
 
-        params_normed = theta.min() >= 0 and theta.max() <= 1
-        if (params_normed and normed) or (not params_normed and not normed):
-            return theta
-        elif params_normed:
-            return self.undo_normalization(theta, kind=kind)
-        else:
+        if normed:
             return self.normalize(theta, kind=kind)
+        return theta
 
     def make_list_of_dicts(
         self, theta: ParamVecType, normed: bool = True
@@ -222,10 +218,34 @@ class EmulatorInput:
 
 
 class DefaultEmulatorInput(EmulatorInput):
-    """Class for handling emulator inputs."""
+    """Class for handling ACG (v1) emulator inputs.
+
+    Parameters in ``LOG_PARAMETERS`` must be supplied as log10 values.
+    ``NU_X_THRESH`` is supplied in eV (converted internally to match stored limits).
+    """
+
+    #: Ordered mapping of all parameter names to their physical units.
+    PARAMETERS: dict[str, str] = {
+        "F_STAR10":         "log10",
+        "ALPHA_STAR":       "dimensionless",
+        "F_ESC10":          "log10",
+        "ALPHA_ESC":        "dimensionless",
+        "M_TURN":           "log10(Msun)",
+        "t_STAR":           "dimensionless",
+        "L_X":              "log10(erg/s/(Msun/yr))",
+        "NU_X_THRESH":      "eV",
+        "X_RAY_SPEC_INDEX": "dimensionless",
+    }
+
+    #: Parameters that must be supplied as log10 values, mapped to their log-space units.
+    LOG_PARAMETERS: dict[str, str] = {
+        "F_STAR10": "log10",
+        "F_ESC10":  "log10",
+        "M_TURN":   "log10(Msun)",
+        "L_X":      "log10(erg/s/(Msun/yr))",
+    }
 
     def __init__(self):
-        """Class for handling emulator inputs."""
         self.astro_param_keys = (
             "F_STAR10",
             "ALPHA_STAR",
@@ -281,7 +301,27 @@ class DefaultEmulatorInput(EmulatorInput):
 
 
 class RadioEmulatorInput(EmulatorInput):
-    """Class for handling radio background emulator inputs."""
+    """Class for handling radio background (v2) emulator inputs.
+
+    Parameters in ``LOG_PARAMETERS`` must be supplied as log10 values.
+    """
+
+    #: Ordered mapping of all parameter names to their physical units.
+    PARAMETERS: dict[str, str] = {
+        "fR_mini":      "log10",
+        "L_X_MINI":     "log10(erg/s/(Msun/yr))",
+        "F_STAR7_MINI": "log10",
+        "F_ESC7_MINI":  "log10",
+        "A_LW":         "dimensionless",
+    }
+
+    #: Parameters that must be supplied as log10 values, mapped to their log-space units.
+    LOG_PARAMETERS: dict[str, str] = {
+        "fR_mini":      "log10",
+        "L_X_MINI":     "log10(erg/s/(Msun/yr))",
+        "F_STAR7_MINI": "log10",
+        "F_ESC7_MINI":  "log10",
+    }
 
     def __init__(self):
         self.astro_param_keys = (
@@ -333,9 +373,36 @@ class RadioEmulatorInput(EmulatorInput):
 
 
 class MHEmulatorInput(EmulatorInput):
-    """Class for handling minihalo emulator inputs."""
+    """Class for handling MCG/minihalo (v3) emulator inputs.
 
-    LOG_INDICES = [0, 3, 5, 6, 7, 8]
+    Parameters in ``LOG_PARAMETERS`` must be supplied as log10 values.
+    ``NU_X_THRESH`` is supplied in eV. All other parameters are linear.
+    """
+
+    #: Ordered mapping of all parameter names to their physical units.
+    PARAMETERS: dict[str, str] = {
+        "F_STAR10":     "log10",
+        "ALPHA_STAR":   "dimensionless",
+        "t_STAR":       "dimensionless",
+        "F_ESC10":      "log10",
+        "ALPHA_ESC":    "dimensionless",
+        "F_STAR7_MINI": "log10",
+        "F_ESC7_MINI":  "log10",
+        "L_X":          "log10(erg/s/(Msun/yr))",
+        "L_X_MINI":     "log10(erg/s/(Msun/yr))",
+        "NU_X_THRESH":  "eV",
+        "SIGMA_8":      "dimensionless",
+    }
+
+    #: Parameters that must be supplied as log10 values, mapped to their log-space units.
+    LOG_PARAMETERS: dict[str, str] = {
+        "F_STAR10":     "log10",
+        "F_ESC10":      "log10",
+        "F_STAR7_MINI": "log10",
+        "F_ESC7_MINI":  "log10",
+        "L_X":          "log10(erg/s/(Msun/yr))",
+        "L_X_MINI":     "log10(erg/s/(Msun/yr))",
+    }
 
     def __init__(self):
         self.astro_param_keys = tuple(emulator_properties("mh").astro_param_keys)
@@ -343,10 +410,6 @@ class MHEmulatorInput(EmulatorInput):
 
     def normalize(self, theta: np.ndarray, kind: str = "summaries") -> np.ndarray:
         theta_out = theta.copy().astype(float)
-        if theta_out.min() >= 0 and theta_out.max() <= 1:
-            return theta_out
-
-        theta_out[:, self.LOG_INDICES] = np.log10(theta_out[:, self.LOG_INDICES])
         if kind.upper() in ("LSTM", "SUMMARIES"):
             limits = self.properties.lstm_limits[:-1]
         elif kind.upper() in ("PS", "PS_2D"):
@@ -371,7 +434,6 @@ class MHEmulatorInput(EmulatorInput):
             )
 
         theta_out = theta_out * (limits[:, 1] - limits[:, 0]) + limits[:, 0]
-        theta_out[:, self.LOG_INDICES] = 10 ** theta_out[:, self.LOG_INDICES]
         return theta_out
 
     def format_theta_for_ps(self, theta: np.ndarray, ps_redshifts: np.ndarray) -> np.ndarray:

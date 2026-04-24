@@ -10,14 +10,15 @@ Linear quantities (returned in physical units):
 - Ts : Spin temperature [K]
 - Tr : Radio temperature [K] (radio emulator only)
 - tau : Optical depth to reionization [dimensionless]
+- PS : 21-cm power spectrum Δ² [mK²] in LINEAR units
+- PS_2D : 2D power spectrum [mK²] in LINEAR units (MH emulator only)
+- PS_2D_samples : 2D PS samples [mK²] in LINEAR units
 
 Logarithmic quantities (returned in dex units):
-- UVLFs : UV luminosity functions [dex(Mpc^-3 mag^-1)] = log10(phi)
-- PS : Dimensionless power spectrum delta^2 [dex(mK^2)] = log10(delta^2)
-- PS_samples : Power spectrum samples [dex(mK^2)]
+- UVLFs : UV luminosity functions [dex(Mpc^-3 mag^-1)] = log10(φ)
 
 To convert log quantities to linear, use `.physical`:
-    >>> output.PS.physical  # returns mK^2
+    >>> output.UVLFs.physical  # returns Mpc^-3 mag^-1
 
 Coordinate axes (returned with units):
 - redshifts : Redshift values [dimensionless]
@@ -28,24 +29,22 @@ Error Statistics
 ----------------
 Error statistics are available via properties like ``output.PS_err``.
 
-**IMPORTANT**: All PS error statistics are computed on **log10(PS)**, not linear PS.
+**IMPORTANT**: PS is ALWAYS returned in LINEAR mK² units. Internally, PS values
+are normalized and trained in log10 space, but they are converted to linear units
+before being returned to the user. If you need log10(PS), use ``np.log10(output.PS)``.
 
 Error types:
-- ``PS_err``: Median fractional error (FE%) on log10(PS) values
+- ``PS_err``: Median fractional error (FE%) computed on log10(PS) values
 - ``PS_2D_err``: Median FE% on 2D PS log10 values
 - ``PS_2D_var``: Variance of FE% across test set
 - ``PS_2D_cov``: Covariance matrix of FE% between pixels
 
 Fractional error is defined as::
 
-    FE% = |true - predicted| / |true| × 100
+    FE% = |log10(true) - log10(predicted)| / |log10(true)| × 100
 
 Interpretation: A 5% FE on log10(PS) corresponds to ~12% error on linear PS,
-because a 5% error in the exponent multiplies the result by 10^0.05 ≈ 1.12.
-
-To get absolute error in log10 units::
-
-    abs_err_dex = PS_err / 100.0 * PS.value
+because a 5% error in the log10 exponent multiplies the result by 10^0.05 ≈ 1.12.
 
 See ``MHEmulatorProperties`` for detailed documentation of all error statistics.
 
@@ -70,7 +69,7 @@ if TYPE_CHECKING:
     from .properties import (
         DefaultEmulatorProperties,
         MHEmulatorProperties,
-        RadioBackgroundEmulatorProperties,
+        RadioEmulatorProperties,
     )
 
 # Astropy units - required dependency
@@ -95,13 +94,13 @@ def _get_units():
         "Ts": u.K,
         "Tr": u.K,
         "tau": u.dimensionless_unscaled,
-        # Log quantities (dex = log10 of base unit)
-        # PS is delta^2 (dimensionless power spectrum), units are mK^2
-        "UVLFs": u.dex(u.Mpc**-3 * u.mag**-1),
+        # PS is delta^2 (dimensionless power spectrum), returned in LINEAR mK^2
         "PS": u.mK**2,
         "PS_2D": u.mK**2,
         "PS_2D_samples": u.mK**2,
         "PS_2D_std": u.mK**2,
+        # Log quantities (dex = log10 of base unit)
+        "UVLFs": u.dex(u.Mpc**-3 * u.mag**-1),
         # Coordinate axes
         "redshifts": u.dimensionless_unscaled,
         "PS_2D_redshifts": u.dimensionless_unscaled,
@@ -120,8 +119,10 @@ def _get_log_quantities() -> set[str]:
 
     These quantities have units of dex(base_unit). The stored values are
     log10(physical_value), so use .physical to convert back to linear units.
+    
+    Note: PS is NOT in this set - it's always returned in linear units (mK^2).
     """
-    return {"UVLFs", "PS", "PS_2D", "PS_2D_samples", "PS_2D_std"}
+    return {"UVLFs"}
 
 
 # Known data fields that should be wrapped with units
@@ -138,9 +139,17 @@ class EmulatorOutput:
     """Base class for emulator output with automatic unit handling.
 
     All output quantities are returned as astropy Quantities with units.
-    Log quantities use dex(base_unit) units. To convert to linear:
-        >>> output.PS           # log10(PS) in dex(mK^2)
-        >>> output.PS.physical  # PS in mK^2
+    
+    **Units Convention**:
+    - PS quantities (PS, PS_2D): Always in LINEAR units [mK²]
+    - UVLFs: In log10 space [dex(Mpc⁻³ mag⁻¹)], use .physical to convert
+    - Other quantities: In physical units (Tb [mK], xHI [dimensionless], etc.)
+    
+    Example::
+    
+        >>> output.PS              # mK² (linear units)
+        >>> output.UVLFs           # dex(Mpc⁻³ mag⁻¹) (log10 units)
+        >>> output.UVLFs.physical  # Mpc⁻³ mag⁻¹ (converts to linear)
 
     See Also
     --------
@@ -189,23 +198,47 @@ class EmulatorOutput:
         return getattr(self, key)
 
     @property
-    def redshifts(self) -> np.ndarray:
-        """The redshifts of all quantities except the PS."""
+    def redshifts(self) -> u.Quantity:
+        """Redshifts for global summaries (Tb, xHI, Ts, tau).
+        
+        Returns
+        -------
+        Quantity[dimensionless]
+            Redshift values at which global summaries are evaluated
+        """
         return self.properties.zs
 
     @property
-    def PS_redshifts(self) -> np.ndarray:
-        """The redshifts for the PS."""
+    def PS_redshifts(self) -> u.Quantity:
+        """Redshifts at which power spectrum is evaluated.
+        
+        Returns
+        -------
+        Quantity[dimensionless]
+            Redshift values for PS output
+        """
         return self.properties.PS_zs
 
     @property
-    def PS_ks(self) -> np.ndarray:
-        """The ks [MPC^{-1}] for the PS."""
+    def PS_ks(self) -> u.Quantity:
+        """Wavenumbers for power spectrum.
+        
+        Returns
+        -------
+        Quantity[Mpc⁻¹]
+            Wavenumbers in comoving Mpc⁻¹ units
+        """
         return self.properties.PS_ks
 
     @property
-    def k(self) -> np.ndarray:
-        """The ks [MPC^{-1}] for the PS."""
+    def k(self) -> u.Quantity:
+        """Wavenumbers for power spectrum (alias for PS_ks).
+        
+        Returns
+        -------
+        Quantity[Mpc⁻¹]
+            Wavenumbers in comoving Mpc⁻¹ units
+        """
         return self.properties.PS_ks
 
     def write(
@@ -272,13 +305,16 @@ class EmulatorOutput:
 
         These quantities have units of dex(base_unit). To convert to
         linear units, use the `.physical` attribute:
-            >>> output.PS           # dex(mK^2)
-            >>> output.PS.physical  # mK^2
+            >>> output.UVLFs           # dex(Mpc⁻³ mag⁻¹)
+            >>> output.UVLFs.physical  # Mpc⁻³ mag⁻¹
+        
+        **Note**: PS is NOT in this set - PS is always returned in LINEAR
+        mK² units, not log10 units.
 
         Returns
         -------
         set of str
-            Field names that are in log10 space: {"UVLFs", "PS", "PS_samples"}.
+            Field names that are in log10 space: {"UVLFs"}.
         """
         return _get_log_quantities()
 
@@ -323,20 +359,45 @@ class EmulatorOutput:
 
 @dataclass(frozen=True)
 class DefaultEmulatorOutput(EmulatorOutput):
-    """A simple class that makes it easier to access the corrected emulator output."""
+    """Output from the Default/ACG (v1) emulator.
+    
+    All quantities are returned with astropy units attached.
+    
+    Attributes
+    ----------
+    Tb : Quantity[mK]
+        Global brightness temperature as function of redshift. Shape: (n_z,)
+    xHI : Quantity[dimensionless]
+        Neutral hydrogen fraction as function of redshift. Shape: (n_z,)
+    Ts : Quantity[K]
+        Spin temperature as function of redshift. Shape: (n_z,)
+    PS : Quantity[mK²]
+        1D power spectrum Δ² in LINEAR units. Shape: (n_z, n_k)
+    tau : Quantity[dimensionless]
+        Optical depth to reionization. Scalar.
+    UVLFs : Quantity[dex(Mpc⁻³ mag⁻¹)]
+        UV luminosity functions in log10 space. Shape: (n_z_uvlf, n_mag)
+        Use .physical to convert to linear units.
+    """
 
-    Tb: np.ndarray
-    xHI: np.ndarray
-    Ts: np.ndarray
-    PS: np.ndarray
-    tau: np.ndarray
-    UVLFs: np.ndarray
+    Tb: u.Quantity
+    xHI: u.Quantity
+    Ts: u.Quantity
+    PS: u.Quantity
+    tau: u.Quantity
+    UVLFs: u.Quantity
 
     properties = emulator_properties(emulator="acg")
 
     @property
-    def Muv(self) -> np.ndarray:
-        """The Muv-values of the UVLFs."""
+    def Muv(self) -> u.Quantity:
+        """UV absolute magnitudes for UVLF sampling.
+        
+        Returns
+        -------
+        Quantity[mag]
+            UV magnitudes in range [-20, -10], shape (n_mag,)
+        """
         # Crop the M_UV to -20 to -10 range
         m = np.logical_and(
             self.properties.UVLFs_MUVs <= -10, self.properties.UVLFs_MUVs >= -20
@@ -344,8 +405,14 @@ class DefaultEmulatorOutput(EmulatorOutput):
         return self.properties.UVLFs_MUVs[m]
 
     @property
-    def UVLF_redshifts(self) -> np.ndarray:
-        """The redshifts of the UVLFs."""
+    def UVLF_redshifts(self) -> u.Quantity:
+        """Redshifts at which UVLFs are evaluated.
+        
+        Returns
+        -------
+        Quantity[dimensionless]
+            Redshift values, shape (n_z_uvlf,)
+        """
         return self.properties.uv_lf_zs
 
     def squeeze(self):
@@ -355,13 +422,29 @@ class DefaultEmulatorOutput(EmulatorOutput):
 
 @dataclass(frozen=True)
 class RadioEmulatorOutput(EmulatorOutput):
-    """A simple class that makes it easier to access the corrected emulator output."""
+    """Output from the Radio (v2) emulator.    
+    
+    All quantities are returned with astropy units attached.
+    
+    Attributes
+    ----------
+    Tb : Quantity[mK]
+        Global brightness temperature as function of redshift. Shape: (n_z,)
+    xHI : Quantity[dimensionless]
+        Neutral hydrogen fraction as function of redshift. Shape: (n_z,)
+    Tr : Quantity[K]
+        Radio background temperature as function of redshift. Shape: (n_z,)
+    PS : Quantity[mK²]
+        1D power spectrum Δ² in LINEAR units. Shape: (n_z, n_k)
+    tau : Quantity[dimensionless]
+        Optical depth to reionization. Scalar.
+    """
 
-    Tb: np.ndarray
-    xHI: np.ndarray
-    Tr: np.ndarray
-    PS: np.ndarray
-    tau: np.ndarray
+    Tb: u.Quantity
+    xHI: u.Quantity
+    Tr: u.Quantity
+    PS: u.Quantity
+    tau: u.Quantity
 
     properties = emulator_properties(emulator="radio")
 
@@ -432,7 +515,11 @@ class DefaultRawEmulatorOutput(RawEmulatorOutput):
 
     @property
     def PS(self) -> np.ndarray:
-        """The power spectrum in mK^2 as a function of redshift and k."""
+        """Raw normalized 1D power spectrum (in log10 space, needs denormalization).
+        
+        This returns the raw emulator output before denormalization.
+        After calling get_renormalized(), PS will be converted to LINEAR mK² units.
+        """
         return self.output[:, 3 * self.nz + 1 : 3 * self.nz + 1 + 60 * 12].reshape(
             (-1, 60, 12)
         )
@@ -444,7 +531,12 @@ class DefaultRawEmulatorOutput(RawEmulatorOutput):
 
     @property
     def UVLFs(self) -> np.ndarray:
-        """The UV luminosity functions as a function of z and Muv."""
+        """Raw normalized UV luminosity functions (in log10 space, needs denormalization).
+        
+        This returns the raw emulator output before denormalization.
+        After calling get_renormalized(), UVLFs will be in log10 space with units
+        [dex(Mpc⁻³ mag⁻¹)]. Use .physical on the final output to convert to linear.
+        """
         full_UVLFs = self.output[:, self.nz * 3 + 1 + 60 * 12 + 1 :].reshape(
             (-1, len(self.properties.uv_lf_zs), len(self.properties.UVLFs_MUVs))
         )
@@ -474,9 +566,11 @@ class DefaultRawEmulatorOutput(RawEmulatorOutput):
 
         Returns
         -------
-        EmulatorOutput
-            The emulator output with normalized quantities re-normalized back to
-            physical units. Nothing is in log except UV LFs.
+        DefaultEmulatorOutput
+            The emulator output with all quantities in physical units.
+            - PS: LINEAR mK² units
+            - UVLFs: log10 space [dex(Mpc⁻³ mag⁻¹)]
+            - All other quantities: physical units (Tb [mK], xHI [dimensionless], etc.)
         """
         # Restore dimensions
         # Renormalize stuff that needs renormalization
@@ -500,7 +594,7 @@ class DefaultRawEmulatorOutput(RawEmulatorOutput):
                 out["xHI"][i, :zbin] = 0.0
             out["Ts"][i, :zbin] = np.nan
 
-        # Undo log10 on some quantities
+        # Convert quantities from log10 to linear space
         out["PS"] = 10 ** out["PS"]
         out["Ts"] = 10 ** out["Ts"]
         out["tau"] = 10 ** out["tau"]
@@ -538,7 +632,11 @@ class RadioRawEmulatorOutput(RawEmulatorOutput):
 
     @property
     def PS(self) -> np.ndarray:
-        r""":math:`\Delta^{2}_{21} [\rm{mK}^2]` as a function of redshift and k."""
+        r"""Raw normalized 1D power spectrum (in log10 space, needs denormalization).
+        
+        This returns the raw emulator output before denormalization.
+        After calling get_renormalized(), PS will be converted to LINEAR mK² units.
+        """
         return self.output[:, 3 * self.nz : -1].reshape(
             (self.output.shape[0], self.PS_nz, self.PS_nk)
         )
@@ -553,9 +651,10 @@ class RadioRawEmulatorOutput(RawEmulatorOutput):
 
         Returns
         -------
-        EmulatorOutput
-            The emulator output with normalized quantities re-normalized back to
-            physical units.
+        RadioEmulatorOutput
+            The emulator output with all quantities in physical units.
+            - PS: LINEAR mK² units
+            - All other quantities: physical units (Tb [mK], xHI [dimensionless], etc.)
         """
         # Restore dimensions
         # Renormalize stuff that needs renormalization
@@ -571,6 +670,7 @@ class RadioRawEmulatorOutput(RawEmulatorOutput):
         out["Tr"] = 10 ** (
             (self.Tr * self.properties.logTr_std) + self.properties.logTr_mean
         )
+        # PS: denormalize from log space and convert to linear units (mK^2)
         out["PS"] = 10 ** (
             (self.PS * self.properties.logPS_std) + self.properties.logPS_mean
         )
@@ -581,6 +681,8 @@ class RadioRawEmulatorOutput(RawEmulatorOutput):
         out["Tb"] = out["Tb"][:, ::-1]
         out["Tr"] = out["Tr"][:, ::-1]
 
+        # Convert tau from log10 to linear space
+        # Note: PS stays in log10 space (dex units) - use .physical to convert
         out["tau"] = 10 ** (self.tau)
 
         other = {
@@ -594,147 +696,184 @@ class RadioRawEmulatorOutput(RawEmulatorOutput):
 
 @dataclass(frozen=True)
 class MHEmulatorOutput(EmulatorOutput):
-    """A simple class that makes it easier to access v3 emulator output.
+    """Output from the MH/MCG (v3) emulator.
+    
+    All quantities are returned with astropy units attached.
+    
+    **IMPORTANT**: All PS quantities are returned in LINEAR mK² units, NOT log10.
+    Internally, the emulator trains on log10(PS) but converts to linear before
+    returning. To get log10 values, use ``np.log10(output.PS)``.
     
     Attributes
     ----------
-    Tb : np.ndarray
-        Brightness temperature in mK, shape (batch, 32 redshifts).
-    xHI : np.ndarray
-        Neutral hydrogen fraction, shape (batch, 32 redshifts).
-    Ts : np.ndarray
-        Spin temperature in K, shape (batch, 32 redshifts).
-    tau : np.ndarray
-        Optical depth to reionization, shape (batch,).
-    UVLFs : np.ndarray
-        UV luminosity functions log10(phi / Mpc^-3 mag^-1),
-        shape (batch, n_Muv, n_redshifts).
-    PS : np.ndarray
-        1D power spectrum log10(PS / mK^2) from LSTM model,
-        shape (batch, 32 redshifts, 32 k).
-    PS_2D : np.ndarray | None
-        2D power spectrum log10(PS / mK^2) median over realizations,
-        shape (batch, n_redshifts, 32 kperp, 64 kpar). Only when emulate_2d_ps=True.
-    PS_2D_samples : np.ndarray | None
-        2D power spectrum samples log10(PS / mK^2),
-        shape (batch, n_redshifts, n_samples, 32 kperp, 64 kpar).
-        Only when emulate_2d_ps=True.
-    PS_2D_std : np.ndarray | None
-        Std of 2D power spectrum over realizations,
-        shape (batch, n_redshifts, 32 kperp, 64 kpar). Only when emulate_2d_ps=True.
-    PS_2D_redshifts : np.ndarray | None
-        Redshifts for the 2D PS (user-specified). Only when emulate_2d_ps=True.
+    Tb : Quantity[mK]
+        Global brightness temperature as function of redshift.
+        Shape: (batch, 32 redshifts)
+    xHI : Quantity[dimensionless]
+        Neutral hydrogen fraction as function of redshift.
+        Shape: (batch, 32 redshifts)
+    Ts : Quantity[K]
+        Spin temperature as function of redshift.
+        Shape: (batch, 32 redshifts)
+    tau : Quantity[dimensionless]
+        Optical depth to reionization.
+        Shape: (batch,)
+    UVLFs : Quantity[dex(Mpc⁻³ mag⁻¹)]
+        UV luminosity functions in log10 space: log10(φ).
+        Use .physical to convert to linear units.
+        Shape: (batch, n_Muv, n_redshifts)
+    PS : Quantity[mK²]
+        1D power spectrum Δ² in LINEAR units from LSTM model.
+        Shape: (batch, 32 redshifts, 32 k)
+    PS_2D : Quantity[mK²] | None
+        2D power spectrum Δ² in LINEAR units, median over realizations.
+        Only available when emulate_2d_ps=True.
+        Shape: (batch, n_redshifts, 32 kperp, 64 kpar)
+    PS_2D_samples : Quantity[mK²] | None
+        2D power spectrum samples in LINEAR units from diffusion model.
+        Only available when emulate_2d_ps=True.
+        Shape: (batch, n_redshifts, n_samples, 32 kperp, 64 kpar)
+    PS_2D_std : Quantity[mK²] | None
+        Standard deviation of 2D PS over realizations in LINEAR units.
+        Only available when emulate_2d_ps=True.
+        Shape: (batch, n_redshifts, 32 kperp, 64 kpar)
+    PS_2D_redshifts : Quantity[dimensionless] | None
+        Redshifts for the 2D PS (user-specified or default).
+        Only available when emulate_2d_ps=True.
     """
 
-    Tb: np.ndarray
-    xHI: np.ndarray
-    Ts: np.ndarray
-    tau: np.ndarray
-    UVLFs: np.ndarray
-    PS: np.ndarray
-    PS_2D: np.ndarray | None
-    PS_2D_samples: np.ndarray | None
-    PS_2D_std: np.ndarray | None
-    PS_2D_redshifts: np.ndarray | None
+    Tb: u.Quantity
+    xHI: u.Quantity
+    Ts: u.Quantity
+    tau: u.Quantity
+    UVLFs: u.Quantity
+    PS: u.Quantity
+    PS_2D: u.Quantity | None
+    PS_2D_samples: u.Quantity | None
+    PS_2D_std: u.Quantity | None
+    PS_2D_redshifts: u.Quantity | None
 
     properties = emulator_properties(emulator="mcg")
 
     @property
-    def PS_1D_k(self) -> np.ndarray:
-        """Wavenumbers for 1D PS in h/Mpc."""
-        return self.properties.PS_1D_k
-
-    @property
-    def PS_1D_redshifts(self) -> np.ndarray:
-        """Redshifts for 1D PS."""
-        return self.properties.PS_1D_redshifts
-
-    @property
-    def kperp(self) -> np.ndarray:
-        """Perpendicular wavenumbers for 2D PS in h/Mpc."""
-        return self.properties.kperp
-
-    @property
-    def kpar(self) -> np.ndarray:
-        """Parallel wavenumbers for 2D PS in h/Mpc."""
-        return self.properties.kpar
-
-    @property
-    def Nmodes(self) -> np.ndarray:
-        """Number of modes for 2D PS, shape (32 kperp, 64 kpar)."""
-        return self.properties.Nmodes
-
-    @property
-    def PS_err(self) -> np.ndarray:
-        """Median fractional error (%) on 1D PS **log10** values.
-        
-        This is the median FE% computed on log10(PS) across the test set at each
-        (z, k) pixel. The error is on the **log10** value, not the linear PS.
-        
-        Interpretation
-        --------------
-        If PS_err[i, j] = 5%, this means the typical error on log10(PS) at that
-        pixel is 5% of the true log10(PS) value. To convert to linear error:
-        
-        - A 5% error on log10(PS) ≈ 5% uncertainty in the exponent
-        - This corresponds to ~12% error in linear PS (since 10^0.05 ≈ 1.12)
-        
-        Computing Absolute Error
-        ------------------------
-        To get the absolute error in log10 units at each pixel::
-        
-            abs_err_log10 = PS_err / 100.0 * PS.value  # in dex
-        
-        Shape: (32 redshifts, 32 k).
+    def PS_1D_k(self) -> u.Quantity:
+        """Wavenumbers for 1D power spectrum.
         
         Returns
         -------
-        np.ndarray
-            Median FE% array with shape (32, 32).
+        Quantity[Mpc⁻¹]
+            Wavenumbers in comoving Mpc⁻¹ units, shape (32,)
+        """
+        return self.properties.PS_1D_k
+
+    @property
+    def PS_1D_redshifts(self) -> u.Quantity:
+        """Redshifts at which 1D PS is evaluated.
+        
+        Returns
+        -------
+        Quantity[dimensionless]
+            Redshift values, shape (32,)
+        """
+        return self.properties.PS_1D_redshifts
+
+    @property
+    def kperp(self) -> u.Quantity:
+        """Perpendicular wavenumbers for 2D power spectrum.
+        
+        Returns
+        -------
+        Quantity[Mpc⁻¹]
+            k_perp values in comoving Mpc⁻¹ units, shape (32,)
+        """
+        return self.properties.kperp
+
+    @property
+    def kpar(self) -> u.Quantity:
+        """Parallel wavenumbers for 2D power spectrum.
+        
+        Returns
+        -------
+        Quantity[Mpc⁻¹]
+            k_parallel values in comoving Mpc⁻¹ units, shape (64,)
+        """
+        return self.properties.kpar
+
+    @property
+    def Nmodes(self) -> u.Quantity:
+        """Number of Fourier modes per 2D PS bin.
+        
+        Returns
+        -------
+        Quantity[dimensionless]
+            Mode counts for each (k_perp, k_par) bin, shape (32, 64)
+        """
+        return self.properties.Nmodes
+
+    @property
+    def PS_err(self) -> u.Quantity:
+        """Median fractional error on 1D PS values.
+        
+        **IMPORTANT**: Although PS is RETURNED in LINEAR mK² units, this error
+        statistic is computed on log10(PS) during training and validation.
+        
+        Returns
+        -------
+        Quantity[dimensionless]
+            Median fractional error as percentage (%), shape (32 redshifts, 32 k).
+            This is FE% computed as: 100 * |log10(true) - log10(pred)| / |log10(true)|
+        
+        Interpretation
+        --------------
+        A 5% error on log10(PS) means:
+        - The log10 exponent is off by ~5%
+        - Corresponds to ~12% multiplicative error in LINEAR PS (10^0.05 ≈ 1.12)
+        
+        To estimate the error in your linear PS values::
+        
+            relative_error_linear = 10**(PS_err/100) - 1  # fractional error
+            absolute_error_linear = output.PS * relative_error_linear  # in mK²
         
         See Also
         --------
-        PS_2D_err : Equivalent for 2D power spectrum.
-        MHEmulatorProperties : Full documentation of error conventions.
+        PS_2D_err : Equivalent for 2D power spectrum
+        MHEmulatorProperties : Full error documentation
         """
         return self.properties.PS_1D_med_err
     
     @property
-    def PS_2D_err(self) -> np.ndarray | None:
-        """Median fractional error (%) on 2D PS **log10** values.
+    def PS_2D_err(self) -> u.Quantity | None:
+        """Median fractional error on 2D PS values.
         
-        This is the median FE% computed on log10(PS) across the test set at each
-        (kperp, kpar) pixel. The error is on the **log10** value.
-        
-        Note: This property returns the ODE sampler error (default, more accurate).
-        For EM sampler errors, use ``properties.PS_med_err_em``.
-        
-        Interpretation
-        --------------
-        See ``PS_err`` for detailed interpretation. A 5% FE on log10(PS)
-        corresponds to approximately:
-        
-        - 5% uncertainty in the log10 exponent
-        - ~12% uncertainty in linear PS
-        
-        Computing Absolute Error
-        ------------------------
-        To get the absolute error in log10 units at each pixel::
-        
-            abs_err_log10 = PS_2D_err / 100.0 * PS_2D.value  # in dex
-        
-        Shape: (32 kperp, 64 kpar).
+        **IMPORTANT**: Although PS_2D is RETURNED in LINEAR mK² units, this error
+        statistic is computed on log10(PS) during training and validation.
         
         Returns
         -------
-        np.ndarray | None
-            Median FE% array shape (32, 64), or None if emulate_2d_ps=False.
+        Quantity[dimensionless] | None
+            Median fractional error as percentage (%), shape (32 kperp, 64 kpar).
+            Returns None if emulate_2d_ps=False.
+            
+        Note
+        ----
+        Uses ODE sampler error statistics (default). For EM sampler errors,
+        access ``properties.PS_med_err_em`` directly.
+        
+        Interpretation
+        --------------
+        Same as PS_err - see that property for details. A 5% error on log10(PS)
+        corresponds to ~12% multiplicative error in the returned linear PS values.
+        
+        To estimate the error in your linear PS_2D values::
+        
+            relative_error_linear = 10**(PS_2D_err/100) - 1
+            absolute_error_linear = output.PS_2D * relative_error_linear  # in mK²
         
         See Also
         --------
-        PS_err : Equivalent for 1D power spectrum.
-        PS_2D_var : Variance of the error distribution.
-        PS_2D_cov : Full covariance matrix of errors.
+        PS_err : Equivalent for 1D power spectrum
+        PS_2D_var : Variance of error distribution
+        PS_2D_cov : Full covariance matrix
         """
         if self.PS_2D is None:
             return None
@@ -750,59 +889,72 @@ class MHEmulatorOutput(EmulatorOutput):
     # A 5% FE on log10(PS) ≈ 12% error on linear PS (since 10^0.05 ≈ 1.12).
     
     @property
-    def PS_2D_var(self) -> np.ndarray | None:
+    def PS_2D_var(self) -> u.Quantity | None:
         """Variance of 2D PS emulator error across test set.
         
-        This is the mean variance of the fractional error (FE%) on log10(PS) across
-        the test set, computed at each (kperp, kpar) pixel. Uses the ODE sampler
-        by default (more accurate than EM).
-        
-        Shape: (32 kperp, 64 kpar)
-        Units: FE%^2 (variance of percentage error on log10(PS))
+        Variance of the fractional error (FE%) computed on log10(PS) values
+        during validation. Measures the spread of errors at each pixel.
         
         Returns
         -------
-        np.ndarray | None
-            Variance array, or None if emulate_2d_ps=False or not available.
+        Quantity[dimensionless] | None
+            Error variance as (FE%)², shape (32 kperp, 64 kpar).
+            Returns None if emulate_2d_ps=False.
+            
+        Note
+        ----
+        Uses ODE sampler statistics. Despite PS_2D being returned in LINEAR
+        units, this variance is computed on log10(PS) errors.
         """
         if self.PS_2D is None:
             return None
         return self.properties.PS_var
     
     @property
-    def PS_2D_cov(self) -> np.ndarray | None:
-        """Covariance matrix of 2D PS emulator error across test set.
+    def PS_2D_cov(self) -> u.Quantity | None:
+        """Covariance matrix of 2D PS emulator error.
         
-        This is the mean covariance of the fractional error (FE%) on log10(PS)
-        between all pairs of (kperp, kpar) pixels. Uses ODE sampler by default.
-        
-        The matrix is flattened: pixels are ordered by raveling (32, 64) -> (2048,).
-        To reshape to 4D: cov.reshape(32, 64, 32, 64) gives cov[i, j, k, l] =
-        covariance between pixels (i, j) and (k, l).
-        
-        Shape: (2048, 2048) = (32*64, 32*64)
-        Units: FE%^2 (covariance of percentage error on log10(PS))
+        Full covariance of fractional errors (FE%) computed on log10(PS)
+        between all pairs of (k_perp, k_par) pixels from test set validation.
         
         Returns
         -------
-        np.ndarray | None
-            Covariance matrix, or None if emulate_2d_ps=False or not available.
+        Quantity[dimensionless] | None
+            Flattened covariance matrix of error as (FE%)², shape (2048, 2048)
+            where 2048 = 32 × 64 (flattened k-space grid).
+            Returns None if emulate_2d_ps=False.
+        
+        Note
+        ----
+        Pixels ordered by row-major raveling. Use ``PS_2D_cov_4d()`` to get
+        reshaped (32, 64, 32, 64) version where cov[i,j,k,l] gives covariance
+        between pixels (k_perp[i], k_par[j]) and (k_perp[k], k_par[l]).
+        
+        See Also
+        --------
+        PS_2D_cov_4d : Reshaped 4D version
+        PS_2D_corr_diag_frac : Diagonal fraction metric
         """
         if self.PS_2D is None:
             return None
         return self.properties.PS_cov
     
-    def PS_2D_cov_4d(self) -> np.ndarray | None:
-        """Covariance matrix reshaped to (32, 64, 32, 64).
+    def PS_2D_cov_4d(self) -> u.Quantity | None:
+        """Covariance matrix reshaped to 4D for easier indexing.
         
-        Convenience method that reshapes the flat (2048, 2048) covariance matrix
-        to 4D for easier indexing: cov_4d[i, j, k, l] gives the covariance
-        between pixel (kperp_i, kpar_j) and pixel (kperp_k, kpar_l).
+        Reshapes the flattened (2048, 2048) covariance matrix to
+        (32, 64, 32, 64) where dimensions are (k_perp, k_par, k_perp', k_par').
         
         Returns
         -------
-        np.ndarray | None
-            4D covariance array, or None if not available.
+        Quantity[dimensionless] | None
+            4D covariance array where cov_4d[i, j, k, l] gives the covariance
+            between pixels (k_perp[i], k_par[j]) and (k_perp[k], k_par[l]).
+            Returns None if not available.
+        
+        See Also
+        --------
+        PS_2D_cov : Flattened version
         """
         cov = self.PS_2D_cov
         if cov is None:
@@ -811,17 +963,21 @@ class MHEmulatorOutput(EmulatorOutput):
     
     @property
     def PS_2D_corr_diag_frac(self) -> float | None:
-        """Fraction of total variance on the covariance matrix diagonal.
+        """Fraction of error variance that is uncorrelated (diagonal).
         
-        This measures how much of the total error variance is captured by the
-        diagonal (i.e., pixel-wise independent errors). A value close to 1 means
-        errors are nearly uncorrelated between pixels; low values indicate
-        significant correlations.
+        Quantifies how much of the total error variance comes from independent
+        pixel errors vs. correlated errors across k-space.
         
         Returns
         -------
         float | None
-            Diagonal fraction (0 to 1), or None if not available.
+            Fraction in [0, 1]. Values near 1: mostly independent pixel errors.
+            Values < 0.8: significant spatial correlations in errors.
+            Returns None if not available.
+        
+        See Also
+        --------
+        PS_2D_mean_abs_corr : Mean correlation strength
         """
         if self.PS_2D is None:
             return None
@@ -829,34 +985,60 @@ class MHEmulatorOutput(EmulatorOutput):
     
     @property
     def PS_2D_mean_abs_corr(self) -> float | None:
-        """Mean absolute off-diagonal correlation.
+        """Mean absolute correlation between pixel errors.
         
-        This is the mean |r_ij| over all pairs of pixels i != j, where r_ij
-        is the Pearson correlation coefficient. Measures the typical strength
-        of correlations between pixel errors.
+        Average |r_ij| over all off-diagonal pairs where r_ij is the Pearson
+        correlation coefficient. Indicates typical correlation strength.
         
         Returns
         -------
         float | None
-            Mean absolute correlation (0 to 1), or None if not available.
+            Mean |correlation| in [0, 1]. Values < 0.1: weakly correlated.
+            Values > 0.3: strong spatial correlation structure.
+            Returns None if not available.
+        
+        See Also
+        --------
+        PS_2D_corr_diag_frac : Overall decorrelation metric
         """
         if self.PS_2D is None:
             return None
         return self.properties.mean_abs_corr
 
     @property
-    def Muv(self) -> np.ndarray:
+    def Muv(self) -> u.Quantity:
+        """UV absolute magnitudes for UVLF sampling.
+        
+        Returns
+        -------
+        Quantity[mag]
+            UV magnitudes in range [-20, -10], shape (n_mag,)
+        """
         m = np.logical_and(
             self.properties.UVLFs_MUVs <= -10, self.properties.UVLFs_MUVs >= -20
         )
         return self.properties.UVLFs_MUVs[m]
 
     @property
-    def UVLF_redshifts(self) -> np.ndarray:
+    def UVLF_redshifts(self) -> u.Quantity:
+        """Redshifts at which UVLFs are evaluated.
+        
+        Returns
+        -------
+        Quantity[dimensionless]
+            Redshift values, shape (n_z_uvlf,)
+        """
         return self.properties.uv_lf_zs
 
     @property
-    def redshifts(self) -> np.ndarray:
+    def redshifts(self) -> u.Quantity:
+        """Redshifts for global summaries (Tb, xHI, Ts).
+        
+        Returns
+        -------
+        Quantity[dimensionless]
+            Redshift values for main outputs, shape (32,)
+        """
         return self.properties.redshifts[::-1]
 
     def squeeze(self):
@@ -902,7 +1084,11 @@ class MHRawEmulatorOutput(RawEmulatorOutput):
 
     @property
     def PS(self) -> np.ndarray:
-        """1D PS from LSTM model (normalized, needs denormalization)."""
+        """Raw normalized 1D PS from LSTM (in log10 space, needs denormalization).
+        
+        This returns the raw emulator output before denormalization.
+        After calling get_renormalized(), PS will be converted to LINEAR mK² units.
+        """
         out = self.output[5]
         if out is None:
             return None
@@ -910,7 +1096,11 @@ class MHRawEmulatorOutput(RawEmulatorOutput):
 
     @property
     def PS_2D_samples(self) -> np.ndarray | None:
-        """2D PS samples from score model (linear in mK2)."""
+        """Raw 2D PS samples from score model (in LINEAR mK², already denormalized).
+        
+        The diffusion model directly outputs PS values in linear space.
+        These samples are already in physical mK² units.
+        """
         return self.output[6] if len(self.output) > 6 else None
 
     @property
@@ -961,22 +1151,25 @@ class MHRawEmulatorOutput(RawEmulatorOutput):
         out["Ts"] = 10 ** ts_val.squeeze()[..., ::-1]
         out["xHI"] = out["xHI"].squeeze()[..., ::-1]
         out["Tb"] = out["Tb"].squeeze()[..., ::-1]
+        
+        # Convert tau from log10 to linear space
         out["tau"] = 10 ** out["tau"]
+        # UVLFs stay in log10 space (dex units) - use .physical to convert
         out["UVLFs"] = np.swapaxes(out["UVLFs"], 2, 1)
         
-        # 1D PS from LSTM: denormalize to get log10(PS)
-        # Formula: log10(PS) = PS_norm * PS_1D_scale + PS_1D_bias
+        # 1D PS from LSTM: denormalize from log space and convert to linear units (mK^2)
+        # Formula: PS = 10^(PS_norm * PS_1D_log_std + PS_1D_log_mean)
         ps_1d_norm = out.get("PS")
         if ps_1d_norm is not None:
-            out["PS"] = 10**(
-                ps_1d_norm.squeeze() * self.properties.PS_1D_scale 
-                + self.properties.PS_1D_bias
+            out["PS"] = 10 ** (
+                ps_1d_norm.squeeze() * self.properties.PS_1D_log_std 
+                + self.properties.PS_1D_log_mean
             )
         
-        # 2D PS samples from score model: convert linear -> log10
-        ps_2d_samples_lin = out.get("PS_2D_samples")
-        if ps_2d_samples_lin is not None:
-            out["PS_2D_samples"] = ps_2d_samples_lin
+        # 2D PS samples from score model: already in log10 space, convert to linear
+        ps_2d_samples = out.get("PS_2D_samples")
+        if ps_2d_samples is not None:
+            out["PS_2D_samples"] = ps_2d_samples
             # Compute median and std over realizations (axis=2)
             out["PS_2D"] = np.median(out["PS_2D_samples"], axis=2)
             out["PS_2D_std"] = np.std(out["PS_2D_samples"], axis=2)
@@ -1091,9 +1284,15 @@ class MHEmulatorErrors(EmulatorErrors):
     --------------------
     **IMPORTANT**: Different quantities have errors computed in different spaces:
     
-    - **Log quantities** (PS, UVLFs): Errors are in **dex** (log10 units).
-      A ``PS_err`` of 0.05 dex means log10(PS) is off by ~0.05, corresponding
-      to a multiplicative factor of 10^0.05 ≈ 1.12 (12%) in linear PS.
+    - **PS errors**: Although PS is RETURNED in LINEAR mK² units, errors are
+      computed on log10(PS) values and then converted. ``PS_err`` is in dex
+      (log10 units). A ``PS_err`` of 0.05 dex means log10(PS) is off by ~0.05,
+      corresponding to a multiplicative factor of 10^0.05 ≈ 1.12 (12%) error
+      in the returned linear PS values.
+    
+    - **UVLF errors**: UVLFs are returned in log10 space [dex(Mpc⁻³ mag⁻¹)].
+      ``UVLFs_logerr`` is in dex units. ``UVLFs_err`` gives the error on
+      linear φ values after conversion from log space.
     
     - **Linear quantities** (Tb, xHI, Ts, tau): Errors are in physical units.
       A ``Tb_err`` of 2 mK means the brightness temperature is off by ~2 mK.
@@ -1119,25 +1318,27 @@ class MHEmulatorErrors(EmulatorErrors):
     
     Attributes
     ----------
-    PS_err : Quantity
-        Absolute error on 1D PS in dex(mK²). Shape (n_z, n_k).
-        Interpretation: log10(PS_true) ≈ log10(PS_pred) ± PS_err
-    Tb_err : Quantity
-        Absolute error on brightness temperature Tb in mK. Shape (n_z,).
+    PS_err : Quantity[dex(mK²)]
+        Absolute error on log10(PS) in dex units. Shape (n_z, n_k).
+        Note: Although PS is RETURNED in linear mK² units, this error is
+        computed on log10(PS) values. Interpretation:
+        log10(PS_true) ≈ log10(PS_pred) ± PS_err
+    Tb_err : Quantity[mK]
+        Absolute error on brightness temperature in mK. Shape (n_z,).
         Interpretation: Tb_true ≈ Tb_pred ± Tb_err
-    xHI_err : Quantity
-        Absolute error on neutral fraction xHI (dimensionless). Shape (n_z,).
+    xHI_err : Quantity[dimensionless]
+        Absolute error on neutral fraction (dimensionless). Shape (n_z,).
         Range typically 0-1, error is additive.
-    Ts_err : Quantity
-        Absolute error on spin temperature Ts in K. Shape (n_z,).
-    tau_err : Quantity
-        Absolute error on optical depth tau (dimensionless). Scalar.
-    UVLFs_err : Quantity
-        Absolute error on linear UV luminosity function φ in Mpc⁻³ mag⁻¹.
+    Ts_err : Quantity[K]
+        Absolute error on spin temperature in K. Shape (n_z,).
+    tau_err : Quantity[dimensionless]
+        Absolute error on optical depth (dimensionless). Scalar.
+    UVLFs_err : Quantity[Mpc⁻³ mag⁻¹]
+        Absolute error on linear UV luminosity function φ in physical units.
         Shape (n_z, n_mag). For plotting linear LF with errorbars.
-    UVLFs_logerr : Quantity
-        Absolute error on log10(φ) in dex(Mpc⁻³ mag⁻¹). Shape (n_z, n_mag).
-        Preferred for log-scale LF plots.
+    UVLFs_logerr : Quantity[dex(Mpc⁻³ mag⁻¹)]
+        Absolute error on log10(φ) in dex units. Shape (n_z, n_mag).
+        Preferred for log-scale LF plots since UVLFs are returned in log10.
     
     Examples
     --------
@@ -1612,7 +1813,7 @@ class RadioEmulatorErrors(EmulatorErrors):
     See Also
     --------
     RadioEmulatorOutput : The output dataclass these errors correspond to.
-    RadioBackgroundEmulatorProperties : Emulator properties including error arrays.
+    RadioEmulatorProperties : Emulator properties including error arrays.
     """
     
     PS_err: u.Quantity
@@ -1641,13 +1842,13 @@ class RadioEmulatorErrors(EmulatorErrors):
     @classmethod
     def from_properties(
         cls,
-        properties: "RadioBackgroundEmulatorProperties",
+        properties: "RadioEmulatorProperties",
     ) -> "RadioEmulatorErrors":
         """Construct error statistics from emulator properties.
         
         Parameters
         ----------
-        properties : RadioBackgroundEmulatorProperties
+        properties : RadioEmulatorProperties
             The emulator properties containing error arrays.
         
         Returns

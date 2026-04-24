@@ -102,19 +102,31 @@ def ps_2d_test_h5_path() -> Path:
 
 @pytest.fixture(scope="session")
 def test_params(test_set_h5_path) -> np.ndarray:
-    """Load test parameters from test_set.h5."""
+    """Load test parameters from test_set.h5, converted to log-space for LOG_PARAMETERS."""
     h5py = pytest.importorskip("h5py")
+    from py21cmemu.inputs import MHEmulatorInput
     with h5py.File(test_set_h5_path, "r") as f:
         params = np.asarray(f["inputs"][:5])
+    mh_in = MHEmulatorInput()
+    astro_keys = list(mh_in.astro_param_keys)
+    log_idx = [astro_keys.index(name) for name in mh_in.LOG_PARAMETERS]
+    params = params.copy().astype(float)
+    params[:, log_idx] = np.log10(params[:, log_idx])
     return params
 
 
 @pytest.fixture(scope="session")
 def single_test_param(test_set_h5_path) -> np.ndarray:
-    """Load a single test parameter from test_set.h5."""
+    """Load a single test parameter from test_set.h5, converted to log-space for LOG_PARAMETERS."""
     h5py = pytest.importorskip("h5py")
+    from py21cmemu.inputs import MHEmulatorInput
     with h5py.File(test_set_h5_path, "r") as f:
         params = np.asarray(f["inputs"][:1])
+    mh_in = MHEmulatorInput()
+    astro_keys = list(mh_in.astro_param_keys)
+    log_idx = [astro_keys.index(name) for name in mh_in.LOG_PARAMETERS]
+    params = params.copy().astype(float)
+    params[:, log_idx] = np.log10(params[:, log_idx])
     return params
 
 
