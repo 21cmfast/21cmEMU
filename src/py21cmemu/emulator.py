@@ -154,9 +154,10 @@ class Emulator:
                     dim_mults=(1, 2, 4, 8, 16),
                     cdn_len=12,
                 )
-                score_model.load_state_dict(
-                    torch.load(ps_model_path, map_location=self.device)
-                )
+                # Weights are stored in float16 to stay under GitHub's 100MB limit.
+                score_model.load_state_dict(torch.load(ps_model_path, 
+                                                       map_location=self.device, 
+                                                       weights_only=True))
                 score_model.to(self.device)
                 score_model.eval()
                 self.score_model = score_model
