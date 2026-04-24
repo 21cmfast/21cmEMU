@@ -111,6 +111,8 @@ venv.bak/
 # mkdocs documentation
 /site
 
-# Files exceeding GitHub's 100MB hard limit (use LFS or external hosting instead)
+# Exceeds GitHub's 100MB hard limit (use LFS or external hosting instead)
 src/py21cmemu/models/MHs/score_model_weights.pt
-docs/tutorials/ps_2d_test_subsample.h5
+
+# Windows Zone.Identifier metadata files
+*:Zone.Identifier
