@@ -111,8 +111,5 @@ venv.bak/
 # mkdocs documentation
 /site
 
-# Exceeds GitHub's 100MB hard limit (use LFS or external hosting instead)
-src/py21cmemu/models/MHs/score_model_weights.pt
-
 # Windows Zone.Identifier metadata files
 *:Zone.Identifier
