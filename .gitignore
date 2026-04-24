@@ -111,10 +111,6 @@ venv.bak/
 # mkdocs documentation
 /site
 
-# Large model weights and test data files (>50MB, not suitable for GitHub)
+# Files exceeding GitHub's 100MB hard limit (use LFS or external hosting instead)
 src/py21cmemu/models/MHs/score_model_weights.pt
-src/py21cmemu/models/MHs/lstm_model_weights.pt
-src/py21cmemu/models/default/default_model.pt
-docs/tutorials/test_set.h5
-docs/tutorials/ps_1d_loglin_db_test.h5
 docs/tutorials/ps_2d_test_subsample.h5
