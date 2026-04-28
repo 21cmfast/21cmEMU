@@ -706,12 +706,6 @@ class TestMHAccuracy:
         params = _log_convert_mh_params(params)
         _, output, _ = emu.predict(params)
         
-        # Database has z descending (35→5), emulator output has z ascending (5→35)
-        # Reverse database arrays to match emulator output order
-        xHI_true = xHI_true[:, ::-1]
-        Tb_true = Tb_true[:, ::-1]  
-        Ts_true = Ts_true[:, ::-1]
-        
         # Extract raw values (emulator now returns Quantities with units)
         xHI_emu = output.xHI.value
         Tb_emu = output.Tb.value
