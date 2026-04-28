@@ -1148,9 +1148,9 @@ class MHRawEmulatorOutput(RawEmulatorOutput):
             ts_val = np.where(validity > 0.5, ts_val, np.nan)
         else:
             ts_val = ts_raw
-        out["Ts"] = 10 ** ts_val.squeeze()[..., ::-1]
-        out["xHI"] = out["xHI"].squeeze()[..., ::-1]
-        out["Tb"] = out["Tb"].squeeze()[..., ::-1]
+        out["Ts"] = 10 ** ts_val.squeeze()
+        out["xHI"] = out["xHI"].squeeze()
+        out["Tb"] = out["Tb"].squeeze()
         
         # Convert tau from log10 to linear space
         out["tau"] = 10 ** out["tau"]
