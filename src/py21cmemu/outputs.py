@@ -1069,7 +1069,7 @@ class MHRawEmulatorOutput(RawEmulatorOutput):
 
     @property
     def tau(self) -> np.ndarray:
-        out = self.output[4]
+        out = self.output[5]
         return out.cpu().detach().numpy() if hasattr(out, "cpu") else out
 
     @property
@@ -1089,7 +1089,7 @@ class MHRawEmulatorOutput(RawEmulatorOutput):
         This returns the raw emulator output before denormalization.
         After calling get_renormalized(), PS will be converted to LINEAR mK² units.
         """
-        out = self.output[5]
+        out = self.output[4]
         if out is None:
             return None
         return out.cpu().detach().numpy() if hasattr(out, "cpu") else out
