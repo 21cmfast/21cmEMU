@@ -188,6 +188,7 @@ class Emulator:
         verbose: bool = False,
         ps_2d_redshifts: np.ndarray | None = None,
         n_ps_batch: int | None = None,
+        n_lstm_batch: int | None = None,
         n_realisations: int = 100,
         sde: Any | None = None,
         denoise: bool = True,
@@ -208,6 +209,10 @@ class Emulator:
             Redshifts at which to evaluate the 2D PS (for 'mcg' emulator only).
         n_ps_batch : int, optional
             Batch size for PS sampling.
+        n_lstm_batch : int, optional
+            Batch size for LSTM inference (for 'mcg' emulator only). If None,
+            all parameter sets are evaluated in a single forward pass. Use this
+            to avoid OOM errors when evaluating many parameter sets at once.
         n_realisations : int, optional
             Number of diffusion model realisations per redshift (default: 100).
             More realisations give better uncertainty estimates but take longer.
@@ -262,7 +267,15 @@ class Emulator:
         # Pass raw params to model - model handles formatting internally
         theta_lstm_t = torch.tensor(theta_LSTM, dtype=torch.float32, device=self.device)
         with torch.no_grad():
-            predicted = list(self.lstm_model(theta_lstm_t))
+            if n_lstm_batch is None or n_lstm_batch >= theta_lstm_t.shape[0]:
+                predicted = list(self.lstm_model(theta_lstm_t))
+            else:
+                chunks = torch.split(theta_lstm_t, n_lstm_batch, dim=0)
+                batch_outputs = [self.lstm_model(chunk) for chunk in chunks]
+                predicted = [
+                    torch.cat([b[i] for b in batch_outputs], dim=0)
+                    for i in range(len(batch_outputs[0]))
+                ]
 
         if self.emulate_2d_ps:
             if ps_2d_redshifts is None:
