@@ -1039,7 +1039,7 @@ class MHEmulatorOutput(EmulatorOutput):
         Quantity[dimensionless]
             Redshift values for main outputs, shape (32,)
         """
-        return self.properties.redshifts[::-1]
+        return self.properties.redshifts
 
     def squeeze(self):
         return MHEmulatorOutput(**{k: np.squeeze(v) for k, v in self.items()})

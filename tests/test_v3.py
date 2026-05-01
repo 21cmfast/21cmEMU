@@ -695,9 +695,9 @@ class TestMHAccuracy:
         
         with h5py.File(TEST_SET_H5, "r") as f:
             params = np.asarray(f["inputs"][:n_test])
-            xHI_true = np.asarray(f["xHI"][:n_test])
-            Tb_true = np.asarray(f["Tb"][:n_test])
-            Ts_true = np.asarray(f["Ts_neutral"][:n_test])  # Use neutral Ts
+            xHI_true = np.asarray(f["xHI"][:n_test][...,::-1])
+            Tb_true = np.asarray(f["Tb"][:n_test][...,::-1])
+            Ts_true = np.asarray(f["Ts_neutral"][:n_test][...,::-1])  # Use neutral Ts
             tau_true = np.asarray(f["tau_e"][:n_test])
             UVLFs_true = np.asarray(f["LFs"][:n_test])  # (n, 7, 60)
         
@@ -778,7 +778,7 @@ class TestMHAccuracy:
         # Run emulator (default without 2D PS)
         emu = Emulator(emulator="mcg", emulate_2d_ps=False)
         params = _log_convert_mh_params(params)
-        _, output, _ = emu.predict(params)
+        _, output, _ = emu.predict(params, n_lstm_batch = 10)
         
         # Check 1D PS is available
         assert output.PS is not None, "1D PS should be available"

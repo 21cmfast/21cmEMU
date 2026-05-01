@@ -251,4 +251,4 @@ class MH_Emulator(nn.Module):
         # PS
         ps = self.ps_head(theta)               # (B, N_PS_Z, N_PS_K)
 
-        return xhi, tb, ts, uvlf, ps, tau
+        return torch.flip(xhi, dims=(-1,)), torch.flip(tb, dims=(-1,)), torch.flip(ts, dims=(-2,)), uvlf, ps, tau

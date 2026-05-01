@@ -444,7 +444,7 @@ class MHEmulatorProperties(EmulatorProperties):
         self.parameter_labels = lstm_data["param_labels"]
 
         # === LSTM model properties ===
-        self.redshifts = lstm_data["lstm_redshifts"]
+        self.redshifts = lstm_data["lstm_redshifts"][::-1]
         self.lstm_limits = lstm_data["LSTM_limits"]
 
         # Normalization constants
