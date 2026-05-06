@@ -390,6 +390,28 @@ class DefaultEmulatorOutput(EmulatorOutput):
     properties = emulator_properties(emulator="acg")
 
     @property
+    def PS_1D_redshifts(self) -> u.Quantity:
+        """Redshifts at which 1D PS is evaluated.
+        
+        Returns
+        -------
+        Quantity[dimensionless]
+            Redshift values, shape (32,)
+        """
+        return self.properties.PS_zs
+    
+    @property
+    def PS_1D_k(self) -> u.Quantity:
+        """Redshifts at which 1D PS is evaluated.
+        
+        Returns
+        -------
+        Quantity[dimensionless]
+            k-values, shape (12,)
+        """
+        return self.properties.PS_ks
+
+    @property
     def Muv(self) -> u.Quantity:
         """UV absolute magnitudes for UVLF sampling.
         
@@ -1682,13 +1704,13 @@ class ACGEmulatorErrors(EmulatorErrors):
     def available_errors(self) -> dict[str, str]:
         """Return dict of available error fields and their descriptions."""
         return {
-            "PS_err": "PS fractional error (FE%)",
-            "Tb_err": "Tb fractional error (FE%)",
-            "xHI_err": "xHI fractional error (FE%)",
-            "Ts_err": "Ts fractional error (FE%)",
-            "tau_err": "tau fractional error (FE%)",
-            "UVLFs_err": "Linear UVLF fractional error (FE%)",
-            "UVLFs_logerr": "Log UVLF fractional error (FE%)",
+            "PS_err": "Absolute error on PS [mK²]",
+            "Tb_err": "Absolute error on brightness temperature [mK]",
+            "xHI_err": "Absolute error on neutral fraction [dimensionless]",
+            "Ts_err": "Absolute error on spin temperature [K]",
+            "tau_err": "Absolute error on optical depth [dimensionless]",
+            "UVLFs_err": "Absolute error on linear LF [Mpc⁻³ mag⁻¹]",
+            "UVLFs_logerr": "Absolute error on log10(LF) [dex(Mpc⁻³ mag⁻¹)]",
         }
     
     @property
@@ -1697,30 +1719,91 @@ class ACGEmulatorErrors(EmulatorErrors):
         return self._properties
     
     @classmethod
+    def from_output(
+        cls,
+        output: "DefaultEmulatorOutput",
+        properties: "DefaultEmulatorProperties",
+    ) -> "ACGEmulatorErrors":
+        """Construct error statistics broadcast to match the output batch shape.
+
+        The stored error arrays are pre-computed absolute errors (median absolute
+        difference over the test set, after restoring units and removing any log
+        transform).  This method broadcasts each 1-D / 2-D property error to the
+        shape of the corresponding output field so that shapes always match,
+        regardless of how many parameter sets were passed to ``predict()``.
+
+        Parameters
+        ----------
+        output : DefaultEmulatorOutput
+            The emulator output whose shapes define the target broadcast shape.
+        properties : DefaultEmulatorProperties
+            The emulator properties containing pre-computed absolute error arrays.
+
+        Returns
+        -------
+        ACGEmulatorErrors
+            Error statistics with physical units and batch dimension matching
+            the output.
+        """
+        def _raw(x):
+            return x.value if hasattr(x, 'value') else np.asarray(x)
+
+        def _bc(err, ref):
+            """Broadcast err to the shape of ref (stripped of units)."""
+            return np.broadcast_to(np.asarray(err), _raw(ref).shape)
+
+        # Crop UVLFs error arrays to the same M_UV range used in the output
+        m = np.logical_and(
+            properties.UVLFs_MUVs <= -10,
+            properties.UVLFs_MUVs >= -20,
+        )
+        uvlfs_err = properties.UVLFs_err[..., m]
+        uvlfs_logerr = properties.UVLFs_logerr[..., m]
+
+        return cls(
+            PS_err=_bc(properties.PS_err, output.PS) * u.mK**2,
+            Tb_err=_bc(properties.Tb_err, output.Tb) * u.mK,
+            xHI_err=_bc(properties.xHI_err, output.xHI) * u.dimensionless_unscaled,
+            Ts_err=_bc(properties.Ts_err, output.Ts) * u.K,
+            tau_err=_bc(properties.tau_err, output.tau) * u.dimensionless_unscaled,
+            UVLFs_err=_bc(uvlfs_err, output.UVLFs) * (u.Mpc**-3 * u.mag**-1),
+            UVLFs_logerr=_bc(uvlfs_logerr, output.UVLFs) * u.dex(u.Mpc**-3 * u.mag**-1),
+            _properties=properties,
+        )
+
+    @classmethod
     def from_properties(
         cls,
         properties: "DefaultEmulatorProperties",
     ) -> "ACGEmulatorErrors":
-        """Construct error statistics from emulator properties.
-        
+        """Construct error statistics from emulator properties (no batch dim).
+
+        Prefer ``from_output`` when the emulator output is available, as it
+        broadcasts the error arrays to match the output batch shape.
+
         Parameters
         ----------
         properties : DefaultEmulatorProperties
-            The emulator properties containing error arrays.
-        
+            The emulator properties containing pre-computed absolute error arrays.
+
         Returns
         -------
         ACGEmulatorErrors
-            Error statistics with dimensionless units (FE% values).
+            Error statistics with correct physical units attached.
         """
+        # Crop UVLFs error arrays to the same M_UV range used in the output
+        m = np.logical_and(
+            properties.UVLFs_MUVs <= -10,
+            properties.UVLFs_MUVs >= -20,
+        )
         return cls(
-            PS_err=properties.PS_err * u.percent,
-            Tb_err=properties.Tb_err * u.percent,
-            xHI_err=properties.xHI_err * u.percent,
-            Ts_err=properties.Ts_err * u.percent,
-            tau_err=properties.tau_err * u.percent,
-            UVLFs_err=properties.UVLFs_err * u.percent,
-            UVLFs_logerr=properties.UVLFs_logerr * u.percent,
+            PS_err=properties.PS_err * u.mK**2,
+            Tb_err=properties.Tb_err * u.mK,
+            xHI_err=properties.xHI_err * u.dimensionless_unscaled,
+            Ts_err=properties.Ts_err * u.K,
+            tau_err=properties.tau_err * u.dimensionless_unscaled,
+            UVLFs_err=properties.UVLFs_err[..., m] * (u.Mpc**-3 * u.mag**-1),
+            UVLFs_logerr=properties.UVLFs_logerr[..., m] * u.dex(u.Mpc**-3 * u.mag**-1),
             _properties=properties,
         )
     

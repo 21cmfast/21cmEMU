@@ -90,7 +90,7 @@ def test_mh_output_shapes(mh_emulator) -> None:
         params = np.asarray(f["inputs"][0:1])
     params = _log_convert_mh_params(params)
 
-    _, output, _ = mh_emulator.predict(params)
+    _, output, errors = mh_emulator.predict(params)
 
     # Check expected shapes
     n_z = 93  # Number of redshift bins
@@ -101,6 +101,28 @@ def test_mh_output_shapes(mh_emulator) -> None:
     assert output.Ts.shape[-1] == n_z
     assert output.UVLFs.ndim == 3
     assert output.UVLFs.shape[1] == n_lf_z  # (batch, n_lf_z, n_mag)
+
+    # Error shapes must match output shapes for single-sample prediction.
+    # This is critical for MCMC samplers that may pass 1 or many samples.
+    # Do NOT call squeeze() before comparing - the batch dimension must be preserved.
+    assert output.xHI.shape == errors.xHI_err.shape, (
+        f"MCG xHI shape mismatch: output {output.xHI.shape} vs error {errors.xHI_err.shape}"
+    )
+    assert output.Tb.shape == errors.Tb_err.shape, (
+        f"MCG Tb shape mismatch: output {output.Tb.shape} vs error {errors.Tb_err.shape}"
+    )
+    assert output.Ts.shape == errors.Ts_err.shape, (
+        f"MCG Ts shape mismatch: output {output.Ts.shape} vs error {errors.Ts_err.shape}"
+    )
+    assert output.tau.shape == errors.tau_err.shape, (
+        f"MCG tau shape mismatch: output {output.tau.shape} vs error {errors.tau_err.shape}"
+    )
+    assert output.PS.shape == errors.PS_err.shape, (
+        f"MCG PS shape mismatch: output {output.PS.shape} vs error {errors.PS_err.shape}"
+    )
+    assert output.UVLFs.shape == errors.UVLFs_logerr.shape, (
+        f"MCG UVLFs shape mismatch: output {output.UVLFs.shape} vs error {errors.UVLFs_logerr.shape}"
+    )
 
 
 @pytest.mark.skipif(not TEST_SET_H5.exists(), reason="test_set.h5 not available")

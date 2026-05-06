@@ -385,7 +385,7 @@ class Emulator:
         MHEmulatorErrors : Errors for MH/MCG (v3) emulator.
         """
         if self.which_emulator == EMULATOR_ACG:
-            return ACGEmulatorErrors.from_properties(self.properties)
+            return ACGEmulatorErrors.from_output(emu, self.properties)
         elif self.which_emulator == EMULATOR_RADIO:
             return RadioEmulatorErrors.from_properties(self.properties)
 

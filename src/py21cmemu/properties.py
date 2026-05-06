@@ -154,6 +154,9 @@ class DefaultEmulatorProperties(EmulatorProperties):
         self.tau_err = all_emulator_numbers["tau_err"]
         self.UVLFs_err = all_emulator_numbers["UVLFs_err"]
         self.UVLFs_logerr = all_emulator_numbers["UVLFs_logerr"]
+        self.astro_param_keys = ['F_STAR10', 'ALPHA_STAR', 'F_ESC10', 
+                                 'ALPHA_ESC', 'M_TURN', 't_STAR', 
+                                 'L_X', 'NU_X_THRESH', 'X_RAY_SPEC_INDEX']
         self.parameter_labels = np.array(
             [
                 r"$\log_{10} f_{*,10}$",
@@ -264,6 +267,8 @@ class RadioEmulatorProperties(EmulatorProperties):
             r"log$_{10}$F$_{\rm esc, mini}$",
             r"A$_{\rm LW}$",
         ]
+        self.astro_param_keys = ['f_R_MINI', 'L_X_MINI', 
+                                 'F_STAR7','F_ESC7', 'A_LW']
 
         USER_PARAMS = {
             "HII_DIM": 50,

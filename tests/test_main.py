@@ -80,6 +80,59 @@ def test_output(tmp_path, emu_type):
         output.UVLF_redshifts
         output.PS_redshifts
         output.redshifts
+
+        # --- Error shape consistency for single-sample prediction ---
+        # Error arrays must match output shapes for a 1-sample input.
+        # Critical for MCMC samplers that pass 1 or many samples.
+        # Do NOT call squeeze() before comparing.
+        theta_single = DefaultEmulatorInput().undo_normalization(
+            np.random.rand(9).reshape((1, 9))
+        )
+        _, out_single, err_single = emu.predict(theta_single)
+        assert out_single.xHI.shape == err_single.xHI_err.shape, (
+            f"ACG xHI shape mismatch: output {out_single.xHI.shape} vs error {err_single.xHI_err.shape}"
+        )
+        assert out_single.Tb.shape == err_single.Tb_err.shape, (
+            f"ACG Tb shape mismatch: output {out_single.Tb.shape} vs error {err_single.Tb_err.shape}"
+        )
+        assert out_single.Ts.shape == err_single.Ts_err.shape, (
+            f"ACG Ts shape mismatch: output {out_single.Ts.shape} vs error {err_single.Ts_err.shape}"
+        )
+        assert out_single.tau.shape == err_single.tau_err.shape, (
+            f"ACG tau shape mismatch: output {out_single.tau.shape} vs error {err_single.tau_err.shape}"
+        )
+        assert out_single.PS.shape == err_single.PS_err.shape, (
+            f"ACG PS shape mismatch: output {out_single.PS.shape} vs error {err_single.PS_err.shape}"
+        )
+        assert out_single.UVLFs.shape == err_single.UVLFs_logerr.shape, (
+            f"ACG UVLFs shape mismatch: output {out_single.UVLFs.shape} vs error {err_single.UVLFs_logerr.shape}"
+        )
+
+        # --- Error shape consistency for multi-sample prediction (n_params > 1) ---
+        # Errors must be broadcast to (n_params, ...) so shapes always match the output.
+        N = 5
+        theta_multi = DefaultEmulatorInput().undo_normalization(
+            np.random.rand(N * 9).reshape((N, 9))
+        )
+        _, out_multi, err_multi = emu.predict(theta_multi)
+        assert out_multi.xHI.shape == err_multi.xHI_err.shape, (
+            f"ACG xHI shape mismatch (n={N}): output {out_multi.xHI.shape} vs error {err_multi.xHI_err.shape}"
+        )
+        assert out_multi.Tb.shape == err_multi.Tb_err.shape, (
+            f"ACG Tb shape mismatch (n={N}): output {out_multi.Tb.shape} vs error {err_multi.Tb_err.shape}"
+        )
+        assert out_multi.Ts.shape == err_multi.Ts_err.shape, (
+            f"ACG Ts shape mismatch (n={N}): output {out_multi.Ts.shape} vs error {err_multi.Ts_err.shape}"
+        )
+        assert out_multi.tau.shape == err_multi.tau_err.shape, (
+            f"ACG tau shape mismatch (n={N}): output {out_multi.tau.shape} vs error {err_multi.tau_err.shape}"
+        )
+        assert out_multi.PS.shape == err_multi.PS_err.shape, (
+            f"ACG PS shape mismatch (n={N}): output {out_multi.PS.shape} vs error {err_multi.PS_err.shape}"
+        )
+        assert out_multi.UVLFs.shape == err_multi.UVLFs_logerr.shape, (
+            f"ACG UVLFs shape mismatch (n={N}): output {out_multi.UVLFs.shape} vs error {err_multi.UVLFs_logerr.shape}"
+        )
     else:
         errors["Tr_err"]
         output.Tr
