@@ -27,21 +27,60 @@ A 21cmFAST emulator of the first billion years
     :target: https://21cmemu.readthedocs.io/en/latest/
     :alt: Documentation Status
 
-An emulator of 21cmFAST summaries.
+An emulator of 21cmFAST summaries, supporting three galaxy-formation models:
 
-Supported emulator families:
+- **acg** (v1) — Atomic Cooling Galaxies (Pop II only). A 9-parameter emulator
+  for the standard reionization scenario without mini-halos.
+- **radio** (v2) — Radio Background. A 5-parameter emulator that adds a radio
+  background sourced by molecular cooling (Pop III) stars on top of atomic
+  cooling galaxies.
+- **mcg** (v3) — Molecular Cooling Galaxies. The most complete 11-parameter
+  emulator, jointly modelling atomic and molecular cooling galaxies (Pop II + Pop
+  III). Uniquely emulates the **2D** cylindrical power spectrum
+  P(k\ :sub:`⊥`\ , k\ :sub:`∥`\ ) via a score-based diffusion model.
 
-    * v1 ``default`` (PyTorch runtime)
-    * v2 ``radio_background`` (PyTorch)
-    * v3 ``mh`` (minihalo, PyTorch)
+Emulated summary statistics per model:
 
-Emulate the following summary statistics:
-    * 21-cm power spectrum
-    * 21-cm global brightness temperature
-    * IGM spin temperature
-    * Neutral fraction
-    * Thomson scattering optical depth
-    * UV luminosity functions
+.. list-table::
+   :header-rows: 1
+   :stub-columns: 1
+
+   * - Output
+     - acg (v1)
+     - radio (v2)
+     - mcg (v3)
+   * - Global brightness temperature T\ :sub:`b`
+     - ✓
+     - ✓
+     - ✓
+   * - Neutral fraction x\ :sub:`HI`
+     - ✓
+     - ✓
+     - ✓
+   * - Thomson optical depth τ
+     - ✓
+     - ✓
+     - ✓
+   * - IGM spin temperature T\ :sub:`s`
+     - ✓
+     - ✗
+     - ✓
+   * - Radio temperature T\ :sub:`r`
+     - ✗
+     - ✓
+     - ✗
+   * - 1D power spectrum P(k)
+     - ✓
+     - ✓
+     - ✓
+   * - 2D power spectrum P(k\ :sub:`⊥`\ , k\ :sub:`∥`\ )
+     - ✗
+     - ✗
+     - ✓
+   * - UV luminosity functions
+     - ✓
+     - ✗
+     - ✓
 
 
 
