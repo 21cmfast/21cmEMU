@@ -2,7 +2,7 @@
    :alt: 21cmEMU
 
 =======
-21cmEMU
+A 21cmFAST emulator of the first billion years
 =======
 
 
