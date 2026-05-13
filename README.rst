@@ -1,3 +1,6 @@
+.. image:: 21cmEMU_logo_horizontal.png
+   :alt: 21cmEMU
+
 =======
 21cmEMU
 =======

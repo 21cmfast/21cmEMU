@@ -26,6 +26,11 @@ extensions = [
 version = release = py21cmemu.__version__
 autodoc_typehints = "description"
 html_theme = "furo"
+html_logo = "images/21cmEMU_logo_vertical.png"
+html_static_path = ["_static"]
+html_theme_options = {
+    "sidebar_hide_name": True,
+}
 autosectionlabel_prefix_document = True
 
 autosummary_generate = True
