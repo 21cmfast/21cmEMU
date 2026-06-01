@@ -6,7 +6,7 @@ nbsphinx==0.9.6
 numpy>=1.20.0
 py21cmemu>=1.0.5.dev0
 scipy>=1.7.0
-sphinx>=5.2.0
+sphinx>=9.1.0
 sphinx-click>=4.4.0
 tensorflow>=2.6.0
 toml==0.10.2
