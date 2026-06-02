@@ -18,10 +18,10 @@ PS_2D_TEST_H5 = TUTORIALS_DIR / "ps_2d_test_subsample.h5"
 
 
 def _log_convert_mh_params(params: np.ndarray) -> np.ndarray:
-    """Convert MH parameter array from linear to log10 for LOG_PARAMETERS columns."""
-    from py21cmemu.inputs import MHEmulatorInput
+    """Convert MCG parameter array from linear to log10 for LOG_PARAMETERS columns."""
+    from py21cmemu.inputs import MCGEmulatorInput
 
-    mh_in = MHEmulatorInput()
+    mh_in = MCGEmulatorInput()
     astro_keys = list(mh_in.astro_param_keys)
     log_idx = [astro_keys.index(name) for name in mh_in.LOG_PARAMETERS]
     out = params.copy().astype(float)

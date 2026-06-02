@@ -15,18 +15,18 @@ from py21cmemu.properties import emulator_properties
 def test_emulator_properties_factory_all_types():
     """emulator_properties returns the right class for each emulator."""
     from py21cmemu.properties import (
-        DefaultEmulatorProperties,
-        MHEmulatorProperties,
+        ACGEmulatorProperties,
+        MCGEmulatorProperties,
         RadioEmulatorProperties,
     )
 
-    assert isinstance(emulator_properties("acg"), DefaultEmulatorProperties)
+    assert isinstance(emulator_properties("acg"), ACGEmulatorProperties)
     assert isinstance(emulator_properties("radio"), RadioEmulatorProperties)
-    assert isinstance(emulator_properties("mcg"), MHEmulatorProperties)
+    assert isinstance(emulator_properties("mcg"), MCGEmulatorProperties)
 
 
 def test_default_properties_normalized_quantities():
-    """DefaultEmulatorProperties.normalized_quantities uses base-class implementation."""
+    """ACGEmulatorProperties.normalized_quantities uses base-class implementation."""
     props = emulator_properties("acg")
     nq = props.normalized_quantities
     assert isinstance(nq, list)
@@ -34,13 +34,13 @@ def test_default_properties_normalized_quantities():
     assert "Tb" in nq
 
 
-def test_mh_properties_zs_alias():
-    """MHEmulatorProperties.zs is an alias for redshifts."""
+def test_mcg_properties_zs_alias():
+    """MCGEmulatorProperties.zs is an alias for redshifts."""
     props = emulator_properties("mcg")
     np.testing.assert_array_equal(props.zs, props.redshifts)
 
 
-def test_mh_properties_get_ps_error():
+def test_mcg_properties_get_ps_error():
     """get_ps_error returns arrays for both methods and stats."""
     props = emulator_properties("mcg")
 
@@ -51,7 +51,7 @@ def test_mh_properties_get_ps_error():
             assert result.ndim == 2
 
 
-def test_mh_properties_get_ps_variance():
+def test_mcg_properties_get_ps_variance():
     """get_ps_variance returns an array or None."""
     props = emulator_properties("mcg")
     for method in ("ode", "em"):
@@ -61,7 +61,7 @@ def test_mh_properties_get_ps_variance():
             assert result.ndim == 2
 
 
-def test_mh_properties_get_ps_covariance():
+def test_mcg_properties_get_ps_covariance():
     """get_ps_covariance returns a 2-D array or None."""
     props = emulator_properties("mcg")
     for method in ("ode", "em"):

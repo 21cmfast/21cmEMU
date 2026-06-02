@@ -10,18 +10,18 @@ import numpy as np
 import torch
 
 from .inputs import (
-    DefaultEmulatorInput,
-    MHEmulatorInput,
+    ACGEmulatorInput,
+    MCGEmulatorInput,
     ParamVecType,
     RadioEmulatorInput,
 )
 from .outputs import (
     ACGEmulatorErrors,
-    DefaultRawEmulatorOutput,
+    ACGRawEmulatorOutput,
     EmulatorErrors,
     EmulatorOutput,
-    MHEmulatorErrors,
-    MHRawEmulatorOutput,
+    MCGEmulatorErrors,
+    MCGRawEmulatorOutput,
     RadioEmulatorErrors,
     RadioRawEmulatorOutput,
 )
@@ -402,7 +402,7 @@ class Emulator:
                 if gpu_id == 0:
                     model = self.score_model
                 else:
-                    from .models.MCG.score_model import UNet
+                    from .models.mcg.score_model import UNet
 
                     here = Path(__file__).parent
                     model = UNet(
@@ -414,7 +414,7 @@ class Emulator:
                     )
                     model.load_state_dict(
                         torch.load(
-                            here / "models/MCG/score_model_weights.pt",
+                            here / "models/mcg/score_model_weights.pt",
                             map_location=device,
                             weights_only=True,
                         )
@@ -478,32 +478,32 @@ class Emulator:
         emu : EmulatorOutput
             The emulator output to compute errors for.
         theta_lstm : np.ndarray, optional
-            Normalized LSTM parameters (for MH emulator).
+            Normalized LSTM parameters (for MCG emulator).
         theta_ps : np.ndarray, optional
-            Normalized PS parameters (for MH emulator with 2D PS).
+            Normalized PS parameters (for MCG emulator with 2D PS).
         ps_sampling_method : str, optional
             Sampling method for 2D PS: 'em' or 'ode'.
 
         Returns
         -------
         EmulatorErrors
-            ACGEmulatorErrors, RadioEmulatorErrors, or MHEmulatorErrors
+            ACGEmulatorErrors, RadioEmulatorErrors, or MCGEmulatorErrors
             depending on the emulator type. All provide dict-like access.
 
         See Also
         --------
         ACGEmulatorErrors : Errors for ACG/Default (v1) emulator.
         RadioEmulatorErrors : Errors for Radio (v2) emulator.
-        MHEmulatorErrors : Errors for MH/MCG (v3) emulator.
+        MCGEmulatorErrors : Errors for MH/MCG (v3) emulator.
         """
         if self.which_emulator == EMULATOR_ACG:
             return ACGEmulatorErrors.from_output(emu, self.properties)
         elif self.which_emulator == EMULATOR_RADIO:
             return RadioEmulatorErrors.from_properties(self.properties)
 
-        # For MH emulator, use output-dependent absolute errors
-        return MHEmulatorErrors.from_output(
+        # For MCG emulator, use output-dependent absolute errors
+        return MCGEmulatorErrors.from_output(
             output=emu,
             properties=self.properties,
-            ps_sampling_method=ps_sampling_method or "em",
+            ps_sampling_method=ps_sampling_method or "ode",
         )

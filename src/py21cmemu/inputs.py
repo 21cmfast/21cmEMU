@@ -218,7 +218,7 @@ class EmulatorInput:
         ]
 
 
-class DefaultEmulatorInput(EmulatorInput):
+class ACGEmulatorInput(EmulatorInput):
     """Class for handling ACG (v1) emulator inputs.
 
     Parameters in ``LOG_PARAMETERS`` must be supplied as log10 values.
@@ -373,7 +373,7 @@ class RadioEmulatorInput(EmulatorInput):
         return theta_wdims
 
 
-class MHEmulatorInput(EmulatorInput):
+class MCGEmulatorInput(EmulatorInput):
     """Class for handling MCG/minihalo (v3) emulator inputs.
 
     Parameters in ``LOG_PARAMETERS`` must be supplied as log10 values.

@@ -6,19 +6,18 @@ import numpy as np
 import pytest
 from typeguard import suppress_type_checks
 
-from py21cmemu import DefaultEmulatorInput, RadioEmulatorInput
+from py21cmemu import MCGEmulatorInput, ACGEmulatorInput, RadioEmulatorInput
 from py21cmemu.properties import emulator_properties
 
 # ══════════════════════════════════════════════════════════════════════════════
-# MHEmulatorInput unit tests (from test_coverage.py)
+# EmulatorInput unit tests
 # ══════════════════════════════════════════════════════════════════════════════
 
 
 def test_mh_input_normalize_all_kinds():
-    """MHEmulatorInput.normalize accepts all valid kind strings."""
-    from py21cmemu.inputs import MHEmulatorInput
+    """MCGEmulatorInput.normalize accepts all valid kind strings."""
 
-    inp = MHEmulatorInput()
+    inp = MCGEmulatorInput()
     n = len(inp.astro_param_keys)
     theta = np.zeros((2, n))
 
@@ -28,20 +27,18 @@ def test_mh_input_normalize_all_kinds():
 
 
 def test_mh_input_normalize_invalid_kind():
-    """MHEmulatorInput.normalize raises ValueError for unknown kind."""
-    from py21cmemu.inputs import MHEmulatorInput
+    """MCGEmulatorInput.normalize raises ValueError for unknown kind."""
 
-    inp = MHEmulatorInput()
+    inp = MCGEmulatorInput()
     theta = np.zeros((1, len(inp.astro_param_keys)))
     with pytest.raises(ValueError, match="Unknown kind"):
         inp.normalize(theta, kind="invalid_kind")
 
 
 def test_mh_input_undo_normalization_all_kinds():
-    """MHEmulatorInput.undo_normalization accepts all valid kind strings."""
-    from py21cmemu.inputs import MHEmulatorInput
+    """MCGEmulatorInput.undo_normalization accepts all valid kind strings."""
 
-    inp = MHEmulatorInput()
+    inp = MCGEmulatorInput()
     n = len(inp.astro_param_keys)
     theta_normed = np.full((2, n), 0.5)
 
@@ -51,10 +48,9 @@ def test_mh_input_undo_normalization_all_kinds():
 
 
 def test_mh_input_undo_normalization_invalid_kind():
-    """MHEmulatorInput.undo_normalization raises ValueError for unknown kind."""
-    from py21cmemu.inputs import MHEmulatorInput
+    """MCGEmulatorInput.undo_normalization raises ValueError for unknown kind."""
 
-    inp = MHEmulatorInput()
+    inp = MCGEmulatorInput()
     theta = np.zeros((1, len(inp.astro_param_keys)))
     with pytest.raises(ValueError):
         inp.undo_normalization(theta, kind="bad_kind")
@@ -62,9 +58,8 @@ def test_mh_input_undo_normalization_invalid_kind():
 
 def test_mh_input_format_theta_for_summaries_default_redshifts():
     """format_theta_for_summaries with redshifts=None uses properties.redshifts."""
-    from py21cmemu.inputs import MHEmulatorInput
 
-    inp = MHEmulatorInput()
+    inp = MCGEmulatorInput()
     n = len(inp.astro_param_keys)
     theta_normed = np.full((2, n), 0.5)
 
@@ -75,9 +70,8 @@ def test_mh_input_format_theta_for_summaries_default_redshifts():
 
 def test_mh_input_format_theta_for_summaries_explicit_redshifts():
     """format_theta_for_summaries with explicit redshifts."""
-    from py21cmemu.inputs import MHEmulatorInput
 
-    inp = MHEmulatorInput()
+    inp = MCGEmulatorInput()
     n = len(inp.astro_param_keys)
     theta_normed = np.full((3, n), 0.5)
     zs = np.array([6.0, 8.0, 10.0])
@@ -88,9 +82,8 @@ def test_mh_input_format_theta_for_summaries_explicit_redshifts():
 
 def test_mh_input_format_theta_for_ps():
     """format_theta_for_ps concatenates params with normalised redshifts."""
-    from py21cmemu.inputs import MHEmulatorInput
 
-    inp = MHEmulatorInput()
+    inp = MCGEmulatorInput()
     n = len(inp.astro_param_keys)
     theta_normed = np.full((2, n), 0.5)
     zs = np.array([6.0, 8.0, 10.0])
@@ -102,9 +95,8 @@ def test_mh_input_format_theta_for_ps():
 
 def test_mh_input_format_theta_wrapper():
     """format_theta delegates to format_theta_for_ps."""
-    from py21cmemu.inputs import MHEmulatorInput
 
-    inp = MHEmulatorInput()
+    inp = MCGEmulatorInput()
     n = len(inp.astro_param_keys)
     theta_normed = np.full((1, n), 0.5)
     zs = np.array([6.0, 8.0])
@@ -115,9 +107,8 @@ def test_mh_input_format_theta_wrapper():
 
 def test_make_param_array_no_len_raises():
     """make_param_array raises TypeError when input has no __len__."""
-    from py21cmemu.inputs import MHEmulatorInput
 
-    inp = MHEmulatorInput()
+    inp = MCGEmulatorInput()
     # suppress_type_checks lets the int reach the function body so TypeError
     # is raised there, rather than typeguard raising TypeCheckError at the call site.
     with suppress_type_checks(), pytest.raises(TypeError):
@@ -126,7 +117,7 @@ def test_make_param_array_no_len_raises():
 
 def test_format_single_theta_vector_wrong_type():
     """_format_single_theta_vector raises TypeError for unsupported types."""
-    inp = DefaultEmulatorInput()
+    inp = ACGEmulatorInput()
     n = len(inp.astro_param_keys)
     # tuple has __len__ but is not dict/ndarray/list → TypeError
     bad_input = tuple([0.5] * n)
@@ -136,7 +127,7 @@ def test_format_single_theta_vector_wrong_type():
 
 def test_default_input_normalize_and_undo():
     """DefaultEmulatorInput normalize/undo_normalization round-trip."""
-    inp = DefaultEmulatorInput()
+    inp = ACGEmulatorInput()
     n = len(inp.astro_param_keys)
     raw = inp.undo_normalization(np.full((2, n), 0.5))
     normed = inp.normalize(raw)
@@ -154,7 +145,7 @@ def test_radio_input_normalize_and_undo():
 
 def test_make_list_of_dicts():
     """make_list_of_dicts returns one dict per parameter set."""
-    inp = DefaultEmulatorInput()
+    inp = ACGEmulatorInput()
     n = len(inp.astro_param_keys)
     raw = inp.undo_normalization(np.full((3, n), 0.5))
     dicts = inp.make_list_of_dicts(raw, normed=True)
@@ -168,10 +159,9 @@ def test_make_list_of_dicts():
 
 
 def test_mh_inputs_class() -> None:
-    """Test MHEmulatorInput class."""
-    from py21cmemu.inputs import MHEmulatorInput
+    """Test MCGEmulatorInput class."""
 
-    inputs = MHEmulatorInput()
+    inputs = MCGEmulatorInput()
     assert len(inputs.astro_param_keys) == 11
 
     # LOG_PARAMETERS and PARAMETERS class attributes

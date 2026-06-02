@@ -7,8 +7,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from py21cmemu import DefaultEmulatorInput, Emulator, RadioEmulatorInput
-from py21cmemu.outputs import DefaultRawEmulatorOutput
+from py21cmemu import ACGEmulatorInput, Emulator, RadioEmulatorInput
+from py21cmemu.outputs import ACGRawEmulatorOutput, ACGEmulatorOutput
 
 TUTORIALS_DIR = Path(__file__).resolve().parents[1] / "docs" / "tutorials"
 TEST_DATABASE_H5 = TUTORIALS_DIR / "test_database.h5"
@@ -20,8 +20,7 @@ TEST_DATABASE_H5 = TUTORIALS_DIR / "test_database.h5"
 
 
 def _make_default_output():
-    """Build a synthetic DefaultEmulatorOutput without running the emulator."""
-    from py21cmemu.outputs import DefaultEmulatorOutput
+    """Build a synthetic ACGEmulatorOutput without running the emulator."""
     from py21cmemu.properties import emulator_properties
 
     props = emulator_properties("acg")
@@ -32,7 +31,7 @@ def _make_default_output():
     m = np.logical_and(props.UVLFs_MUVs <= -10, props.UVLFs_MUVs >= -20)
     n_muv = int(m.sum())
 
-    return DefaultEmulatorOutput(
+    return ACGEmulatorOutput(
         Tb=np.zeros(nz),
         xHI=np.zeros(nz),
         Ts=np.ones(nz) * 100.0,
@@ -62,8 +61,8 @@ def _make_radio_output():
 
 
 def _make_mh_output(with_2d_ps: bool = False):
-    """Build a synthetic MHEmulatorOutput without running the emulator."""
-    from py21cmemu.outputs import MHEmulatorOutput
+    """Build a synthetic MCGEmulatorOutput without running the emulator."""
+    from py21cmemu.outputs import MCGEmulatorOutput
     from py21cmemu.properties import emulator_properties
 
     props = emulator_properties("mcg")
@@ -85,7 +84,7 @@ def _make_mh_output(with_2d_ps: bool = False):
         ps_2d_std = np.ones((n_z2d, n_kperp, n_kpar)) * 0.1
         ps_2d_zs = np.array([6.0, 8.0, 10.0])
 
-    return MHEmulatorOutput(
+    return MCGEmulatorOutput(
         Tb=np.zeros(nz),
         xHI=np.zeros(nz),
         Ts=np.ones(nz) * 100.0,
@@ -117,12 +116,12 @@ def _make_radio_errors():
 
 
 def _make_mh_errors():
-    from py21cmemu.outputs import MHEmulatorErrors
+    from py21cmemu.outputs import MCGEmulatorErrors
     from py21cmemu.properties import emulator_properties
 
     props = emulator_properties("mcg")
     out = _make_mh_output()
-    return MHEmulatorErrors.from_output(out, props, ps_sampling_method="ode")
+    return MCGEmulatorErrors.from_output(out, props, ps_sampling_method="ode")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -227,7 +226,7 @@ def test_radio_output_squeeze():
 
 
 def test_mh_output_properties_no_2d_ps():
-    """MHEmulatorOutput exposes coordinate properties; PS_2D properties return None."""
+    """MCGEmulatorOutput exposes coordinate properties; PS_2D properties return None."""
     import astropy.units as u
 
     out = _make_mh_output(with_2d_ps=False)
@@ -268,20 +267,20 @@ def test_mh_output_properties_with_2d_ps():
 
 
 def test_mh_output_squeeze():
-    """MHEmulatorOutput.squeeze returns a new MHEmulatorOutput."""
-    from py21cmemu.outputs import MHEmulatorOutput
+    """MCGEmulatorOutput.squeeze returns a new MCGEmulatorOutput."""
+    from py21cmemu.outputs import MCGEmulatorOutput
 
     out = _make_mh_output()
     squeezed = out.squeeze()
-    assert isinstance(squeezed, MHEmulatorOutput)
+    assert isinstance(squeezed, MCGEmulatorOutput)
 
 
 def test_mh_outputs_class() -> None:
-    """Test MHEmulatorOutput class."""
-    from py21cmemu.outputs import MHEmulatorOutput
+    """Test MCGEmulatorOutput class."""
+    from py21cmemu.outputs import MCGEmulatorOutput
 
     # Create minimal output (no 2D PS)
-    output = MHEmulatorOutput(
+    output = MCGEmulatorOutput(
         Tb=np.zeros(93),
         xHI=np.zeros(93),
         Ts=np.zeros(93),

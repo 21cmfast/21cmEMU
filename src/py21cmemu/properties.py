@@ -120,7 +120,7 @@ class EmulatorProperties:
         return [k.split("_")[0] for k in self._data if k.endswith("_mean")]
 
 
-class DefaultEmulatorProperties(EmulatorProperties):
+class ACGEmulatorProperties(EmulatorProperties):
     """A class that contains the properties of the default emulator."""
 
     def __init__(self):
@@ -309,7 +309,7 @@ class RadioEmulatorProperties(EmulatorProperties):
         self.cosmo_params = COSMO_PARAMS
 
 
-class MHEmulatorProperties(EmulatorProperties):
+class MCGEmulatorProperties(EmulatorProperties):
     """Properties and error statistics for the minihalo (v3) emulator.
 
     This class loads constants from two separate files:
@@ -438,7 +438,7 @@ class MHEmulatorProperties(EmulatorProperties):
 
         # Load LSTM model constants (summaries + 1D PS)
         lstm_data = np.load(
-            here / "models/MCG/lstm_emulator_constants.npz", allow_pickle=True
+            here / "models/mcg/lstm_emulator_constants.npz", allow_pickle=True
         )
         self._lstm_data = lstm_data
         # Set _data for base class compatibility (normalized_quantities property)
@@ -446,7 +446,7 @@ class MHEmulatorProperties(EmulatorProperties):
 
         # Load 2D PS score model constants
         score_data = np.load(
-            here / "models/MCG/score_model_constants.npz", allow_pickle=True
+            here / "models/mcg/score_model_constants.npz", allow_pickle=True
         )
         self._score_data = score_data
 
@@ -841,11 +841,11 @@ def emulator_properties(emulator: str = EMULATOR_MCG) -> EmulatorProperties:
     """
     canonical = resolve_emulator_name(emulator)
     if canonical == EMULATOR_ACG:
-        return DefaultEmulatorProperties()
+        return ACGEmulatorProperties()
     elif canonical == EMULATOR_RADIO:
         return RadioEmulatorProperties()
     elif canonical == EMULATOR_MCG:
-        return MHEmulatorProperties()
+        return MCGEmulatorProperties()
     # Should never reach here due to resolve_emulator_name validation
     raise ValueError(f"Unknown emulator: {emulator}")  # pragma: no cover
 

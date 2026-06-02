@@ -69,8 +69,8 @@ from .properties import emulator_properties
 
 if TYPE_CHECKING:  # pragma: no cover
     from .properties import (
-        DefaultEmulatorProperties,
-        MHEmulatorProperties,
+        ACGEmulatorProperties,
+        MCGEmulatorProperties,
         RadioEmulatorProperties,
     )
 
@@ -374,8 +374,8 @@ class EmulatorOutput:
 
 
 @dataclass(frozen=True)
-class DefaultEmulatorOutput(EmulatorOutput):
-    """Output from the Default/ACG (v1) emulator.
+class ACGEmulatorOutput(EmulatorOutput):
+    """Output from the ACG (v1) emulator.
 
     All quantities are returned with astropy units attached.
 
@@ -519,7 +519,7 @@ class RawEmulatorOutput:
 
 
 @dataclass(frozen=True)
-class DefaultRawEmulatorOutput(RawEmulatorOutput):
+class ACGRawEmulatorOutput(RawEmulatorOutput):
     """A simple sub data-class that makes it easier to access the raw emulator output.
 
     Parameters
@@ -637,7 +637,7 @@ class DefaultRawEmulatorOutput(RawEmulatorOutput):
         out["Ts"] = 10 ** out["Ts"]
         out["tau"] = 10 ** out["tau"]
 
-        return DefaultEmulatorOutput(**out).squeeze()
+        return ACGEmulatorOutput(**out).squeeze()
 
 
 class RadioRawEmulatorOutput(RawEmulatorOutput):
@@ -733,7 +733,7 @@ class RadioRawEmulatorOutput(RawEmulatorOutput):
 
 
 @dataclass(frozen=True)
-class MHEmulatorOutput(EmulatorOutput):
+class MCGEmulatorOutput(EmulatorOutput):
     """Output from the MH/MCG (v3) emulator.
 
     All quantities are returned with astropy units attached.
@@ -875,7 +875,7 @@ class MHEmulatorOutput(EmulatorOutput):
         See Also
         --------
         PS_2D_err : Equivalent for 2D power spectrum
-        MHEmulatorProperties : Full error documentation
+        MCGEmulatorProperties : Full error documentation
         """
         return self.properties.PS_1D_med_err * u.dimensionless_unscaled
 
@@ -1082,13 +1082,13 @@ class MHEmulatorOutput(EmulatorOutput):
         return self.properties.redshifts * u.dimensionless_unscaled
 
     def squeeze(self):
-        return MHEmulatorOutput(
+        return MCGRawEmulatorOutput(
             **{k: (np.squeeze(v) if v is not None else None) for k, v in self.items()}
         )
 
 
 @dataclass(frozen=True)
-class MHRawEmulatorOutput(RawEmulatorOutput):
+class MCGRawEmulatorOutput(RawEmulatorOutput):
     """A data class that wraps raw v3 emulator outputs."""
 
     output: tuple
@@ -1220,7 +1220,7 @@ class MHRawEmulatorOutput(RawEmulatorOutput):
             out["PS_2D_samples"] = None
             out["PS_2D_std"] = None
 
-        return MHEmulatorOutput(
+        return MCGEmulatorOutput(
             Tb=out["Tb"],
             xHI=out["xHI"],
             Ts=out["Ts"],
@@ -1304,12 +1304,12 @@ class EmulatorErrors:
 
 
 @dataclass(frozen=True)
-class MHEmulatorErrors(EmulatorErrors):
-    """Error statistics for the MH (v3) emulator with proper astropy units.
+class MCGEmulatorErrors(EmulatorErrors):
+    """Error statistics for the MCG (v3) emulator with proper astropy units.
 
     This class provides **absolute errors** computed from the test set's fractional
     errors (FE%) applied to the emulator output values. Unlike the ACG and Radio
-    emulators which store raw FE%, the MH emulator computes output-dependent
+    emulators which store raw FE%, the MCG emulator computes output-dependent
     absolute errors in physical units.
 
     Error Computation
@@ -1400,8 +1400,8 @@ class MHEmulatorErrors(EmulatorErrors):
 
     See Also
     --------
-    MHEmulatorProperties : Raw error statistics from test set.
-    MHEmulatorOutput : The output dataclass these errors correspond to.
+    MCGEmulatorProperties : Raw error statistics from test set.
+    MCGEmulatorOutput : The output dataclass these errors correspond to.
     """
 
     # Required fields
@@ -1437,24 +1437,24 @@ class MHEmulatorErrors(EmulatorErrors):
     @classmethod
     def from_output(
         cls,
-        output: MHEmulatorOutput,
-        properties: MHEmulatorProperties,
+        output: MCGRawEmulatorOutput,
+        properties: MCGEmulatorProperties,
         ps_sampling_method: str = "em",
-    ) -> MHEmulatorErrors:
+    ) -> MCGEmulatorErrors:
         """Construct error statistics from emulator output.
 
         Parameters
         ----------
-        output : MHEmulatorOutput
+        output : MCGRawEmulatorOutput
             The emulator output to compute errors for.
-        properties : MHEmulatorProperties
+        properties : MCGEmulatorProperties
             The emulator properties containing FE% arrays.
         ps_sampling_method : str, optional
             Sampling method for 2D PS: 'em' (default) or 'ode'.
 
         Returns
         -------
-        MHEmulatorErrors
+        MCGEmulatorErrors
             Error statistics with proper units attached.
         """
 
@@ -1703,8 +1703,8 @@ class ACGEmulatorErrors(EmulatorErrors):
 
     See Also
     --------
-    DefaultEmulatorOutput : The output dataclass these errors correspond to.
-    DefaultEmulatorProperties : Emulator properties including error arrays.
+    ACGEmulatorOutput : The output dataclass these errors correspond to.
+    ACGEmulatorProperties : Emulator properties including error arrays.
     """
 
     PS_err: u.Quantity
@@ -1737,8 +1737,8 @@ class ACGEmulatorErrors(EmulatorErrors):
     @classmethod
     def from_output(
         cls,
-        output: DefaultEmulatorOutput,
-        properties: DefaultEmulatorProperties,
+        output: ACGEmulatorOutput,
+        properties: ACGEmulatorProperties,
     ) -> ACGEmulatorErrors:
         """Construct error statistics broadcast to match the output batch shape.
 
@@ -1750,9 +1750,9 @@ class ACGEmulatorErrors(EmulatorErrors):
 
         Parameters
         ----------
-        output : DefaultEmulatorOutput
+        output : ACGEmulatorOutput
             The emulator output whose shapes define the target broadcast shape.
-        properties : DefaultEmulatorProperties
+        properties : ACGEmulatorProperties
             The emulator properties containing pre-computed absolute error arrays.
 
         Returns
@@ -1791,7 +1791,7 @@ class ACGEmulatorErrors(EmulatorErrors):
     @classmethod
     def from_properties(
         cls,
-        properties: DefaultEmulatorProperties,
+        properties: ACGEmulatorProperties,
     ) -> ACGEmulatorErrors:
         """Construct error statistics from emulator properties (no batch dim).
 
@@ -1800,7 +1800,7 @@ class ACGEmulatorErrors(EmulatorErrors):
 
         Parameters
         ----------
-        properties : DefaultEmulatorProperties
+        properties : ACGEmulatorProperties
             The emulator properties containing pre-computed absolute error arrays.
 
         Returns
