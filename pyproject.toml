@@ -33,6 +33,7 @@ dependencies = [
     "toml>=0.10.2",
     "GitPython>=3.1.31",
     "astropy>=5.0",
+    "tqdm>=4.0.0",
 ]
 
 [dependency-groups]
