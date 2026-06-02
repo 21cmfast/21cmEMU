@@ -7,7 +7,7 @@ API Summary
 
 .. autosummary::
     :toctree: _autosummary
-    :template: module.rst
+    :template: module
 
     py21cmemu.inputs
     py21cmemu.outputs
