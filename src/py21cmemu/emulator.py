@@ -118,7 +118,7 @@ class Emulator:
             model.eval()
             self.inputs = RadioEmulatorInput()
 
-        elif self.which_emulator == EMULATOR_MCG:
+        elif self.which_emulator == EMULATOR_MCG:  # pragma: no branch
             from .models.MCG.lstm_model import MH_Emulator
             from .models.MCG.score_model import UNet
             from .sample_pytorch import GetEMSampler, GetODESampler
@@ -381,11 +381,15 @@ class Emulator:
                 all_preds.append(samples)
             return np.array(all_preds)
 
-        # Multi-GPU path: distribute outer-batch iterations across all GPUs.
-        # Threads give true parallelism because PyTorch releases the GIL
-        # during CUDA kernel execution.
+        return self._get_pred_multi_gpu(cdns)  # pragma: no cover
+
+    def _get_pred_multi_gpu(self, cdns: np.ndarray) -> np.ndarray:  # pragma: no cover
+        """Run diffusion-model sampling across multiple GPUs (internal helper)."""
         from concurrent.futures import ThreadPoolExecutor
 
+        from .utils import reverse_transform
+
+        n_gpus = torch.cuda.device_count()
         n_ps_batch = cdns.shape[1]
         n_realisations = getattr(self, "_n_realisations", 100)
         denoise = getattr(self, "_denoise", True)

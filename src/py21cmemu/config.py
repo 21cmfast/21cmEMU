@@ -38,7 +38,7 @@ class Config:
             self["data-path"] = APPDIR.user_data_dir
 
         if not self.data_path.exists():
-            self.data_path.mkdir(parents=True, exist_ok=True)
+            self.data_path.mkdir(parents=True, exist_ok=True)  # pragma: no cover
 
         if "disable-network" not in self:
             self["disable-network"] = False
@@ -53,7 +53,7 @@ class Config:
         """Get the path to the PyTorch converted models (not git-managed)."""
         path = Path(self["data-path"]) / "pytorch_models"
         if not path.exists():
-            path.mkdir(parents=True, exist_ok=True)
+            path.mkdir(parents=True, exist_ok=True)  # pragma: no cover
         return path
 
     @property

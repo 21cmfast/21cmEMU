@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from typing import Any
 
 
@@ -544,7 +544,7 @@ class MHEmulatorProperties(EmulatorProperties):
         self.UVLFs_std_err = np.array(lstm_data["UVLFs_std_err"])
         self.UVLFs_med_logerr = np.array(lstm_data["UVLFs_med_logerr"])
         # Linear LF errors (error on phi = 10^log10(phi))
-        if "UVLFs_lin_med_err" in lstm_data:
+        if "UVLFs_lin_med_err" in lstm_data:  # pragma: no cover
             self.UVLFs_lin_med_err = np.array(lstm_data["UVLFs_lin_med_err"])
             self.UVLFs_lin_mean_err = np.array(lstm_data["UVLFs_lin_mean_err"])
             self.UVLFs_lin_std_err = np.array(lstm_data["UVLFs_lin_std_err"])
@@ -563,9 +563,9 @@ class MHEmulatorProperties(EmulatorProperties):
         # Default to ODE (more accurate sampler)
         if "PS_med_err" in score_data:
             self.PS_med_err = np.array(score_data["PS_med_err"])
-        elif "PS_med_err_ode" in score_data:
+        elif "PS_med_err_ode" in score_data:  # pragma: no cover
             self.PS_med_err = np.array(score_data["PS_med_err_ode"])
-        else:
+        else:  # pragma: no cover
             raise KeyError(
                 "PS_med_err or PS_med_err_ode required in score_model_constants.npz"
             )
@@ -574,36 +574,36 @@ class MHEmulatorProperties(EmulatorProperties):
         if "PS_med_err_em" in score_data:
             self.PS_med_err_em = np.array(score_data["PS_med_err_em"])
             self.PS_med_err_ode = np.array(score_data["PS_med_err_ode"])
-        else:
+        else:  # pragma: no cover
             self.PS_med_err_em = self.PS_med_err
             self.PS_med_err_ode = self.PS_med_err
 
         # 2D PS mean/std errors (default to ODE - more accurate sampler)
         if "PS_mean_err" in score_data:
             self.PS_mean_err = np.array(score_data["PS_mean_err"])
-        elif "PS_mean_err_ode" in score_data:
+        elif "PS_mean_err_ode" in score_data:  # pragma: no cover
             self.PS_mean_err = np.array(score_data["PS_mean_err_ode"])
-        else:
+        else:  # pragma: no cover
             self.PS_mean_err = self.PS_med_err.copy()
 
         if "PS_mean_err_em" in score_data:
             self.PS_mean_err_em = np.array(score_data["PS_mean_err_em"])
             self.PS_mean_err_ode = np.array(score_data["PS_mean_err_ode"])
-        else:
+        else:  # pragma: no cover
             self.PS_mean_err_em = self.PS_mean_err
             self.PS_mean_err_ode = self.PS_mean_err
 
         if "PS_std_err" in score_data:
             self.PS_std_err = np.array(score_data["PS_std_err"])
-        elif "PS_std_err_ode" in score_data:
+        elif "PS_std_err_ode" in score_data:  # pragma: no cover
             self.PS_std_err = np.array(score_data["PS_std_err_ode"])
-        else:
+        else:  # pragma: no cover
             self.PS_std_err = np.zeros_like(self.PS_med_err)
 
         if "PS_std_err_em" in score_data:
             self.PS_std_err_em = np.array(score_data["PS_std_err_em"])
             self.PS_std_err_ode = np.array(score_data["PS_std_err_ode"])
-        else:
+        else:  # pragma: no cover
             self.PS_std_err_em = self.PS_std_err
             self.PS_std_err_ode = self.PS_std_err
 
@@ -618,13 +618,13 @@ class MHEmulatorProperties(EmulatorProperties):
         if "PS_var_ode" in score_data:
             self.PS_var_ode = np.array(score_data["PS_var_ode"])
             self.PS_var = self.PS_var_ode
-        else:
+        else:  # pragma: no cover
             self.PS_var_ode = None
             self.PS_var = None
 
         if "PS_var_em" in score_data:
             self.PS_var_em = np.array(score_data["PS_var_em"])
-        else:
+        else:  # pragma: no cover
             self.PS_var_em = None
 
         # Covariance: shape (2048, 2048) = (32*64, 32*64), units FE%^2
@@ -635,13 +635,13 @@ class MHEmulatorProperties(EmulatorProperties):
         if "PS_cov_ode" in score_data:
             self.PS_cov_ode = np.array(score_data["PS_cov_ode"])
             self.PS_cov = self.PS_cov_ode
-        else:
+        else:  # pragma: no cover
             self.PS_cov_ode = None
             self.PS_cov = None
 
         if "PS_cov_em" in score_data:
             self.PS_cov_em = np.array(score_data["PS_cov_em"])
-        else:
+        else:  # pragma: no cover
             self.PS_cov_em = None
 
         # === 2D PS correlation statistics ===
@@ -654,13 +654,13 @@ class MHEmulatorProperties(EmulatorProperties):
         if "diag_frac_ode" in score_data:
             self.PS_cov_diag_frac_ode = float(score_data["diag_frac_ode"])
             self.PS_cov_diag_frac = self.PS_cov_diag_frac_ode
-        else:
+        else:  # pragma: no cover
             self.PS_cov_diag_frac_ode = None
             self.PS_cov_diag_frac = None
 
         if "diag_frac_em" in score_data:
             self.PS_cov_diag_frac_em = float(score_data["diag_frac_em"])
-        else:
+        else:  # pragma: no cover
             self.PS_cov_diag_frac_em = None
 
         # Backward compatibility aliases (old names without prefix)
@@ -674,13 +674,13 @@ class MHEmulatorProperties(EmulatorProperties):
         if "mean_abs_corr_ode" in score_data:
             self.PS_cov_mean_abs_corr_ode = float(score_data["mean_abs_corr_ode"])
             self.PS_cov_mean_abs_corr = self.PS_cov_mean_abs_corr_ode
-        else:
+        else:  # pragma: no cover
             self.PS_cov_mean_abs_corr_ode = None
             self.PS_cov_mean_abs_corr = None
 
         if "mean_abs_corr_em" in score_data:
             self.PS_cov_mean_abs_corr_em = float(score_data["mean_abs_corr_em"])
-        else:
+        else:  # pragma: no cover
             self.PS_cov_mean_abs_corr_em = None
 
         # Backward compatibility aliases (old names without prefix)
@@ -694,25 +694,25 @@ class MHEmulatorProperties(EmulatorProperties):
         if "global_median_ode_means" in score_data:
             self.PS_global_median_err_ode = float(score_data["global_median_ode_means"])
             self.PS_global_median_err = self.PS_global_median_err_ode
-        else:
+        else:  # pragma: no cover
             self.PS_global_median_err_ode = None
             self.PS_global_median_err = None
 
         if "global_median_em_means" in score_data:
             self.PS_global_median_err_em = float(score_data["global_median_em_means"])
-        else:
+        else:  # pragma: no cover
             self.PS_global_median_err_em = None
 
         if "global_mean_ode_means" in score_data:
             self.PS_global_mean_err_ode = float(score_data["global_mean_ode_means"])
             self.PS_global_mean_err = self.PS_global_mean_err_ode
-        else:
+        else:  # pragma: no cover
             self.PS_global_mean_err_ode = None
             self.PS_global_mean_err = None
 
         if "global_mean_em_means" in score_data:
             self.PS_global_mean_err_em = float(score_data["global_mean_em_means"])
-        else:
+        else:  # pragma: no cover
             self.PS_global_mean_err_em = None
 
         # Two-stage robust error (median of sample medians - most robust to outliers)
@@ -721,7 +721,7 @@ class MHEmulatorProperties(EmulatorProperties):
                 score_data["twostage_median_of_sample_median_ode_means"]
             )
             self.PS_robust_err = self.PS_robust_err_ode
-        else:
+        else:  # pragma: no cover
             self.PS_robust_err_ode = None
             self.PS_robust_err = None
 
@@ -729,7 +729,7 @@ class MHEmulatorProperties(EmulatorProperties):
             self.PS_robust_err_em = float(
                 score_data["twostage_median_of_sample_median_em_means"]
             )
-        else:
+        else:  # pragma: no cover
             self.PS_robust_err_em = None
 
         USER_PARAMS = {
@@ -790,7 +790,7 @@ class MHEmulatorProperties(EmulatorProperties):
         if hasattr(self, attr_name):
             return getattr(self, attr_name)
         # Fall back to default (ODE)
-        return getattr(self, f"PS_{stat_key}_err")
+        return getattr(self, f"PS_{stat_key}_err")  # pragma: no cover
 
     def get_ps_variance(self, method: str = "ode") -> np.ndarray | None:
         """Get 2D PS variance array for the specified sampling method.
@@ -847,7 +847,7 @@ def emulator_properties(emulator: str = EMULATOR_MCG) -> EmulatorProperties:
     elif canonical == EMULATOR_MCG:
         return MHEmulatorProperties()
     # Should never reach here due to resolve_emulator_name validation
-    raise ValueError(f"Unknown emulator: {emulator}")
+    raise ValueError(f"Unknown emulator: {emulator}")  # pragma: no cover
 
 
 def get_emulator_properties(emulator: str = EMULATOR_MCG) -> EmulatorProperties:

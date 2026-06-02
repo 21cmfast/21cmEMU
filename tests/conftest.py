@@ -25,6 +25,25 @@ _TUTORIALS_DIR = Path(__file__).parent.parent / "docs" / "tutorials"
 TEST_SET_H5 = _TUTORIALS_DIR / "test_set.h5"
 PS_2D_TEST_H5 = _TUTORIALS_DIR / "ps_2d_test_subsample.h5"
 PS_1D_LOGLIN_H5 = _TUTORIALS_DIR / "ps_1d_loglin_db_test.h5"
+TEST_DATABASE_H5 = _TUTORIALS_DIR / "test_database.h5"
+
+
+def _log_convert_mh_params(params: np.ndarray) -> np.ndarray:
+    """Convert MH parameter array from linear to log10 for LOG_PARAMETERS columns.
+
+    The HDF5 test databases (test_set.h5, ps_2d_test_subsample.h5) store all
+    parameters in linear/physical space (e.g. F_STAR10 ≈ 0.09 as a fraction).
+    The emulator expects LOG_PARAMETERS (F_STAR10, F_ESC10, F_STAR7_MINI,
+    F_ESC7_MINI, L_X, L_X_MINI) in log10 space, so we convert them here.
+    """
+    from py21cmemu.inputs import MHEmulatorInput
+
+    mh_in = MHEmulatorInput()
+    astro_keys = list(mh_in.astro_param_keys)
+    log_idx = [astro_keys.index(name) for name in mh_in.LOG_PARAMETERS]
+    out = params.copy().astype(float)
+    out[:, log_idx] = np.log10(out[:, log_idx])
+    return out
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
@@ -161,3 +180,11 @@ def mh_output_no_2d_ps(mh_emulator, single_test_param) -> MHEmulatorOutput:
     """Get MH emulator output without 2D PS."""
     _, output, _ = mh_emulator.predict(single_test_param)
     return output
+
+
+@pytest.fixture(scope="module")
+def test_db_params() -> np.ndarray:
+    """Load one parameter set from test_database.h5 (pre-converted, no log needed)."""
+    h5py = pytest.importorskip("h5py")
+    with h5py.File(TEST_DATABASE_H5, "r") as f:
+        return np.asarray(f["input_params"][:1], dtype=float)
