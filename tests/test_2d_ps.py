@@ -7,7 +7,6 @@ import pytest
 
 from py21cmemu import Emulator
 
-
 # ══════════════════════════════════════════════════════════════════════════════
 # Main-only emulator 2D PS predict tests (from test_coverage.py)
 # ══════════════════════════════════════════════════════════════════════════════
@@ -28,7 +27,7 @@ def test_emulator_2d_ps_predict_ode(mh_emulator_with_2d_ps, test_db_params):
         test_db_params,
         n_realisations=2,
         ps_2d_redshifts=None,  # triggers line 297: use default redshifts
-        verbose=True,           # triggers tqdm path (lines 374-376)
+        verbose=True,  # triggers tqdm path (lines 374-376)
     )
     assert output.PS_2D is not None
 
@@ -44,8 +43,8 @@ def test_emulator_2d_ps_predict_em_explicit(mh_emulator_with_2d_ps, test_db_para
         n_realisations=2,
         ps_2d_redshifts=[7.0],
         ps_sampling_method="em",
-        n_ps_batch=1,   # explicit → covers False branch of 301 (not None)
-        sde=sde,        # explicit → covers False branch of 303 (not None)
+        n_ps_batch=1,  # explicit → covers False branch of 301 (not None)
+        sde=sde,  # explicit → covers False branch of 303 (not None)
     )
     assert output.PS_2D is not None
 

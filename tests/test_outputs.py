@@ -429,6 +429,7 @@ def test_mh_errors_em_method():
 def test_mh_errors_no_properties():
     """MHEmulatorErrors methods handle _properties=None gracefully."""
     import astropy.units as u
+
     from py21cmemu.outputs import MHEmulatorErrors
 
     errors = MHEmulatorErrors(

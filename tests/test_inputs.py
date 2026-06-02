@@ -9,7 +9,6 @@ from typeguard import suppress_type_checks
 from py21cmemu import DefaultEmulatorInput, RadioEmulatorInput
 from py21cmemu.properties import emulator_properties
 
-
 # ══════════════════════════════════════════════════════════════════════════════
 # MHEmulatorInput unit tests (from test_coverage.py)
 # ══════════════════════════════════════════════════════════════════════════════

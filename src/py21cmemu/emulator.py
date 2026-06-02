@@ -362,7 +362,6 @@ class Emulator:
     @torch.no_grad()
     def get_pred(self, cdns: np.ndarray, verbose: bool = False) -> np.ndarray:
         """Run diffusion-model sampling, using multiple GPUs when available."""
-        from .utils import reverse_transform
 
         n_gpus = torch.cuda.device_count()
 
