@@ -218,7 +218,7 @@ class EmulatorOutput:
         Quantity[dimensionless]
             Redshift values at which global summaries are evaluated
         """
-        return self.properties.zs
+        return self.properties.zs * u.dimensionless_unscaled
 
     @property
     def PS_redshifts(self) -> u.Quantity:
@@ -229,7 +229,7 @@ class EmulatorOutput:
         Quantity[dimensionless]
             Redshift values for PS output
         """
-        return self.properties.PS_zs
+        return self.properties.PS_zs * u.dimensionless_unscaled
 
     @property
     def PS_ks(self) -> u.Quantity:
@@ -414,7 +414,7 @@ class DefaultEmulatorOutput(EmulatorOutput):
         Quantity[dimensionless]
             Redshift values, shape (32,)
         """
-        return self.properties.PS_zs
+        return self.properties.PS_zs * u.dimensionless_unscaled
 
     @property
     def PS_1D_k(self) -> u.Quantity:
@@ -440,7 +440,7 @@ class DefaultEmulatorOutput(EmulatorOutput):
         m = np.logical_and(
             self.properties.UVLFs_MUVs <= -10, self.properties.UVLFs_MUVs >= -20
         )
-        return self.properties.UVLFs_MUVs[m]
+        return self.properties.UVLFs_MUVs[m] * u.mag
 
     @property
     def UVLF_redshifts(self) -> u.Quantity:
@@ -451,7 +451,7 @@ class DefaultEmulatorOutput(EmulatorOutput):
         Quantity[dimensionless]
             Redshift values, shape (n_z_uvlf,)
         """
-        return self.properties.uv_lf_zs
+        return self.properties.uv_lf_zs * u.dimensionless_unscaled
 
     def squeeze(self):
         """Return a new EmulatorOutput with all dimensions of length 1 removed."""
@@ -802,7 +802,7 @@ class MHEmulatorOutput(EmulatorOutput):
         Quantity[Mpc⁻¹]
             Wavenumbers in comoving Mpc⁻¹ units, shape (32,)
         """
-        return self.properties.PS_1D_k
+        return self.properties.PS_1D_k * u.Mpc**-1
 
     @property
     def PS_1D_redshifts(self) -> u.Quantity:
@@ -813,7 +813,7 @@ class MHEmulatorOutput(EmulatorOutput):
         Quantity[dimensionless]
             Redshift values, shape (32,)
         """
-        return self.properties.PS_1D_redshifts
+        return self.properties.PS_1D_redshifts * u.dimensionless_unscaled
 
     @property
     def kperp(self) -> u.Quantity:
@@ -824,7 +824,7 @@ class MHEmulatorOutput(EmulatorOutput):
         Quantity[Mpc⁻¹]
             k_perp values in comoving Mpc⁻¹ units, shape (32,)
         """
-        return self.properties.kperp
+        return self.properties.kperp * u.Mpc**-1
 
     @property
     def kpar(self) -> u.Quantity:
@@ -835,7 +835,7 @@ class MHEmulatorOutput(EmulatorOutput):
         Quantity[Mpc⁻¹]
             k_parallel values in comoving Mpc⁻¹ units, shape (64,)
         """
-        return self.properties.kpar
+        return self.properties.kpar * u.Mpc**-1
 
     @property
     def Nmodes(self) -> u.Quantity:
@@ -846,7 +846,7 @@ class MHEmulatorOutput(EmulatorOutput):
         Quantity[dimensionless]
             Mode counts for each (k_perp, k_par) bin, shape (32, 64)
         """
-        return self.properties.Nmodes
+        return self.properties.Nmodes * u.dimensionless_unscaled
 
     @property
     def PS_err(self) -> u.Quantity:
@@ -877,7 +877,7 @@ class MHEmulatorOutput(EmulatorOutput):
         PS_2D_err : Equivalent for 2D power spectrum
         MHEmulatorProperties : Full error documentation
         """
-        return self.properties.PS_1D_med_err
+        return self.properties.PS_1D_med_err * u.dimensionless_unscaled
 
     @property
     def PS_2D_err(self) -> u.Quantity | None:
@@ -915,7 +915,7 @@ class MHEmulatorOutput(EmulatorOutput):
         """
         if self.PS_2D is None:
             return None
-        return self.properties.PS_med_err
+        return self.properties.PS_med_err * u.dimensionless_unscaled
 
     # ═══════════════════════════════════════════════════════════════════════════
     # 2D PS Error Distribution Statistics
@@ -1055,7 +1055,7 @@ class MHEmulatorOutput(EmulatorOutput):
         m = np.logical_and(
             self.properties.UVLFs_MUVs <= -10, self.properties.UVLFs_MUVs >= -20
         )
-        return self.properties.UVLFs_MUVs[m]
+        return self.properties.UVLFs_MUVs[m] * u.mag
 
     @property
     def UVLF_redshifts(self) -> u.Quantity:
@@ -1066,7 +1066,7 @@ class MHEmulatorOutput(EmulatorOutput):
         Quantity[dimensionless]
             Redshift values, shape (n_z_uvlf,)
         """
-        return self.properties.uv_lf_zs
+        return self.properties.uv_lf_zs * u.dimensionless_unscaled
 
     @property
     def redshifts(self) -> u.Quantity:
@@ -1077,7 +1077,7 @@ class MHEmulatorOutput(EmulatorOutput):
         Quantity[dimensionless]
             Redshift values for main outputs, shape (32,)
         """
-        return self.properties.redshifts
+        return self.properties.redshifts * u.dimensionless_unscaled
 
     def squeeze(self):
         return MHEmulatorOutput(**{k: np.squeeze(v) for k, v in self.items()})
