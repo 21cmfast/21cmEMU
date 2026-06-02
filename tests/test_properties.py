@@ -2,28 +2,10 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import numpy as np
 import pytest
 
 from py21cmemu.properties import emulator_properties
-
-TUTORIALS_DIR = Path(__file__).resolve().parents[1] / "docs" / "tutorials"
-TEST_SET_H5 = TUTORIALS_DIR / "test_set.h5"
-
-
-def _log_convert_mh_params(params: np.ndarray) -> np.ndarray:
-    """Convert MH parameter array from linear to log10 for LOG_PARAMETERS columns."""
-    from py21cmemu.inputs import MHEmulatorInput
-
-    mh_in = MHEmulatorInput()
-    astro_keys = list(mh_in.astro_param_keys)
-    log_idx = [astro_keys.index(name) for name in mh_in.LOG_PARAMETERS]
-    out = params.copy().astype(float)
-    out[:, log_idx] = np.log10(out[:, log_idx])
-    return out
-
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Unit tests (from test_coverage.py)
@@ -147,7 +129,6 @@ def test_properties():
 # ══════════════════════════════════════════════════════════════════════════════
 
 
-@pytest.mark.skipif(not TEST_SET_H5.exists(), reason="test_set.h5 not available")
 def test_mh_properties(mh_emulator) -> None:
     """Test access to emulator properties."""
     props = mh_emulator.properties

@@ -11,19 +11,7 @@ import torch
 from py21cmemu import Emulator
 
 TUTORIALS_DIR = Path(__file__).resolve().parents[1] / "docs" / "tutorials"
-TEST_SET_H5 = TUTORIALS_DIR / "test_set.h5"
-
-
-def _log_convert_mh_params(params: np.ndarray) -> np.ndarray:
-    """Convert MH parameter array from linear to log10 for LOG_PARAMETERS columns."""
-    from py21cmemu.inputs import MHEmulatorInput
-
-    mh_in = MHEmulatorInput()
-    astro_keys = list(mh_in.astro_param_keys)
-    log_idx = [astro_keys.index(name) for name in mh_in.LOG_PARAMETERS]
-    out = params.copy().astype(float)
-    out[:, log_idx] = np.log10(out[:, log_idx])
-    return out
+TEST_DATABASE_H5 = TUTORIALS_DIR / "test_database.h5"
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -113,14 +101,12 @@ def test_emulator_n_lstm_batch(mh_emulator):
 # ══════════════════════════════════════════════════════════════════════════════
 
 
-@pytest.mark.skipif(not TEST_SET_H5.exists(), reason="test_set.h5 not available")
 def test_mh_predict_from_tutorial_h5(mh_emulator) -> None:
     """Test basic prediction with MH emulator."""
     h5py = pytest.importorskip("h5py")
 
-    with h5py.File(TEST_SET_H5, "r") as f:
-        params = np.asarray(f["inputs"][0:1])
-    params = _log_convert_mh_params(params)
+    with h5py.File(TEST_DATABASE_H5, "r") as f:
+        params = np.asarray(f["input_params"][0:1])
 
     theta, output, errors = mh_emulator.predict(params)
 
@@ -138,14 +124,12 @@ def test_mh_predict_from_tutorial_h5(mh_emulator) -> None:
         assert key in errors
 
 
-@pytest.mark.skipif(not TEST_SET_H5.exists(), reason="test_set.h5 not available")
 def test_mh_batch_prediction(mh_emulator) -> None:
     """Test batch prediction with multiple parameter sets."""
     h5py = pytest.importorskip("h5py")
 
-    with h5py.File(TEST_SET_H5, "r") as f:
-        params = np.asarray(f["inputs"][:5])
-    params = _log_convert_mh_params(params)
+    with h5py.File(TEST_DATABASE_H5, "r") as f:
+        params = np.asarray(f["input_params"][:5])
 
     theta, output, _errors = mh_emulator.predict(params)
 

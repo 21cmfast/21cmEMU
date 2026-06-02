@@ -197,11 +197,9 @@ class TestMH2DScoreModel:
             / "src"
             / "py21cmemu"
             / "models"
-            / "MHs"
+            / "MCG"
             / "score_model_weights.pt"
         )
-        if not weights_path.exists():
-            pytest.skip("score_model_weights.pt not found")
 
         model = UNet(
             dim=(32, 64),

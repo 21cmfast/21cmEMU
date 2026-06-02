@@ -13,7 +13,7 @@ from py21cmemu.config import CONFIG
 
 TUTORIALS_DIR = Path(__file__).resolve().parents[1] / "docs" / "tutorials"
 V1_TEST_DATA = TUTORIALS_DIR / "Test_data_sample.npz"
-TEST_SET_H5 = TUTORIALS_DIR / "test_set.h5"
+TEST_DATABASE_H5 = TUTORIALS_DIR / "test_database.h5"
 PS_2D_TEST_H5 = TUTORIALS_DIR / "ps_2d_test_subsample.h5"
 
 
@@ -153,23 +153,21 @@ def test_v1_emulator_vs_database():
 class TestMHAccuracy:
     """Accuracy tests comparing emulation to 21cmFAST database samples."""
 
-    @pytest.mark.skipif(not TEST_SET_H5.exists(), reason="test_set.h5 not available")
     def test_lstm_accuracy_vs_database(self):
         """Compare v3 LSTM emulator outputs against 21cmFAST database samples."""
         h5py = pytest.importorskip("h5py")
 
         n_test = 50
 
-        with h5py.File(TEST_SET_H5, "r") as f:
-            params = np.asarray(f["inputs"][:n_test])
-            xHI_true = np.asarray(f["xHI"][:n_test][..., ::-1])
-            Tb_true = np.asarray(f["Tb"][:n_test][..., ::-1])
-            Ts_true = np.asarray(f["Ts_neutral"][:n_test][..., ::-1])
-            tau_true = np.asarray(f["tau_e"][:n_test])
-            UVLFs_true = np.asarray(f["LFs"][:n_test])  # (n, 7, 60)
+        with h5py.File(TEST_DATABASE_H5, "r") as f:
+            params = np.asarray(f["input_params"][:n_test])
+            xHI_true = np.asarray(f["xHI"][:n_test])
+            Tb_true = np.asarray(f["Tb"][:n_test])
+            Ts_true = np.asarray(f["Ts"][:n_test])
+            tau_true = np.asarray(f["tau"][:n_test])
+            UVLFs_true = np.asarray(f["UVLFs"][:n_test])  # (n, 7, 60)
 
         emu = Emulator(emulator="mcg", emulate_2d_ps=False)
-        params = _log_convert_mh_params(params)
         _, output, _ = emu.predict(params)
 
         xHI_emu = output.xHI.value
@@ -205,7 +203,7 @@ class TestMHAccuracy:
         # ── UVLFs accuracy ──
         UVLFs_emu_crop = UVLFs_emu  # (n, 7, 30) already cropped
 
-        with h5py.File(TEST_SET_H5, "r") as f:
+        with h5py.File(TEST_DATABASE_H5, "r") as f:
             M_UV_db = np.asarray(f["M_UV"])
         m_db = np.logical_and(M_UV_db <= -10, M_UV_db >= -20)
         UVLFs_true_crop = UVLFs_true[:, :, m_db]  # (n, 7, 30)
@@ -227,21 +225,21 @@ class TestMHAccuracy:
             parts.append(f"UVLFs={UVLFs_fe:.2f}%")
         print(f"V3 LSTM accuracy: {', '.join(parts)}")
 
-    @pytest.mark.skipif(not TEST_SET_H5.exists(), reason="test_set.h5 not available")
     def test_1d_ps_accuracy_vs_database(self):
         """Test 1D PS accuracy from LSTM model against database."""
         h5py = pytest.importorskip("h5py")
 
         n_test = 50
 
-        with h5py.File(TEST_SET_H5, "r") as f:
-            params = np.asarray(f["inputs"][:n_test])
-            PS_1D_true = np.asarray(f["PS_1D"][:n_test])  # (n, 32, 32) linear
+        with h5py.File(TEST_DATABASE_H5, "r") as f:
+            params = np.asarray(f["input_params"][:n_test])
+            PS_1D_true = np.asarray(f["PS_1D_seeds"][:n_test]).mean(
+                axis=1
+            )  # (n, 32, 32) mean over seeds
             PS_redshifts = np.asarray(f["PS_redshifts"])
             k = np.asarray(f["k"])
 
         emu = Emulator(emulator="mcg", emulate_2d_ps=False)
-        params = _log_convert_mh_params(params)
         _, output, _ = emu.predict(params, n_lstm_batch=10)
 
         assert output.PS is not None
@@ -269,14 +267,12 @@ class TestMHAccuracy:
         print(f"V3 1D PS accuracy: FE={fe:.2f}%")
 
     @pytest.mark.main_only
-    @pytest.mark.skipif(not TEST_SET_H5.exists(), reason="test_set.h5 not available")
     def test_1d_ps_always_available_with_2d(self):
         """Test that 1D PS is always available even when emulate_2d_ps=True."""
         h5py = pytest.importorskip("h5py")
 
-        with h5py.File(TEST_SET_H5, "r") as f:
-            params = np.asarray(f["inputs"][:1])
-        params = _log_convert_mh_params(params)
+        with h5py.File(TEST_DATABASE_H5, "r") as f:
+            params = np.asarray(f["input_params"][:1])
 
         emu = Emulator(emulator="mcg", emulate_2d_ps=True)
         _, output, _ = emu.predict(params, n_realisations=2, ps_2d_redshifts=[7.0])
@@ -295,9 +291,6 @@ class TestMHAccuracy:
         assert output.PS_2D_redshifts is not None
         assert np.allclose(output.PS_2D_redshifts, [7.0])
 
-    @pytest.mark.skipif(
-        not PS_2D_TEST_H5.exists(), reason="ps_2d_test_subsample.h5 not available"
-    )
     def test_diffusion_ps_single_sample(self):
         """Test 2D PS diffusion model with a single sample at one redshift."""
         h5py = pytest.importorskip("h5py")
@@ -340,9 +333,6 @@ class TestMHAccuracy:
         )
 
     @pytest.mark.main_only
-    @pytest.mark.skipif(
-        not PS_2D_TEST_H5.exists(), reason="ps_2d_test_subsample.h5 not available"
-    )
     def test_score_model_accuracy_vs_mean_error(self):
         """Test that score model FE is less than the stored mean error."""
         h5py = pytest.importorskip("h5py")

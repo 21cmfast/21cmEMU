@@ -11,19 +11,7 @@ from py21cmemu import DefaultEmulatorInput, Emulator, RadioEmulatorInput
 from py21cmemu.outputs import DefaultRawEmulatorOutput
 
 TUTORIALS_DIR = Path(__file__).resolve().parents[1] / "docs" / "tutorials"
-TEST_SET_H5 = TUTORIALS_DIR / "test_set.h5"
-
-
-def _log_convert_mh_params(params: np.ndarray) -> np.ndarray:
-    """Convert MH parameter array from linear to log10 for LOG_PARAMETERS columns."""
-    from py21cmemu.inputs import MHEmulatorInput
-
-    mh_in = MHEmulatorInput()
-    astro_keys = list(mh_in.astro_param_keys)
-    log_idx = [astro_keys.index(name) for name in mh_in.LOG_PARAMETERS]
-    out = params.copy().astype(float)
-    out[:, log_idx] = np.log10(out[:, log_idx])
-    return out
+TEST_DATABASE_H5 = TUTORIALS_DIR / "test_database.h5"
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -553,14 +541,12 @@ def test_output(tmp_path, emu_type):
 # ══════════════════════════════════════════════════════════════════════════════
 
 
-@pytest.mark.skipif(not TEST_SET_H5.exists(), reason="test_set.h5 not available")
 def test_mh_output_shapes(mh_emulator) -> None:
     """Test that output shapes match expected dimensions."""
     h5py = pytest.importorskip("h5py")
 
-    with h5py.File(TEST_SET_H5, "r") as f:
-        params = np.asarray(f["inputs"][0:1])
-    params = _log_convert_mh_params(params)
+    with h5py.File(TEST_DATABASE_H5, "r") as f:
+        params = np.asarray(f["input_params"][0:1])
 
     _, output, errors = mh_emulator.predict(params)
 
@@ -583,14 +569,12 @@ def test_mh_output_shapes(mh_emulator) -> None:
     assert output.UVLFs.shape == errors.UVLFs_logerr.shape
 
 
-@pytest.mark.skipif(not TEST_SET_H5.exists(), reason="test_set.h5 not available")
 def test_mh_output_values(mh_emulator) -> None:
     """Test that output values are in expected ranges."""
     h5py = pytest.importorskip("h5py")
 
-    with h5py.File(TEST_SET_H5, "r") as f:
-        params = np.asarray(f["inputs"][0:1])
-    params = _log_convert_mh_params(params)
+    with h5py.File(TEST_DATABASE_H5, "r") as f:
+        params = np.asarray(f["input_params"][0:1])
 
     _, output, _ = mh_emulator.predict(params)
 
@@ -676,12 +660,9 @@ class TestPS2DErrorStatistics:
     def mh_output_with_2d_ps(self):
         """Get MH emulator output with 2D PS for testing."""
         h5py = pytest.importorskip("h5py")
-        if not TEST_SET_H5.exists():
-            pytest.skip("test_set.h5 not available")
 
-        with h5py.File(TEST_SET_H5, "r") as f:
-            params = np.asarray(f["inputs"][:1])
-        params = _log_convert_mh_params(params)
+        with h5py.File(TEST_DATABASE_H5, "r") as f:
+            params = np.asarray(f["input_params"][:1])
 
         emu = Emulator(emulator="mcg", emulate_2d_ps=True)
         _, output, _ = emu.predict(params, n_realisations=2, ps_2d_redshifts=[7.0])
@@ -691,12 +672,9 @@ class TestPS2DErrorStatistics:
     def mh_output_no_2d_ps(self):
         """Get MH emulator output without 2D PS for testing."""
         h5py = pytest.importorskip("h5py")
-        if not TEST_SET_H5.exists():
-            pytest.skip("test_set.h5 not available")
 
-        with h5py.File(TEST_SET_H5, "r") as f:
-            params = np.asarray(f["inputs"][:1])
-        params = _log_convert_mh_params(params)
+        with h5py.File(TEST_DATABASE_H5, "r") as f:
+            params = np.asarray(f["input_params"][:1])
 
         emu = Emulator(emulator="mcg", emulate_2d_ps=False)
         _, output, _ = emu.predict(params)
@@ -793,12 +771,9 @@ class TestOutputUnits:
     def mh_output(self):
         """Get MH emulator output for testing."""
         h5py = pytest.importorskip("h5py")
-        if not TEST_SET_H5.exists():
-            pytest.skip("test_set.h5 not available")
 
-        with h5py.File(TEST_SET_H5, "r") as f:
-            params = np.asarray(f["inputs"][:1])
-        params = _log_convert_mh_params(params)
+        with h5py.File(TEST_DATABASE_H5, "r") as f:
+            params = np.asarray(f["input_params"][:1])
 
         emu = Emulator(emulator="mcg", emulate_2d_ps=False)
         _, output, _ = emu.predict(params)
@@ -899,12 +874,9 @@ class TestErrorStatisticsConsistency:
     def mh_output_and_props(self):
         """Get MH emulator output and properties for testing."""
         h5py = pytest.importorskip("h5py")
-        if not TEST_SET_H5.exists():
-            pytest.skip("test_set.h5 not available")
 
-        with h5py.File(TEST_SET_H5, "r") as f:
-            params = np.asarray(f["inputs"][:1])
-        params = _log_convert_mh_params(params)
+        with h5py.File(TEST_DATABASE_H5, "r") as f:
+            params = np.asarray(f["input_params"][:1])
 
         emu = Emulator(emulator="mcg", emulate_2d_ps=False)
         _, output, _ = emu.predict(params)
