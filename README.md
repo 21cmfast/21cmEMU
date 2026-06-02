@@ -14,12 +14,12 @@
 
 An emulator of 21cmFAST summaries, supporting three galaxy-formation models:
 
-- **acg** (v1) — Atomic Cooling Galaxies (Pop II only). A 9-parameter emulator
+- **acg** (v1; [Breitman+23](https://arxiv.org/abs/2309.05697)) — Atomic Cooling Galaxies (Pop II only). A 9-parameter emulator
   for the standard reionization scenario without mini-halos.
-- **radio** (v2) — Radio Background. A 5-parameter emulator that adds a radio
+- **radio** (v2; [Cang+24](https://arxiv.org/abs/2411.08134)) — Radio Background. A 5-parameter emulator that adds a radio
   background sourced by molecular cooling (Pop III) stars on top of atomic
   cooling galaxies.
-- **mcg** (v3) — Molecular Cooling Galaxies. The most complete 11-parameter
+- **mcg** (v3; [Breitman+26](https://arxiv.org/abs/2606.00219)) — Molecular Cooling Galaxies. The most complete 11-parameter
   emulator, jointly modelling atomic and molecular cooling galaxies (Pop II +
   Pop III). Uniquely emulates the **2D** cylindrical power spectrum
   P(k<sub>⊥</sub>, k<sub>∥</sub>) via a score-based diffusion model.
