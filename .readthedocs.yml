@@ -8,7 +8,8 @@ build:
     - pip install uv
     - uv sync --group docs
     - uv run sphinx-build -T -b html docs $READTHEDOCS_OUTPUT/html
-    - uv run sphinx-build -T -b epub docs $READTHEDOCS_OUTPUT/epub
+    - uv run sphinx-build -T -b epub docs /tmp/epub-build
+    - cp /tmp/epub-build/*.epub $READTHEDOCS_OUTPUT/epub/
 
 formats:
   - epub
