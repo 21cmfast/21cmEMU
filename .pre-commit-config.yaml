@@ -1,4 +1,4 @@
-exclude: "^docs/conf.py|^src/py21cmemu/emulator_constants.npz"
+exclude: '^docs/conf.py|^src/py21cmemu/emulator_constants.npz|^.*\.ipynb$|^src/py21cmemu/models/default/convert_v1_to_pytorch.py'
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
