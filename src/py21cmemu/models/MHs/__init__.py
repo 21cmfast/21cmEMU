@@ -21,6 +21,6 @@ from .lstm_model import MH_Emulator
 from .score_model import UNet
 
 __all__ = [
-    'MH_Emulator',
-    'UNet',
+    "MH_Emulator",
+    "UNet",
 ]

@@ -22,12 +22,13 @@ from .model_utils import get_score_fn
 from .utils import from_flattened_numpy, to_flattened_numpy
 
 if TYPE_CHECKING:
-    from typing import Callable
+    from collections.abc import Callable
 
 
 # ===================================================================
 # Predictors
 # ===================================================================
+
 
 class Predictor(abc.ABC):
     """Abstract class for a predictor algorithm."""
@@ -128,6 +129,7 @@ class NoneCorrector:
 # ===================================================================
 # Euler-Maruyama Sampler
 # ===================================================================
+
 
 class GetEMSampler:
     """Euler-Maruyama sampler for stochastic reverse-SDE sampling.
@@ -277,6 +279,7 @@ def get_em_sampler(
 # ===================================================================
 # Probability-Flow ODE Sampler
 # ===================================================================
+
 
 class GetODESampler:
     """Probability-flow ODE sampler using scipy's black-box ODE solver.

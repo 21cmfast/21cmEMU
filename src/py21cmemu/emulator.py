@@ -9,25 +9,30 @@ from typing import Any
 import numpy as np
 import torch
 
-from .inputs import DefaultEmulatorInput
-from .inputs import MHEmulatorInput
-from .inputs import ParamVecType
-from .inputs import RadioEmulatorInput
-from .outputs import ACGEmulatorErrors
-from .outputs import DefaultRawEmulatorOutput
-from .outputs import EmulatorOutput
-from .outputs import MHEmulatorErrors
-from .outputs import MHRawEmulatorOutput
-from .outputs import RadioEmulatorErrors
-from .outputs import RadioRawEmulatorOutput
-from .properties import DEFAULT_EMULATOR
-from .properties import EMULATOR_ACG
-from .properties import EMULATOR_MCG
-from .properties import EMULATOR_RADIO
-from .properties import emulator_properties
-from .properties import get_emulator_properties
-from .properties import resolve_emulator_name
-
+from .inputs import (
+    DefaultEmulatorInput,
+    MHEmulatorInput,
+    ParamVecType,
+    RadioEmulatorInput,
+)
+from .outputs import (
+    ACGEmulatorErrors,
+    DefaultRawEmulatorOutput,
+    EmulatorOutput,
+    MHEmulatorErrors,
+    MHRawEmulatorOutput,
+    RadioEmulatorErrors,
+    RadioRawEmulatorOutput,
+)
+from .properties import (
+    DEFAULT_EMULATOR,
+    EMULATOR_ACG,
+    EMULATOR_MCG,
+    EMULATOR_RADIO,
+    emulator_properties,
+    get_emulator_properties,
+    resolve_emulator_name,
+)
 
 log = logging.getLogger(__name__)
 
@@ -84,7 +89,6 @@ class Emulator:
         emulator: str = DEFAULT_EMULATOR,
         emulate_2d_ps: bool = False,
     ):
-
         self.which_emulator = resolve_emulator_name(emulator)
         self.emulate_2d_ps = emulate_2d_ps
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -116,8 +120,7 @@ class Emulator:
         elif self.which_emulator == EMULATOR_MCG:
             from .models.MHs.lstm_model import MH_Emulator
             from .models.MHs.score_model import UNet
-            from .sample_pytorch import GetEMSampler
-            from .sample_pytorch import GetODESampler
+            from .sample_pytorch import GetEMSampler, GetODESampler
             from .sde import VPSDE
 
             self.properties = get_emulator_properties(emulator=EMULATOR_MCG)

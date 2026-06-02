@@ -9,7 +9,6 @@ from textwrap import dedent
 
 import nox
 
-
 # Use standard nox session type
 Session = nox.Session
 session = nox.session
@@ -38,7 +37,7 @@ def activate_virtualenv_in_precommit_hooks(session: Session) -> None:
     Args:
         session: The Session object.
     """
-    assert session.bin is not None  # noqa: S101
+    assert session.bin is not None
 
     # Only patch hooks containing a reference to this session's bindir. Support
     # quoting rules for Python and bash, but strip the outermost quotes so we
@@ -88,7 +87,8 @@ def activate_virtualenv_in_precommit_hooks(session: Session) -> None:
         text = hook.read_text()
 
         if not any(
-            Path("A") == Path("a") and bindir.lower() in text.lower() or bindir in text
+            (Path("A") == Path("a") and bindir.lower() in text.lower())
+            or bindir in text
             for bindir in bindirs
         ):
             continue
@@ -137,17 +137,17 @@ def mypy(session: Session) -> None:
 def tests(session: Session) -> None:
     """Run the test suite."""
     session.install("coverage[toml]", "pytest", "pygments", "typeguard", "h5py", ".")
-    
+
     # Determine if we should run slow tests (on merge to main)
     args = list(session.posargs)
     github_ref = os.environ.get("GITHUB_REF", "")
     github_base_ref = os.environ.get("GITHUB_BASE_REF", "")
-    
+
     # Run slow tests on push to main or when base ref is main (merge)
     if github_ref == "refs/heads/main" or github_base_ref == "main":
         if "--run-slow" not in args:
             args.append("--run-slow")
-    
+
     try:
         session.run("coverage", "run", "--parallel", "-m", "pytest", *args)
     finally:
@@ -196,7 +196,9 @@ def docs_build(session: Session) -> None:
     if not session.posargs and "FORCE_COLOR" in os.environ:
         args.insert(0, "--color")
 
-    session.install("sphinx", "sphinx-click", "furo", "myst-parser", "nbsphinx", "ipython")
+    session.install(
+        "sphinx", "sphinx-click", "furo", "myst-parser", "nbsphinx", "ipython"
+    )
 
     build_dir = Path("docs", "_build")
     if build_dir.exists():

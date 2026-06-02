@@ -16,17 +16,16 @@ improvements over the original:
 import math
 from functools import partial
 
+import torch
+import torch.nn.functional as F
 from einops import rearrange, reduce
 from einops.layers.torch import Rearrange
-
-import torch
 from torch import nn
-import torch.nn.functional as F
-
 
 # ---------------------------------------------------------------------------
 # Utility helpers
 # ---------------------------------------------------------------------------
+
 
 def exists(x):
     return x is not None
@@ -41,6 +40,7 @@ def default(val, d):
 # ---------------------------------------------------------------------------
 # Up / Down sampling
 # ---------------------------------------------------------------------------
+
 
 def Upsample(dim, dim_out=None):
     return nn.Sequential(
@@ -61,6 +61,7 @@ def Downsample(dim, dim_out=None):
 # Time / condition embeddings
 # ---------------------------------------------------------------------------
 
+
 class SinusoidalPositionEmbeddings(nn.Module):
     def __init__(self, dim):
         super().__init__()
@@ -80,6 +81,7 @@ class SinusoidalPositionEmbeddings(nn.Module):
 # Normalisation / weight standardisation
 # ---------------------------------------------------------------------------
 
+
 class WeightStandardizedConv2d(nn.Conv2d):
     """Conv2d with weight standardization (Qiao et al. 2019).
 
@@ -92,13 +94,15 @@ class WeightStandardizedConv2d(nn.Conv2d):
         mean = reduce(weight, "o ... -> o 1 1 1", "mean")
         var = reduce(weight, "o ... -> o 1 1 1", partial(torch.var, unbiased=False))
         weight = (weight - mean) * (var + eps).rsqrt()
-        return F.conv2d(x, weight, self.bias, self.stride,
-                        self.padding, self.dilation, self.groups)
+        return F.conv2d(
+            x, weight, self.bias, self.stride, self.padding, self.dilation, self.groups
+        )
 
 
 # ---------------------------------------------------------------------------
 # Building blocks
 # ---------------------------------------------------------------------------
+
 
 class Block(nn.Module):
     def __init__(self, dim, dim_out, kernel_size=3, padding=1, groups=8, dropout=0.0):
@@ -123,24 +127,37 @@ class ResnetBlock(nn.Module):
     """ResNet block with FiLM conditioning (scale + shift) from both
     time embedding and optional physical-parameter embedding."""
 
-    def __init__(self, dim, dim_out, *, kernel_size=3, time_emb_dim=None,
-                 cdn_emb_dim=None, groups=8, dropout=0.0):
+    def __init__(
+        self,
+        dim,
+        dim_out,
+        *,
+        kernel_size=3,
+        time_emb_dim=None,
+        cdn_emb_dim=None,
+        groups=8,
+        dropout=0.0,
+    ):
         super().__init__()
         # Time conditioning MLP -> produces scale & shift
         self.time_mlp = (
             nn.Sequential(nn.SiLU(), nn.Linear(time_emb_dim, dim_out * 2))
-            if exists(time_emb_dim) else None
+            if exists(time_emb_dim)
+            else None
         )
         # Condition (physics params) FiLM -> separate scale & shift
         self.cdn_mlp = (
             nn.Sequential(nn.SiLU(), nn.Linear(cdn_emb_dim, dim_out * 2))
-            if exists(cdn_emb_dim) else None
+            if exists(cdn_emb_dim)
+            else None
         )
 
-        self.block1 = Block(dim, dim_out, kernel_size=kernel_size,
-                            groups=groups, dropout=dropout)
-        self.block2 = Block(dim_out, dim_out, kernel_size=kernel_size,
-                            groups=groups, dropout=dropout)
+        self.block1 = Block(
+            dim, dim_out, kernel_size=kernel_size, groups=groups, dropout=dropout
+        )
+        self.block2 = Block(
+            dim_out, dim_out, kernel_size=kernel_size, groups=groups, dropout=dropout
+        )
         self.res_conv = nn.Conv2d(dim, dim_out, 1) if dim != dim_out else nn.Identity()
 
     def forward(self, x, time_emb=None, cdn_emb=None):
@@ -174,6 +191,7 @@ class ResnetBlock(nn.Module):
 # Attention layers
 # ---------------------------------------------------------------------------
 
+
 class Attention(nn.Module):
     """Multi-head self-attention using PyTorch 2.0 scaled_dot_product_attention
     for memory-efficient and fused-kernel attention (FlashAttention when available)."""
@@ -206,7 +224,7 @@ class LinearAttention(nn.Module):
 
     def __init__(self, dim, heads=4, dim_head=32):
         super().__init__()
-        self.scale = dim_head ** -0.5
+        self.scale = dim_head**-0.5
         self.heads = heads
         hidden_dim = dim_head * heads
         self.to_qkv = nn.Conv2d(dim, hidden_dim * 3, 1, bias=False)
@@ -256,6 +274,7 @@ class Residual(nn.Module):
 # U-Net
 # ---------------------------------------------------------------------------
 
+
 class UNet(nn.Module):
     """Improved conditional U-Net for score-based diffusion.
 
@@ -292,7 +311,7 @@ class UNet(nn.Module):
         self.init_conv = nn.Conv2d(input_channels, init_dim, 7, padding=3)
 
         dims = [init_dim, *[dim[0] * m for m in dim_mults]]
-        in_out = list(zip(dims[:-1], dims[1:]))
+        in_out = list(zip(dims[:-1], dims[1:], strict=False))
 
         resnet_block = partial(ResnetBlock, groups=resnet_block_groups, dropout=dropout)
 
@@ -325,47 +344,99 @@ class UNet(nn.Module):
 
         for ind, (dim_in, dim_out) in enumerate(in_out):
             is_last = ind >= (num_resolutions - 1)
-            self.downs.append(nn.ModuleList([
-                resnet_block(dim_in, dim_in, time_emb_dim=time_dim,
-                             cdn_emb_dim=cdn_dim if cdn_len else None),
-                resnet_block(dim_in, dim_in, time_emb_dim=time_dim,
-                             cdn_emb_dim=cdn_dim if cdn_len else None),
-                Residual(PreNorm(dim_in, LinearAttention(dim_in,
-                         heads=attn_heads, dim_head=attn_dim_head))),
-                Downsample(dim_in, dim_out) if not is_last
-                else nn.Conv2d(dim_in, dim_out, 3, padding=1),
-            ]))
+            self.downs.append(
+                nn.ModuleList(
+                    [
+                        resnet_block(
+                            dim_in,
+                            dim_in,
+                            time_emb_dim=time_dim,
+                            cdn_emb_dim=cdn_dim if cdn_len else None,
+                        ),
+                        resnet_block(
+                            dim_in,
+                            dim_in,
+                            time_emb_dim=time_dim,
+                            cdn_emb_dim=cdn_dim if cdn_len else None,
+                        ),
+                        Residual(
+                            PreNorm(
+                                dim_in,
+                                LinearAttention(
+                                    dim_in, heads=attn_heads, dim_head=attn_dim_head
+                                ),
+                            )
+                        ),
+                        Downsample(dim_in, dim_out)
+                        if not is_last
+                        else nn.Conv2d(dim_in, dim_out, 3, padding=1),
+                    ]
+                )
+            )
 
         # ----- Bottleneck -----
         mid_dim = dims[-1]
-        self.mid_block1 = resnet_block(mid_dim, mid_dim, time_emb_dim=time_dim,
-                                       cdn_emb_dim=cdn_dim if cdn_len else None)
-        self.mid_attn = Residual(PreNorm(mid_dim, Attention(
-            mid_dim, heads=attn_heads, dim_head=attn_dim_head)))
-        self.mid_block2 = resnet_block(mid_dim, mid_dim, time_emb_dim=time_dim,
-                                       cdn_emb_dim=cdn_dim if cdn_len else None)
+        self.mid_block1 = resnet_block(
+            mid_dim,
+            mid_dim,
+            time_emb_dim=time_dim,
+            cdn_emb_dim=cdn_dim if cdn_len else None,
+        )
+        self.mid_attn = Residual(
+            PreNorm(
+                mid_dim, Attention(mid_dim, heads=attn_heads, dim_head=attn_dim_head)
+            )
+        )
+        self.mid_block2 = resnet_block(
+            mid_dim,
+            mid_dim,
+            time_emb_dim=time_dim,
+            cdn_emb_dim=cdn_dim if cdn_len else None,
+        )
 
         # ----- Decoder (upsampling path) -----
         for ind, (dim_in, dim_out) in enumerate(reversed(in_out)):
             is_last = ind == (len(in_out) - 1)
-            self.ups.append(nn.ModuleList([
-                resnet_block(dim_out + dim_in, dim_out, time_emb_dim=time_dim,
-                             cdn_emb_dim=cdn_dim if cdn_len else None),
-                resnet_block(dim_out + dim_in, dim_out, time_emb_dim=time_dim,
-                             cdn_emb_dim=cdn_dim if cdn_len else None),
-                Residual(PreNorm(dim_out, LinearAttention(dim_out,
-                         heads=attn_heads, dim_head=attn_dim_head))),
-                Upsample(dim_out, dim_in) if not is_last
-                else nn.Conv2d(dim_out, dim_in, 3, padding=1),
-            ]))
+            self.ups.append(
+                nn.ModuleList(
+                    [
+                        resnet_block(
+                            dim_out + dim_in,
+                            dim_out,
+                            time_emb_dim=time_dim,
+                            cdn_emb_dim=cdn_dim if cdn_len else None,
+                        ),
+                        resnet_block(
+                            dim_out + dim_in,
+                            dim_out,
+                            time_emb_dim=time_dim,
+                            cdn_emb_dim=cdn_dim if cdn_len else None,
+                        ),
+                        Residual(
+                            PreNorm(
+                                dim_out,
+                                LinearAttention(
+                                    dim_out, heads=attn_heads, dim_head=attn_dim_head
+                                ),
+                            )
+                        ),
+                        Upsample(dim_out, dim_in)
+                        if not is_last
+                        else nn.Conv2d(dim_out, dim_in, 3, padding=1),
+                    ]
+                )
+            )
 
         # ----- Output -----
         self.out_dim = 1
-        self.final_res_block = resnet_block(init_dim * 2, dim[0], time_emb_dim=time_dim,
-                                            cdn_emb_dim=cdn_dim if cdn_len else None)
+        self.final_res_block = resnet_block(
+            init_dim * 2,
+            dim[0],
+            time_emb_dim=time_dim,
+            cdn_emb_dim=cdn_dim if cdn_len else None,
+        )
         # Use Conv2d (not ConvTranspose2d) to avoid checkerboard artifacts
-        self.final_conv = nn.Conv2d(dim[0], self.out_dim,
-                                    kernel_size=7, padding=3)
+        self.final_conv = nn.Conv2d(dim[0], self.out_dim, kernel_size=7, padding=3)
 
     def forward(self, x, time, x_cdn=None, cdn=None, x_self_cond=None):
         # Self-conditioning: concatenate previous prediction

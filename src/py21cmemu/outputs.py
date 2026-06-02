@@ -57,9 +57,10 @@ attach units to all quantities.
 from __future__ import annotations
 
 import dataclasses as dc
+from collections.abc import Generator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Generator
+from typing import TYPE_CHECKING
 
 import numpy as np
 from scipy.special import expit
@@ -75,7 +76,6 @@ if TYPE_CHECKING:
 
 # Astropy units - required dependency
 import astropy.units as u
-
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Unit definitions
@@ -120,19 +120,36 @@ def _get_log_quantities() -> set[str]:
 
     These quantities have units of dex(base_unit). The stored values are
     log10(physical_value), so use .physical to convert back to linear units.
-    
+
     Note: PS is NOT in this set - it's always returned in linear units (mK^2).
     """
     return {"UVLFs"}
 
 
 # Known data fields that should be wrapped with units
-_UNIT_FIELDS = frozenset([
-    "Tb", "xHI", "Ts", "Tr", "tau", "UVLFs", "PS", 
-    "PS_2D", "PS_2D_samples", "PS_2D_std",
-    "redshifts", "PS_2D_redshifts", "UVLF_redshifts", 
-    "kperp", "kpar", "k", "PS_ks", "Muv", "Nmodes",
-])
+_UNIT_FIELDS = frozenset(
+    [
+        "Tb",
+        "xHI",
+        "Ts",
+        "Tr",
+        "tau",
+        "UVLFs",
+        "PS",
+        "PS_2D",
+        "PS_2D_samples",
+        "PS_2D_std",
+        "redshifts",
+        "PS_2D_redshifts",
+        "UVLF_redshifts",
+        "kperp",
+        "kpar",
+        "k",
+        "PS_ks",
+        "Muv",
+        "Nmodes",
+    ]
+)
 
 
 @dataclass(frozen=True)
@@ -140,14 +157,14 @@ class EmulatorOutput:
     """Base class for emulator output with automatic unit handling.
 
     All output quantities are returned as astropy Quantities with units.
-    
+
     **Units Convention**:
     - PS quantities (PS, PS_2D): Always in LINEAR units [mK²]
     - UVLFs: In log10 space [dex(Mpc⁻³ mag⁻¹)], use .physical to convert
     - Other quantities: In physical units (Tb [mK], xHI [dimensionless], etc.)
-    
+
     Example::
-    
+
         output.PS              # mK² (linear units)
         output.UVLFs           # dex(Mpc⁻³ mag⁻¹) (log10 units)
         output.UVLFs.physical  # Mpc⁻³ mag⁻¹ (converts to linear)
@@ -195,7 +212,7 @@ class EmulatorOutput:
     @property
     def redshifts(self) -> u.Quantity:
         """Redshifts for global summaries (Tb, xHI, Ts, tau).
-        
+
         Returns
         -------
         Quantity[dimensionless]
@@ -206,7 +223,7 @@ class EmulatorOutput:
     @property
     def PS_redshifts(self) -> u.Quantity:
         """Redshifts at which power spectrum is evaluated.
-        
+
         Returns
         -------
         Quantity[dimensionless]
@@ -217,7 +234,7 @@ class EmulatorOutput:
     @property
     def PS_ks(self) -> u.Quantity:
         """Wavenumbers for power spectrum.
-        
+
         Returns
         -------
         Quantity[Mpc⁻¹]
@@ -228,7 +245,7 @@ class EmulatorOutput:
     @property
     def k(self) -> u.Quantity:
         """Wavenumbers for power spectrum (alias for PS_ks).
-        
+
         Returns
         -------
         Quantity[Mpc⁻¹]
@@ -303,7 +320,7 @@ class EmulatorOutput:
 
             output.UVLFs           # dex(Mpc⁻³ mag⁻¹)
             output.UVLFs.physical  # Mpc⁻³ mag⁻¹
-        
+
         **Note**: PS is NOT in this set - PS is always returned in LINEAR
         mK² units, not log10 units.
 
@@ -356,9 +373,9 @@ class EmulatorOutput:
 @dataclass(frozen=True)
 class DefaultEmulatorOutput(EmulatorOutput):
     """Output from the Default/ACG (v1) emulator.
-    
+
     All quantities are returned with astropy units attached.
-    
+
     Attributes
     ----------
     Tb : Quantity[mK]
@@ -388,18 +405,18 @@ class DefaultEmulatorOutput(EmulatorOutput):
     @property
     def PS_1D_redshifts(self) -> u.Quantity:
         """Redshifts at which 1D PS is evaluated.
-        
+
         Returns
         -------
         Quantity[dimensionless]
             Redshift values, shape (32,)
         """
         return self.properties.PS_zs
-    
+
     @property
     def PS_1D_k(self) -> u.Quantity:
         """Redshifts at which 1D PS is evaluated.
-        
+
         Returns
         -------
         Quantity[dimensionless]
@@ -410,7 +427,7 @@ class DefaultEmulatorOutput(EmulatorOutput):
     @property
     def Muv(self) -> u.Quantity:
         """UV absolute magnitudes for UVLF sampling.
-        
+
         Returns
         -------
         Quantity[mag]
@@ -425,7 +442,7 @@ class DefaultEmulatorOutput(EmulatorOutput):
     @property
     def UVLF_redshifts(self) -> u.Quantity:
         """Redshifts at which UVLFs are evaluated.
-        
+
         Returns
         -------
         Quantity[dimensionless]
@@ -440,10 +457,10 @@ class DefaultEmulatorOutput(EmulatorOutput):
 
 @dataclass(frozen=True)
 class RadioEmulatorOutput(EmulatorOutput):
-    """Output from the Radio (v2) emulator.    
-    
+    """Output from the Radio (v2) emulator.
+
     All quantities are returned with astropy units attached.
-    
+
     Attributes
     ----------
     Tb : Quantity[mK]
@@ -534,7 +551,7 @@ class DefaultRawEmulatorOutput(RawEmulatorOutput):
     @property
     def PS(self) -> np.ndarray:
         """Raw normalized 1D power spectrum (in log10 space, needs denormalization).
-        
+
         This returns the raw emulator output before denormalization.
         After calling get_renormalized(), PS will be converted to LINEAR mK² units.
         """
@@ -550,7 +567,7 @@ class DefaultRawEmulatorOutput(RawEmulatorOutput):
     @property
     def UVLFs(self) -> np.ndarray:
         """Raw normalized UV luminosity functions (in log10 space, needs denormalization).
-        
+
         This returns the raw emulator output before denormalization.
         After calling get_renormalized(), UVLFs will be in log10 space with units
         [dex(Mpc⁻³ mag⁻¹)]. Use .physical on the final output to convert to linear.
@@ -651,7 +668,7 @@ class RadioRawEmulatorOutput(RawEmulatorOutput):
     @property
     def PS(self) -> np.ndarray:
         r"""Raw normalized 1D power spectrum (in log10 space, needs denormalization).
-        
+
         This returns the raw emulator output before denormalization.
         After calling get_renormalized(), PS will be converted to LINEAR mK² units.
         """
@@ -715,13 +732,13 @@ class RadioRawEmulatorOutput(RawEmulatorOutput):
 @dataclass(frozen=True)
 class MHEmulatorOutput(EmulatorOutput):
     """Output from the MH/MCG (v3) emulator.
-    
+
     All quantities are returned with astropy units attached.
-    
+
     **IMPORTANT**: All PS quantities are returned in LINEAR mK² units, NOT log10.
     Internally, the emulator trains on log10(PS) but converts to linear before
     returning. To get log10 values, use ``np.log10(output.PS)``.
-    
+
     Attributes
     ----------
     Tb : Quantity[mK]
@@ -776,7 +793,7 @@ class MHEmulatorOutput(EmulatorOutput):
     @property
     def PS_1D_k(self) -> u.Quantity:
         """Wavenumbers for 1D power spectrum.
-        
+
         Returns
         -------
         Quantity[Mpc⁻¹]
@@ -787,7 +804,7 @@ class MHEmulatorOutput(EmulatorOutput):
     @property
     def PS_1D_redshifts(self) -> u.Quantity:
         """Redshifts at which 1D PS is evaluated.
-        
+
         Returns
         -------
         Quantity[dimensionless]
@@ -798,7 +815,7 @@ class MHEmulatorOutput(EmulatorOutput):
     @property
     def kperp(self) -> u.Quantity:
         """Perpendicular wavenumbers for 2D power spectrum.
-        
+
         Returns
         -------
         Quantity[Mpc⁻¹]
@@ -809,7 +826,7 @@ class MHEmulatorOutput(EmulatorOutput):
     @property
     def kpar(self) -> u.Quantity:
         """Parallel wavenumbers for 2D power spectrum.
-        
+
         Returns
         -------
         Quantity[Mpc⁻¹]
@@ -820,7 +837,7 @@ class MHEmulatorOutput(EmulatorOutput):
     @property
     def Nmodes(self) -> u.Quantity:
         """Number of Fourier modes per 2D PS bin.
-        
+
         Returns
         -------
         Quantity[dimensionless]
@@ -831,62 +848,62 @@ class MHEmulatorOutput(EmulatorOutput):
     @property
     def PS_err(self) -> u.Quantity:
         """Median fractional error on 1D PS values.
-        
+
         **IMPORTANT**: Although PS is RETURNED in LINEAR mK² units, this error
         statistic is computed on log10(PS) during training and validation.
-        
+
         Returns
         -------
         Quantity[dimensionless]
             Median fractional error as percentage (%), shape (32 redshifts, 32 k).
             This is FE% computed as: 100 * |log10(true) - log10(pred)| / |log10(true)|
-        
+
         Interpretation
         --------------
         A 5% error on log10(PS) means:
         - The log10 exponent is off by ~5%
         - Corresponds to ~12% multiplicative error in LINEAR PS (10^0.05 ≈ 1.12)
-        
+
         To estimate the error in your linear PS values::
-        
+
             relative_error_linear = 10**(PS_err/100) - 1  # fractional error
             absolute_error_linear = output.PS * relative_error_linear  # in mK²
-        
+
         See Also
         --------
         PS_2D_err : Equivalent for 2D power spectrum
         MHEmulatorProperties : Full error documentation
         """
         return self.properties.PS_1D_med_err
-    
+
     @property
     def PS_2D_err(self) -> u.Quantity | None:
         """Median fractional error on 2D PS values.
-        
+
         **IMPORTANT**: Although PS_2D is RETURNED in LINEAR mK² units, this error
         statistic is computed on log10(PS) during training and validation.
-        
+
         Returns
         -------
         Quantity[dimensionless] | None
             Median fractional error as percentage (%), shape (32 kperp, 64 kpar).
             Returns None if emulate_2d_ps=False.
-            
+
         Note
         ----
         Uses ODE sampler error statistics (default). For EM sampler errors,
         access ``properties.PS_med_err_em`` directly.
-        
+
         Interpretation
         --------------
         Same as PS_err - see that property for details. A 5% error on log10(PS)
         corresponds to ~12% multiplicative error in the returned linear PS values.
-        
+
         To estimate the error in your linear PS_2D values::
-        
+
             relative_error_linear = 10**(PS_2D_err/100) - 1
             absolute_error_linear = output.PS_2D * relative_error_linear  # in mK²
-        
+
         See Also
         --------
         PS_err : Equivalent for 1D power spectrum
@@ -896,7 +913,7 @@ class MHEmulatorOutput(EmulatorOutput):
         if self.PS_2D is None:
             return None
         return self.properties.PS_med_err
-    
+
     # ═══════════════════════════════════════════════════════════════════════════
     # 2D PS Error Distribution Statistics
     # ═══════════════════════════════════════════════════════════════════════════
@@ -905,20 +922,20 @@ class MHEmulatorOutput(EmulatorOutput):
     #
     # IMPORTANT: These statistics describe errors on LOG10 values, not linear PS.
     # A 5% FE on log10(PS) ≈ 12% error on linear PS (since 10^0.05 ≈ 1.12).
-    
+
     @property
     def PS_2D_var(self) -> u.Quantity | None:
         """Variance of 2D PS emulator error across test set.
-        
+
         Variance of the fractional error (FE%) computed on log10(PS) values
         during validation. Measures the spread of errors at each pixel.
-        
+
         Returns
         -------
         Quantity[dimensionless] | None
             Error variance as (FE%)², shape (32 kperp, 64 kpar).
             Returns None if emulate_2d_ps=False.
-            
+
         Note
         ----
         Uses ODE sampler statistics. Despite PS_2D being returned in LINEAR
@@ -927,27 +944,27 @@ class MHEmulatorOutput(EmulatorOutput):
         if self.PS_2D is None:
             return None
         return self.properties.PS_var
-    
+
     @property
     def PS_2D_cov(self) -> u.Quantity | None:
         """Covariance matrix of 2D PS emulator error.
-        
+
         Full covariance of fractional errors (FE%) computed on log10(PS)
         between all pairs of (k_perp, k_par) pixels from test set validation.
-        
+
         Returns
         -------
         Quantity[dimensionless] | None
             Flattened covariance matrix of error as (FE%)², shape (2048, 2048)
             where 2048 = 32 × 64 (flattened k-space grid).
             Returns None if emulate_2d_ps=False.
-        
+
         Note
         ----
         Pixels ordered by row-major raveling. Use ``PS_2D_cov_4d()`` to get
         reshaped (32, 64, 32, 64) version where cov[i,j,k,l] gives covariance
         between pixels (k_perp[i], k_par[j]) and (k_perp[k], k_par[l]).
-        
+
         See Also
         --------
         PS_2D_cov_4d : Reshaped 4D version
@@ -956,20 +973,20 @@ class MHEmulatorOutput(EmulatorOutput):
         if self.PS_2D is None:
             return None
         return self.properties.PS_cov
-    
+
     def PS_2D_cov_4d(self) -> u.Quantity | None:
         """Covariance matrix reshaped to 4D for easier indexing.
-        
+
         Reshapes the flattened (2048, 2048) covariance matrix to
         (32, 64, 32, 64) where dimensions are (k_perp, k_par, k_perp', k_par').
-        
+
         Returns
         -------
         Quantity[dimensionless] | None
             4D covariance array where cov_4d[i, j, k, l] gives the covariance
             between pixels (k_perp[i], k_par[j]) and (k_perp[k], k_par[l]).
             Returns None if not available.
-        
+
         See Also
         --------
         PS_2D_cov : Flattened version
@@ -978,21 +995,21 @@ class MHEmulatorOutput(EmulatorOutput):
         if cov is None:
             return None
         return cov.reshape(32, 64, 32, 64)
-    
+
     @property
     def PS_2D_corr_diag_frac(self) -> float | None:
         """Fraction of error variance that is uncorrelated (diagonal).
-        
+
         Quantifies how much of the total error variance comes from independent
         pixel errors vs. correlated errors across k-space.
-        
+
         Returns
         -------
         float | None
             Fraction in [0, 1]. Values near 1: mostly independent pixel errors.
             Values < 0.8: significant spatial correlations in errors.
             Returns None if not available.
-        
+
         See Also
         --------
         PS_2D_mean_abs_corr : Mean correlation strength
@@ -1000,21 +1017,21 @@ class MHEmulatorOutput(EmulatorOutput):
         if self.PS_2D is None:
             return None
         return self.properties.diag_frac
-    
+
     @property
     def PS_2D_mean_abs_corr(self) -> float | None:
         """Mean absolute correlation between pixel errors.
-        
+
         Average |r_ij| over all off-diagonal pairs where r_ij is the Pearson
         correlation coefficient. Indicates typical correlation strength.
-        
+
         Returns
         -------
         float | None
             Mean |correlation| in [0, 1]. Values < 0.1: weakly correlated.
             Values > 0.3: strong spatial correlation structure.
             Returns None if not available.
-        
+
         See Also
         --------
         PS_2D_corr_diag_frac : Overall decorrelation metric
@@ -1026,7 +1043,7 @@ class MHEmulatorOutput(EmulatorOutput):
     @property
     def Muv(self) -> u.Quantity:
         """UV absolute magnitudes for UVLF sampling.
-        
+
         Returns
         -------
         Quantity[mag]
@@ -1040,7 +1057,7 @@ class MHEmulatorOutput(EmulatorOutput):
     @property
     def UVLF_redshifts(self) -> u.Quantity:
         """Redshifts at which UVLFs are evaluated.
-        
+
         Returns
         -------
         Quantity[dimensionless]
@@ -1051,7 +1068,7 @@ class MHEmulatorOutput(EmulatorOutput):
     @property
     def redshifts(self) -> u.Quantity:
         """Redshifts for global summaries (Tb, xHI, Ts).
-        
+
         Returns
         -------
         Quantity[dimensionless]
@@ -1103,7 +1120,7 @@ class MHRawEmulatorOutput(RawEmulatorOutput):
     @property
     def PS(self) -> np.ndarray:
         """Raw normalized 1D PS from LSTM (in log10 space, needs denormalization).
-        
+
         This returns the raw emulator output before denormalization.
         After calling get_renormalized(), PS will be converted to LINEAR mK² units.
         """
@@ -1115,7 +1132,7 @@ class MHRawEmulatorOutput(RawEmulatorOutput):
     @property
     def PS_2D_samples(self) -> np.ndarray | None:
         """Raw 2D PS samples from score model (in LINEAR mK², already denormalized).
-        
+
         The diffusion model directly outputs PS values in linear space.
         These samples are already in physical mK² units.
         """
@@ -1125,12 +1142,12 @@ class MHRawEmulatorOutput(RawEmulatorOutput):
     def PS_2D_redshifts(self) -> np.ndarray | None:
         """Redshifts for 2D PS."""
         return self.output[7] if len(self.output) > 7 else None
-    
+
     @property
     def PS_2D(self) -> np.ndarray | None:
         """Placeholder - computed in get_renormalized."""
         return None
-    
+
     @property
     def PS_2D_std(self) -> np.ndarray | None:
         """Placeholder - computed in get_renormalized."""
@@ -1169,21 +1186,21 @@ class MHRawEmulatorOutput(RawEmulatorOutput):
         out["Ts"] = 10 ** ts_val.squeeze()
         out["xHI"] = out["xHI"].squeeze()
         out["Tb"] = out["Tb"].squeeze()
-        
+
         # Convert tau from log10 to linear space
         out["tau"] = 10 ** out["tau"]
         # UVLFs stay in log10 space (dex units) - use .physical to convert
         out["UVLFs"] = np.swapaxes(out["UVLFs"], 2, 1)
-        
+
         # 1D PS from LSTM: denormalize from log space and convert to linear units (mK^2)
         # Formula: PS = 10^(PS_norm * PS_1D_log_std + PS_1D_log_mean)
         ps_1d_norm = out.get("PS")
         if ps_1d_norm is not None:
             out["PS"] = 10 ** (
-                ps_1d_norm.squeeze() * self.properties.PS_1D_log_std 
+                ps_1d_norm.squeeze() * self.properties.PS_1D_log_std
                 + self.properties.PS_1D_log_mean
             )
-        
+
         # 2D PS samples from score model: already in log10 space, convert to linear
         ps_2d_samples = out.get("PS_2D_samples")
         if ps_2d_samples is not None:
@@ -1218,52 +1235,52 @@ class MHRawEmulatorOutput(RawEmulatorOutput):
 @dataclass(frozen=True)
 class EmulatorErrors:
     """Base class for emulator error statistics.
-    
+
     This is the abstract base class for all emulator-specific error classes.
     Each emulator version (ACG/v1, Radio/v2, MH/v3) has its own error class
     that inherits from this base.
-    
+
     Error Terminology
     -----------------
     - **Fractional Error (FE%)**: The percentage error relative to the true value,
       computed as ``100 * |predicted - true| / |true|``. This is what the ACG
       and Radio emulators store directly.
-    - **Absolute Error**: The error in physical units, computed as 
+    - **Absolute Error**: The error in physical units, computed as
       ``FE% / 100 * |output_value|``. The MH emulator computes these from FE%.
-    
+
     Error Aggregation
     -----------------
     Errors are aggregated from a held-out test set of ~300-1000 simulations:
-    
+
     1. For each test sample, compute the pointwise error at each (z, k) or (z, M) bin
     2. Aggregate across test samples using the **median** (robust to outliers)
     3. Store the resulting error array with shape matching the output quantity
-    
+
     The median is chosen over the mean because some parameter combinations
     can produce pathological errors that would skew mean statistics.
-    
+
     Dict-like Interface
     -------------------
     All error classes support dict-like access for compatibility::
-    
+
         errors = emu.predict(params)[2]
         errors["PS_err"]        # Dict-style access
         errors.PS_err           # Attribute access
         "PS_err" in errors      # Key checking
         list(errors.keys())     # List available errors
         for key, val in errors.items(): ...  # Iteration
-    
+
     See Also
     --------
     ACGEmulatorErrors : Errors for ACG/Default (v1) emulator.
     RadioEmulatorErrors : Errors for Radio (v2) emulator.
     MHEmulatorErrors : Errors for MH/MCG (v3) emulator.
     """
-    
+
     def available_errors(self) -> dict[str, str]:
         """Return dict of available error fields and their descriptions."""
         return {}
-    
+
     def summary(self) -> str:
         """Return a human-readable summary of error statistics."""
         lines = ["Emulator Error Statistics", "=" * 40]
@@ -1271,8 +1288,8 @@ class EmulatorErrors:
             val = getattr(self, name, None)
             if val is None:
                 lines.append(f"{name}: N/A ({desc})")
-            elif hasattr(val, 'shape'):
-                med = np.nanmedian(val.value if hasattr(val, 'value') else val)
+            elif hasattr(val, "shape"):
+                med = np.nanmedian(val.value if hasattr(val, "value") else val)
                 lines.append(f"{name}: median={med:.2f} ({desc})")
             else:
                 lines.append(f"{name}: {val} ({desc})")
@@ -1282,58 +1299,58 @@ class EmulatorErrors:
 @dataclass(frozen=True)
 class MHEmulatorErrors(EmulatorErrors):
     """Error statistics for the MH (v3) emulator with proper astropy units.
-    
+
     This class provides **absolute errors** computed from the test set's fractional
     errors (FE%) applied to the emulator output values. Unlike the ACG and Radio
     emulators which store raw FE%, the MH emulator computes output-dependent
     absolute errors in physical units.
-    
+
     Error Computation
     -----------------
     Absolute errors are computed as::
-    
+
         absolute_error = FE% / 100 * |output_value|
-    
+
     where FE% is the **median** fractional error from a held-out test set of
     ~1000 simulations. The median is used (rather than mean) for robustness to
     outliers from pathological parameter combinations.
-    
+
     Log vs Linear Errors
     --------------------
     **IMPORTANT**: Different quantities have errors computed in different spaces:
-    
+
     - **PS errors**: Although PS is RETURNED in LINEAR mK² units, errors are
       computed on log10(PS) values and then converted. ``PS_err`` is in dex
       (log10 units). A ``PS_err`` of 0.05 dex means log10(PS) is off by ~0.05,
       corresponding to a multiplicative factor of 10^0.05 ≈ 1.12 (12%) error
       in the returned linear PS values.
-    
+
     - **UVLF errors**: UVLFs are returned in log10 space [dex(Mpc⁻³ mag⁻¹)].
       ``UVLFs_logerr`` is in dex units. ``UVLFs_err`` gives the error on
       linear φ values after conversion from log space.
-    
+
     - **Linear quantities** (Tb, xHI, Ts, tau): Errors are in physical units.
       A ``Tb_err`` of 2 mK means the brightness temperature is off by ~2 mK.
-    
+
     2D Power Spectrum Errors
     ------------------------
     The MH emulator uses a score-based diffusion model for 2D PS which has
     additional error statistics accessible via the ``properties`` attribute:
-    
+
     - **Variance**: Per-bin variance from test set residuals
     - **Covariance**: Full covariance matrix between (kperp, kpar) bins
     - **Correlation**: Normalized correlation matrix
-    
+
     These can be accessed via helper methods::
-    
+
         errors.get_ps_variance()           # Shape (32, 64) variance array
         errors.get_ps_covariance()         # Shape (2048, 2048) covariance matrix
         errors.ps_diagonal_fraction        # Fraction of variance on diagonal
         errors.ps_mean_abs_correlation     # Mean |off-diagonal correlation|
-    
+
     Two sampling methods are available: 'em' (Euler-Maruyama) and 'ode' (ODE solver),
     with different error characteristics accessible via the ``method`` parameter.
-    
+
     Attributes
     ----------
     PS_err : Quantity[dex(mK²)]
@@ -1357,29 +1374,29 @@ class MHEmulatorErrors(EmulatorErrors):
     UVLFs_logerr : Quantity[dex(Mpc⁻³ mag⁻¹)]
         Absolute error on log10(φ) in dex units. Shape (n_z, n_mag).
         Preferred for log-scale LF plots since UVLFs are returned in log10.
-    
+
     Examples
     --------
     Basic usage with prediction::
-    
+
         emu = Emulator(emulator="mcg")
         theta, output, errors = emu.predict(params)
         print(errors.PS_err.unit)  # dex(mK2)
         print(errors.summary())    # Human-readable summary
-    
+
     Accessing 2D PS error statistics::
-    
+
         errors.get_ps_variance()            # Per-bin variance
         errors.get_ps_covariance()          # Full covariance matrix
         print(f"Diagonal fraction: {errors.ps_diagonal_fraction:.2%}")
         print(f"Mean |correlation|: {errors.ps_mean_abs_correlation:.3f}")
-    
+
     See Also
     --------
     MHEmulatorProperties : Raw error statistics from test set.
     MHEmulatorOutput : The output dataclass these errors correspond to.
     """
-    
+
     # Required fields
     PS_err: u.Quantity
     Tb_err: u.Quantity
@@ -1388,11 +1405,11 @@ class MHEmulatorErrors(EmulatorErrors):
     tau_err: u.Quantity
     UVLFs_err: u.Quantity
     UVLFs_logerr: u.Quantity
-    
+
     # Internal reference to emulator properties for advanced access
     _properties: object = dc.field(default=None, repr=False)
     _ps_sampling_method: str = dc.field(default="em", repr=False)
-    
+
     def available_errors(self) -> dict[str, str]:
         """Return dict of available error fields and their descriptions."""
         return {
@@ -1404,21 +1421,21 @@ class MHEmulatorErrors(EmulatorErrors):
             "UVLFs_err": "Absolute error on linear LF",
             "UVLFs_logerr": "Absolute error on log10(LF)",
         }
-    
+
     @property
     def properties(self):
         """Access the underlying emulator properties for advanced error statistics."""
         return self._properties
-    
+
     @classmethod
     def from_output(
         cls,
         output: MHEmulatorOutput,
-        properties: "MHEmulatorProperties",
+        properties: MHEmulatorProperties,
         ps_sampling_method: str = "em",
-    ) -> "MHEmulatorErrors":
+    ) -> MHEmulatorErrors:
         """Construct error statistics from emulator output.
-        
+
         Parameters
         ----------
         output : MHEmulatorOutput
@@ -1427,18 +1444,19 @@ class MHEmulatorErrors(EmulatorErrors):
             The emulator properties containing FE% arrays.
         ps_sampling_method : str, optional
             Sampling method for 2D PS: 'em' (default) or 'ode'.
-        
+
         Returns
         -------
         MHEmulatorErrors
             Error statistics with proper units attached.
         """
+
         # Helper to get raw values (strip Quantity if present)
         def _raw(x):
             if x is None:
                 return None
-            return x.value if hasattr(x, 'value') else x
-        
+            return x.value if hasattr(x, "value") else x
+
         # Get raw output values
         emu_PS = _raw(output.PS)
         emu_Tb = _raw(output.Tb)
@@ -1446,19 +1464,16 @@ class MHEmulatorErrors(EmulatorErrors):
         emu_Ts = _raw(output.Ts)
         emu_UVLFs = _raw(output.UVLFs)
         emu_tau = _raw(output.tau)
-        
+
         # Select method-specific PS FE% if available
         if ps_sampling_method == "ode":
             ps_fe = properties.PS_med_err_ode
         else:
             ps_fe = properties.PS_med_err_em
-        
+
         # Get magnitude mask for UVLFs (M_UV in [-20, -10])
-        m = np.logical_and(
-            properties.UVLFs_MUVs <= -10, 
-            properties.UVLFs_MUVs >= -20
-        )
-        
+        m = np.logical_and(properties.UVLFs_MUVs <= -10, properties.UVLFs_MUVs >= -20)
+
         # Compute absolute errors from FE%
         # PS: handle shape mismatch between 1D PS output and 2D PS error
         if emu_PS is not None:
@@ -1470,26 +1485,26 @@ class MHEmulatorErrors(EmulatorErrors):
                 ps_err = np.nanmedian(ps_fe) / 100.0 * np.abs(emu_PS)
         else:
             ps_err = np.nan
-        
+
         # Linear quantity errors
         tb_err = properties.Tb_med_err / 100.0 * np.abs(emu_Tb)
         xhi_err = properties.xHI_med_err / 100.0 * emu_xHI
         ts_err = properties.Ts_med_err / 100.0 * emu_Ts
         tau_err = properties.tau_med_err / 100.0 * emu_tau
-        
+
         # UVLF errors
         # FE% arrays have shape (n_mag, n_z), need to swap to match output shape
         uvlf_log_fe = np.swapaxes(properties.UVLFs_med_logerr[m], 1, 0)
         uvlf_logerr = uvlf_log_fe / 100.0 * np.abs(emu_UVLFs)
-        
+
         # Linear LF error
         if properties.UVLFs_lin_med_err is not None:
             uvlf_lin_fe = np.swapaxes(properties.UVLFs_lin_med_err[m], 1, 0)
-            uvlf_linerr = uvlf_lin_fe / 100.0 * (10 ** emu_UVLFs)
+            uvlf_linerr = uvlf_lin_fe / 100.0 * (10**emu_UVLFs)
         else:
             # Fallback from log error
-            uvlf_linerr = uvlf_log_fe / 100.0 * (10 ** emu_UVLFs)
-        
+            uvlf_linerr = uvlf_log_fe / 100.0 * (10**emu_UVLFs)
+
         return cls(
             PS_err=ps_err * u.dex(u.mK**2),
             Tb_err=tb_err * u.mK,
@@ -1501,25 +1516,23 @@ class MHEmulatorErrors(EmulatorErrors):
             _properties=properties,
             _ps_sampling_method=ps_sampling_method,
         )
-    
+
     # ─────────────────────────────────────────────────────────────────────────
     # Advanced Error Statistics (accessed via properties)
     # ─────────────────────────────────────────────────────────────────────────
-    
+
     def get_ps_fractional_error(
-        self, 
-        method: str | None = None, 
-        stat: str = "median"
+        self, method: str | None = None, stat: str = "median"
     ) -> np.ndarray:
         """Get 2D PS fractional error (FE%) for specified method and statistic.
-        
+
         Parameters
         ----------
         method : str, optional
             Sampling method: 'em' or 'ode'. Default uses the method from output.
         stat : str, optional
             Error statistic: 'median' (default), 'mean', or 'std'.
-        
+
         Returns
         -------
         np.ndarray
@@ -1529,15 +1542,15 @@ class MHEmulatorErrors(EmulatorErrors):
             raise ValueError("Properties not available")
         method = method or self._ps_sampling_method
         return self._properties.get_ps_error(method=method, stat=stat)
-    
+
     def get_ps_variance(self, method: str | None = None) -> np.ndarray | None:
         """Get 2D PS error variance (FE%²) for specified sampling method.
-        
+
         Parameters
         ----------
         method : str, optional
             Sampling method: 'em' or 'ode'. Default uses the method from output.
-        
+
         Returns
         -------
         np.ndarray | None
@@ -1547,15 +1560,15 @@ class MHEmulatorErrors(EmulatorErrors):
             return None
         method = method or self._ps_sampling_method
         return self._properties.get_ps_variance(method=method)
-    
+
     def get_ps_covariance(self, method: str | None = None) -> np.ndarray | None:
         """Get 2D PS error covariance matrix for specified sampling method.
-        
+
         Parameters
         ----------
         method : str, optional
             Sampling method: 'em' or 'ode'. Default uses the method from output.
-        
+
         Returns
         -------
         np.ndarray | None
@@ -1565,7 +1578,7 @@ class MHEmulatorErrors(EmulatorErrors):
             return None
         method = method or self._ps_sampling_method
         return self._properties.get_ps_covariance(method=method)
-    
+
     @property
     def ps_diagonal_fraction(self) -> float | None:
         """Fraction of covariance on diagonal (1 = uncorrelated errors)."""
@@ -1574,7 +1587,7 @@ class MHEmulatorErrors(EmulatorErrors):
         if self._ps_sampling_method == "ode":
             return self._properties.diag_frac_ode
         return self._properties.diag_frac_em
-    
+
     @property
     def ps_mean_abs_correlation(self) -> float | None:
         """Mean absolute off-diagonal correlation (0 = uncorrelated)."""
@@ -1583,19 +1596,19 @@ class MHEmulatorErrors(EmulatorErrors):
         if self._ps_sampling_method == "ode":
             return self._properties.mean_abs_corr_ode
         return self._properties.mean_abs_corr_em
-    
+
     def __contains__(self, key: str) -> bool:
         """Check if error field exists (for dict-like 'in' operator)."""
         return key in self.available_errors()
-    
+
     def __getitem__(self, key: str) -> u.Quantity:
         """Allow dict-like access to error fields."""
         return getattr(self, key)
-    
+
     def keys(self) -> list[str]:
         """Return list of error field names."""
         return list(self.available_errors().keys())
-    
+
     def items(self):
         """Yield (name, value) pairs for all error fields."""
         for key in self.keys():
@@ -1605,34 +1618,34 @@ class MHEmulatorErrors(EmulatorErrors):
 @dataclass(frozen=True)
 class ACGEmulatorErrors(EmulatorErrors):
     """Error statistics for the ACG/Default (v1) emulator.
-    
+
     This class provides **fractional errors (FE%)** from the test set for all
     outputs. Unlike the MH emulator which computes output-dependent absolute
     errors, the ACG emulator stores the raw FE% arrays directly.
-    
+
     Error Interpretation
     --------------------
     The errors represent the **median fractional error** across a held-out test
     set of ~300 simulations. Each FE% value indicates the typical percentage
     error at that (redshift, k-mode) or (redshift, magnitude) bin::
-    
+
         absolute_error = FE% / 100 * |emulator_output|
-    
+
     For example, if ``PS_err[z_idx, k_idx] = 5%``, the emulator's power spectrum
     prediction at that bin is typically within 5% of the true value.
-    
+
     Physics Context
     ---------------
     The ACG emulator (Atomic Cooling Galaxies) models the 21-cm signal from
     star-forming galaxies in atomic-cooling halos (M > 10^8 M_sun). It does
     **not** include:
-    
+
     - Mini-halos (molecular cooling)
     - Exotic radio backgrounds
     - Variable cosmology (fixed ΣCDM)
-    
+
     This emulator is described in Breitman et al. (2024).
-    
+
     Attributes
     ----------
     PS_err : Quantity
@@ -1656,22 +1669,22 @@ class ACGEmulatorErrors(EmulatorErrors):
     UVLFs_logerr : Quantity
         UV luminosity function (log10) fractional error. Shape (n_z, n_mag).
         Units: percent. Typically smaller than linear errors.
-    
+
     Examples
     --------
     Basic usage::
-    
+
         emu = Emulator(emulator="acg")
         theta, output, errors = emu.predict(params)
         print(f"Median PS error: {np.median(errors.PS_err):.1f}")
-    
+
     Computing absolute errors::
-    
+
         # Convert FE% to absolute error
         abs_ps_err = errors.PS_err.value / 100 * np.abs(output.PS)
-    
+
     Plotting with error bands::
-    
+
         import matplotlib.pyplot as plt
         z_idx = 20  # Some redshift
         plt.fill_between(
@@ -1680,13 +1693,13 @@ class ACGEmulatorErrors(EmulatorErrors):
             output.PS[z_idx] * (1 + errors.PS_err[z_idx]/100),
             alpha=0.3
         )
-    
+
     See Also
     --------
     DefaultEmulatorOutput : The output dataclass these errors correspond to.
     DefaultEmulatorProperties : Emulator properties including error arrays.
     """
-    
+
     PS_err: u.Quantity
     Tb_err: u.Quantity
     xHI_err: u.Quantity
@@ -1694,9 +1707,9 @@ class ACGEmulatorErrors(EmulatorErrors):
     tau_err: u.Quantity
     UVLFs_err: u.Quantity
     UVLFs_logerr: u.Quantity
-    
+
     _properties: object = dc.field(default=None, repr=False)
-    
+
     def available_errors(self) -> dict[str, str]:
         """Return dict of available error fields and their descriptions."""
         return {
@@ -1708,18 +1721,18 @@ class ACGEmulatorErrors(EmulatorErrors):
             "UVLFs_err": "Absolute error on linear LF [Mpc⁻³ mag⁻¹]",
             "UVLFs_logerr": "Absolute error on log10(LF) [dex(Mpc⁻³ mag⁻¹)]",
         }
-    
+
     @property
     def properties(self):
         """Access the underlying emulator properties."""
         return self._properties
-    
+
     @classmethod
     def from_output(
         cls,
-        output: "DefaultEmulatorOutput",
-        properties: "DefaultEmulatorProperties",
-    ) -> "ACGEmulatorErrors":
+        output: DefaultEmulatorOutput,
+        properties: DefaultEmulatorProperties,
+    ) -> ACGEmulatorErrors:
         """Construct error statistics broadcast to match the output batch shape.
 
         The stored error arrays are pre-computed absolute errors (median absolute
@@ -1741,8 +1754,9 @@ class ACGEmulatorErrors(EmulatorErrors):
             Error statistics with physical units and batch dimension matching
             the output.
         """
+
         def _raw(x):
-            return x.value if hasattr(x, 'value') else np.asarray(x)
+            return x.value if hasattr(x, "value") else np.asarray(x)
 
         def _bc(err, ref):
             """Broadcast err to the shape of ref (stripped of units)."""
@@ -1770,8 +1784,8 @@ class ACGEmulatorErrors(EmulatorErrors):
     @classmethod
     def from_properties(
         cls,
-        properties: "DefaultEmulatorProperties",
-    ) -> "ACGEmulatorErrors":
+        properties: DefaultEmulatorProperties,
+    ) -> ACGEmulatorErrors:
         """Construct error statistics from emulator properties (no batch dim).
 
         Prefer ``from_output`` when the emulator output is available, as it
@@ -1802,19 +1816,19 @@ class ACGEmulatorErrors(EmulatorErrors):
             UVLFs_logerr=properties.UVLFs_logerr[..., m] * u.dex(u.Mpc**-3 * u.mag**-1),
             _properties=properties,
         )
-    
+
     def __contains__(self, key: str) -> bool:
         """Check if error field exists."""
         return key in self.available_errors()
-    
+
     def __getitem__(self, key: str) -> u.Quantity:
         """Allow dict-like access to error fields."""
         return getattr(self, key)
-    
+
     def keys(self) -> list[str]:
         """Return list of error field names."""
         return list(self.available_errors().keys())
-    
+
     def items(self):
         """Yield (name, value) pairs for all error fields."""
         for key in self.keys():
@@ -1824,32 +1838,32 @@ class ACGEmulatorErrors(EmulatorErrors):
 @dataclass(frozen=True)
 class RadioEmulatorErrors(EmulatorErrors):
     """Error statistics for the Radio Background (v2) emulator.
-    
+
     This class provides **fractional errors (FE%)** from the test set for all
     outputs of the radio background emulator. The radio emulator has a different
     output set than ACG/MH: it includes radio temperature (Tr) but does **not**
     include spin temperature (Ts) or UV luminosity functions (UVLFs).
-    
+
     Error Interpretation
     --------------------
     The errors represent the **median fractional error** across a held-out test
     set. Each FE% value indicates the typical percentage error at that
     (redshift, k-mode) bin::
-    
+
         absolute_error = FE% / 100 * |emulator_output|
-    
+
     Physics Context
     ---------------
     The Radio emulator models the 21-cm signal including an **exotic radio
     background** component from high-z radio sources. Key differences from ACG:
-    
+
     - Includes mini-halos (molecular cooling, M < 10^8 M_sun)
     - Models Lyman-Werner feedback
     - Outputs radio temperature Tr instead of spin temperature Ts
     - Does not output UVLFs (focus is on earlier epochs)
-    
+
     This emulator is described in Reis et al. (2023).
-    
+
     Attributes
     ----------
     PS_err : Quantity
@@ -1868,41 +1882,41 @@ class RadioEmulatorErrors(EmulatorErrors):
     tau_err : Quantity
         Optical depth fractional error. Scalar.
         Units: percent.
-    
+
     Notes
     -----
     The radio emulator does **not** include:
-    
+
     - ``Ts_err``: No spin temperature output (use Tr instead)
     - ``UVLFs_err``: No UV luminosity functions
-    
+
     Examples
     --------
     Basic usage::
-    
+
         emu = Emulator(emulator="radio")
         theta, output, errors = emu.predict(params)
         print(f"Median radio temp error: {np.median(errors.Tr_err):.1f}%")
-    
+
     Available error fields::
-    
+
         print(errors.keys())  # ['PS_err', 'Tb_err', 'xHI_err', 'Tr_err', 'tau_err']
         print("UVLFs_err" in errors)  # False - not available for radio emulator
-    
+
     See Also
     --------
     RadioEmulatorOutput : The output dataclass these errors correspond to.
     RadioEmulatorProperties : Emulator properties including error arrays.
     """
-    
+
     PS_err: u.Quantity
     Tb_err: u.Quantity
     xHI_err: u.Quantity
     Tr_err: u.Quantity
     tau_err: u.Quantity
-    
+
     _properties: object = dc.field(default=None, repr=False)
-    
+
     def available_errors(self) -> dict[str, str]:
         """Return dict of available error fields and their descriptions."""
         return {
@@ -1912,24 +1926,24 @@ class RadioEmulatorErrors(EmulatorErrors):
             "Tr_err": "Radio temperature Tr fractional error (FE%)",
             "tau_err": "tau fractional error (FE%)",
         }
-    
+
     @property
     def properties(self):
         """Access the underlying emulator properties."""
         return self._properties
-    
+
     @classmethod
     def from_properties(
         cls,
-        properties: "RadioEmulatorProperties",
-    ) -> "RadioEmulatorErrors":
+        properties: RadioEmulatorProperties,
+    ) -> RadioEmulatorErrors:
         """Construct error statistics from emulator properties.
-        
+
         Parameters
         ----------
         properties : RadioEmulatorProperties
             The emulator properties containing error arrays.
-        
+
         Returns
         -------
         RadioEmulatorErrors
@@ -1943,19 +1957,19 @@ class RadioEmulatorErrors(EmulatorErrors):
             tau_err=properties.tau_err * u.percent,
             _properties=properties,
         )
-    
+
     def __contains__(self, key: str) -> bool:
         """Check if error field exists."""
         return key in self.available_errors()
-    
+
     def __getitem__(self, key: str) -> u.Quantity:
         """Allow dict-like access to error fields."""
         return getattr(self, key)
-    
+
     def keys(self) -> list[str]:
         """Return list of error field names."""
         return list(self.available_errors().keys())
-    
+
     def items(self):
         """Yield (name, value) pairs for all error fields."""
         for key in self.keys():

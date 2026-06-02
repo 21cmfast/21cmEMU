@@ -9,9 +9,7 @@ import pytest
 import torch
 from typeguard import suppress_type_checks
 
-from py21cmemu import DefaultEmulatorInput
-from py21cmemu import Emulator
-from py21cmemu import RadioEmulatorInput
+from py21cmemu import DefaultEmulatorInput, Emulator, RadioEmulatorInput
 from py21cmemu.config import CONFIG
 from py21cmemu.outputs import DefaultRawEmulatorOutput
 from py21cmemu.properties import emulator_properties
@@ -55,7 +53,7 @@ def test_output(tmp_path, emu_type):
         output_keys.append(i)
     assert len(check.keys()) == len(output_keys) + 1
     # Compare raw values (output.PS is a Quantity with units)
-    ps_values = output.PS.value if hasattr(output.PS, 'value') else output.PS
+    ps_values = output.PS.value if hasattr(output.PS, "value") else output.PS
     assert (check["PS"] == ps_values).all()
 
     with pytest.raises(ValueError):
@@ -148,28 +146,28 @@ def test_properties():
 
     # Default is now mcg (v3)
     properties = emulator_properties()
-    assert hasattr(properties, 'lstm_limits')  # MCG-specific
-    
+    assert hasattr(properties, "lstm_limits")  # MCG-specific
+
     # Test canonical names
     properties = emulator_properties(emulator="acg")
     properties.limits
-    
+
     properties = emulator_properties(emulator="radio")
     properties.logTr_mean
-    
+
     properties = emulator_properties(emulator="mcg")
     properties.lstm_limits
-    
+
     # Test legacy aliases still work
     properties = emulator_properties(emulator="default")  # -> acg
     properties.limits
-    
+
     properties = emulator_properties(emulator="radio_background")  # -> radio
     properties.logTr_mean
-    
+
     properties = emulator_properties(emulator="mh")  # -> mcg
     properties.lstm_limits
-    
+
     # Invalid name raises
     with pytest.raises(ValueError):
         properties = emulator_properties(emulator="foo")
@@ -197,24 +195,30 @@ def test_inputs(emu_type):
 
     # normed=True: physical params → normalized to [0,1]
     inp = emu_in.make_param_array(single_phys, normed=True)
-    assert inp.min() >= 0 and inp.max() <= 1, "Single param 1D: normed=True should give [0,1]."
+    assert inp.min() >= 0 and inp.max() <= 1, (
+        "Single param 1D: normed=True should give [0,1]."
+    )
 
     # normed=False: physical params returned unchanged and within limits
     inp = emu_in.make_param_array(single_phys, normed=False)
-    assert np.allclose(inp.ravel(), single_phys), "Single param 1D: normed=False should return unchanged."
-    assert (inp >= limits[:, 0]).all() and (
-        inp <= limits[:, 1]
-    ).all(), "Single param 1D: physical params not within limits."
+    assert np.allclose(inp.ravel(), single_phys), (
+        "Single param 1D: normed=False should return unchanged."
+    )
+    assert (inp >= limits[:, 0]).all() and (inp <= limits[:, 1]).all(), (
+        "Single param 1D: physical params not within limits."
+    )
 
     # 2D array (1, npars)
     single_phys_2d = single_phys.reshape(1, npars)
     inp = emu_in.make_param_array(single_phys_2d, normed=True)
-    assert inp.min() >= 0 and inp.max() <= 1, "Single 2D param: normed=True should give [0,1]."
+    assert inp.min() >= 0 and inp.max() <= 1, (
+        "Single 2D param: normed=True should give [0,1]."
+    )
 
     inp = emu_in.make_param_array(single_phys_2d, normed=False)
-    assert (inp >= limits[:, 0]).all() and (
-        inp <= limits[:, 1]
-    ).all(), "Single 2D param: physical params not within limits."
+    assert (inp >= limits[:, 0]).all() and (inp <= limits[:, 1]).all(), (
+        "Single 2D param: physical params not within limits."
+    )
 
     # Batch (5, npars)
     many_phys = emu_in.undo_normalization(rng.random((5, npars)))
@@ -233,9 +237,9 @@ def test_inputs(emu_type):
     assert inp.min() >= 0 and inp.max() <= 1, "Dict: normed=True should give [0,1]."
 
     inp = emu_in.make_param_array(single_dict, normed=False)
-    assert (inp >= limits[:, 0]).all() and (
-        inp <= limits[:, 1]
-    ).all(), "Dict: normed=False physical params not within limits."
+    assert (inp >= limits[:, 0]).all() and (inp <= limits[:, 1]).all(), (
+        "Dict: normed=False physical params not within limits."
+    )
 
     # List of dicts
     many_params_list = [single_dict, single_dict, single_dict]
@@ -264,7 +268,9 @@ def test_inputs(emu_type):
     # Roundtrip: normalize → undo_normalization recovers original physical params
     normed_out = emu_in.make_param_array(single_phys, normed=True)
     recovered = emu_in.undo_normalization(normed_out)
-    assert np.allclose(recovered.ravel(), single_phys, rtol=1e-5), "Roundtrip normalization failed."
+    assert np.allclose(recovered.ravel(), single_phys, rtol=1e-5), (
+        "Roundtrip normalization failed."
+    )
 
     # make_list_of_dicts
     phys_batch = emu_in.undo_normalization(rng.random((10, npars)))
@@ -376,29 +382,34 @@ def test_get_emulator_no_internet():
 
 def test_v1_pytorch_model():
     """Test v1 PyTorch model directly."""
-    from py21cmemu.models.default.v1_pytorch import DefaultEmulatorV1, load_converted_model
+    from py21cmemu.models.default.v1_pytorch import (
+        DefaultEmulatorV1,
+        load_converted_model,
+    )
 
     # Test model architecture
     model = DefaultEmulatorV1(negative_slope=0.1)
     assert sum(p.numel() for p in model.parameters()) > 0
-    
+
     # Test forward pass shape
     x = torch.randn(2, 9)
     with torch.no_grad():
         out = model(x)
     assert out.shape == (2, 1098), f"Expected (2, 1098), got {out.shape}"
-    
+
     # Test forward_dict returns correct keys
     out_dict = model.forward_dict(x)
-    assert set(out_dict.keys()) == {'Tb', 'xHI', 'Ts', 'discont', 'PS', 'tau', 'UVLF'}
-    assert out_dict['Tb'].shape == (2, 84)
-    assert out_dict['PS'].shape == (2, 720)
-    
+    assert set(out_dict.keys()) == {"Tb", "xHI", "Ts", "discont", "PS", "tau", "UVLF"}
+    assert out_dict["Tb"].shape == (2, 84)
+    assert out_dict["PS"].shape == (2, 720)
+
     # Test loading bundled model
     from pathlib import Path
+
     import py21cmemu
+
     bundled_path = Path(py21cmemu.__file__).parent / "models/default/default_model.pt"
-    loaded_model = load_converted_model(str(bundled_path), device='cpu')
+    loaded_model = load_converted_model(str(bundled_path), device="cpu")
     assert isinstance(loaded_model, DefaultEmulatorV1)
     with torch.no_grad():
         out_loaded = loaded_model(x)
@@ -407,22 +418,22 @@ def test_v1_pytorch_model():
 
 def test_v1_pytorch_vs_emulator():
     """Test that v1 PyTorch model gives same results through Emulator API."""
-    emu = Emulator(emulator='acg')  # aka v1/default
-    
+    emu = Emulator(emulator="acg")  # aka v1/default
+
     # Test prediction
     params = {
-        'F_STAR10': -1.5,
-        'ALPHA_STAR': 0.5,
-        'F_ESC10': -1.0,
-        'ALPHA_ESC': -0.5,
-        'M_TURN': 8.5,
-        't_STAR': 0.5,
-        'L_X': 40.0,
-        'NU_X_THRESH': 500.0,
-        'X_RAY_SPEC_INDEX': 1.0,
+        "F_STAR10": -1.5,
+        "ALPHA_STAR": 0.5,
+        "F_ESC10": -1.0,
+        "ALPHA_ESC": -0.5,
+        "M_TURN": 8.5,
+        "t_STAR": 0.5,
+        "L_X": 40.0,
+        "NU_X_THRESH": 500.0,
+        "X_RAY_SPEC_INDEX": 1.0,
     }
     theta, output, errors = emu.predict(params)
-    
+
     # Check output shapes
     assert output.Tb.shape == (84,)
     assert output.xHI.shape == (84,)
@@ -430,7 +441,7 @@ def test_v1_pytorch_vs_emulator():
     assert output.PS.shape == (60, 12)
     assert np.isscalar(output.tau) or output.tau.shape == (), "tau should be scalar"
     assert output.UVLFs.shape[0] > 0
-    
+
     # Check reasonable output ranges
     assert 0 <= output.xHI.min() <= output.xHI.max() <= 1, "xHI should be in [0,1]"
     assert 0 < float(output.tau) < 1, "tau should be small positive"
@@ -438,49 +449,50 @@ def test_v1_pytorch_vs_emulator():
 
 @pytest.mark.skipif(
     os.environ.get("CI_MERGE_TEST") != "1",
-    reason="TF comparison test only runs on merge to main (set CI_MERGE_TEST=1)"
+    reason="TF comparison test only runs on merge to main (set CI_MERGE_TEST=1)",
 )
 def test_v1_tensorflow_vs_pytorch_equivalence():
     """Test that PyTorch model produces identical outputs to original TensorFlow model.
-    
+
     This test requires TensorFlow and only runs during merge to main in CI.
     """
     try:
         import tensorflow as tf
     except ImportError:
         pytest.skip("TensorFlow not installed")
-    
+
     from pathlib import Path
+
     import py21cmemu
     from py21cmemu.models.default.v1_pytorch import load_converted_model
-    
+
     # Load TensorFlow model from HuggingFace cache
     tf_model_path = CONFIG.emu_path
     if not (tf_model_path / "saved_model.pb").exists():
         pytest.skip("TensorFlow model not available")
-    
+
     tf_model = tf.keras.models.load_model(str(tf_model_path), compile=False)
-    
+
     # Load PyTorch model
     bundled_path = Path(py21cmemu.__file__).parent / "models/default/default_model.pt"
-    pt_model = load_converted_model(str(bundled_path), device='cpu')
+    pt_model = load_converted_model(str(bundled_path), device="cpu")
     pt_model.eval()
-    
+
     # Generate test inputs
     np.random.seed(42)
     test_input = np.random.rand(10, 9).astype(np.float32)
-    
+
     # TensorFlow prediction
     tf_output = tf_model.predict(test_input, verbose=0)
-    
+
     # PyTorch prediction
     with torch.no_grad():
         pt_output = pt_model(torch.from_numpy(test_input)).numpy()
-    
+
     # Compare outputs - should be nearly identical (within floating point precision)
     max_diff = np.abs(tf_output - pt_output).max()
     mean_diff = np.abs(tf_output - pt_output).mean()
-    
+
     assert max_diff < 1e-4, f"Max difference {max_diff} exceeds tolerance 1e-4"
     assert mean_diff < 1e-5, f"Mean difference {mean_diff} exceeds tolerance 1e-5"
 
@@ -493,57 +505,62 @@ TUTORIALS_DIR = Path(__file__).resolve().parents[1] / "docs" / "tutorials"
 V1_TEST_DATA = TUTORIALS_DIR / "Test_data_sample.npz"
 
 
-@pytest.mark.skipif(not V1_TEST_DATA.exists(), reason="Test_data_sample.npz not available")
+@pytest.mark.skipif(
+    not V1_TEST_DATA.exists(), reason="Test_data_sample.npz not available"
+)
 def test_v1_emulator_vs_database():
     """Compare v1 emulator predictions against 21cmFAST database samples.
-    
+
     This test verifies that emulated outputs are within expected tolerances
     compared to actual 21cmFAST simulation outputs.
     """
     # Load test data
     test_data = np.load(V1_TEST_DATA, allow_pickle=True)
     X_test = test_data["X_test"]  # (100, 9) normalized params
-    
+
     # Ground truth
-    xHI_true = test_data["xHI"]   # (100, 84)
-    Tb_true = test_data["Tb"]     # (100, 84) in mK
-    tau_true = test_data["tau"]   # (100,) log10(tau)
-    PS_true = test_data["PS"]     # (100, 60, 12)
-    
+    xHI_true = test_data["xHI"]  # (100, 84)
+    Tb_true = test_data["Tb"]  # (100, 84) in mK
+    tau_true = test_data["tau"]  # (100,) log10(tau)
+    PS_true = test_data["PS"]  # (100, 60, 12)
+
     # Run emulator
     emu = Emulator(emulator="acg")  # Test ACG (v1) emulator specifically
     # X_test is stored in [0,1] normalized space; convert to physical units first
     from py21cmemu.inputs import DefaultEmulatorInput
+
     X_test_phys = DefaultEmulatorInput().undo_normalization(X_test)
     _, output, _ = emu.predict(X_test_phys)
-    
+
     # Calculate median fractional errors (%)
     def median_frac_err(true, pred, floor=1e-3):
         denom = np.abs(true)
         denom = np.where(denom < floor, floor, denom)
         fe = np.abs((true - pred) / denom) * 100
         return np.nanmedian(fe)
-    
+
     # xHI: Should be very accurate where xHI > 0.01
     mask = xHI_true > 0.01
-    xHI_vals = output.xHI.value if hasattr(output.xHI, 'value') else output.xHI
+    xHI_vals = output.xHI.value if hasattr(output.xHI, "value") else output.xHI
     xHI_fe = median_frac_err(xHI_true[mask], xHI_vals[mask])
     assert xHI_fe < 5, f"xHI median FE {xHI_fe:.2f}% exceeds 5%"
-    
+
     # Tb: Median FE should be < 10% for most cases
-    Tb_vals = output.Tb.value if hasattr(output.Tb, 'value') else output.Tb
+    Tb_vals = output.Tb.value if hasattr(output.Tb, "value") else output.Tb
     Tb_fe = median_frac_err(Tb_true, Tb_vals, floor=1.0)
     assert Tb_fe < 15, f"Tb median FE {Tb_fe:.2f}% exceeds 15%"
-    
+
     # tau: Log-space comparison
-    tau_vals = output.tau.value if hasattr(output.tau, 'value') else output.tau
+    tau_vals = output.tau.value if hasattr(output.tau, "value") else output.tau
     tau_fe = median_frac_err(tau_true, np.log10(tau_vals), floor=0.01)
     assert tau_fe < 5, f"tau median FE {tau_fe:.2f}% exceeds 5%"
-    
+
     # PS: Log power spectrum (test data is log10, emulator returns linear)
-    PS_vals = output.PS.value if hasattr(output.PS, 'value') else output.PS
+    PS_vals = output.PS.value if hasattr(output.PS, "value") else output.PS
     PS_emu_log = np.log10(PS_vals)
     PS_fe = median_frac_err(PS_true, PS_emu_log)
     assert PS_fe < 20, f"PS median FE {PS_fe:.2f}% exceeds 20%"
-    
-    print(f"V1 accuracy: xHI={xHI_fe:.2f}%, Tb={Tb_fe:.2f}%, tau={tau_fe:.2f}%, PS={PS_fe:.2f}%")
+
+    print(
+        f"V1 accuracy: xHI={xHI_fe:.2f}%, Tb={Tb_fe:.2f}%, tau={tau_fe:.2f}%, PS={PS_fe:.2f}%"
+    )

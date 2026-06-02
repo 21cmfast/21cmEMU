@@ -9,7 +9,6 @@ import git
 
 from .config import CONFIG
 
-
 log = logging.getLogger(__name__)
 
 

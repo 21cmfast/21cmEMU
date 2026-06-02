@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
-from typing import Generator
 
 import toml
 from appdirs import AppDirs
-
 
 log = logging.getLogger(__name__)
 

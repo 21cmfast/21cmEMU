@@ -9,7 +9,6 @@ import pytest
 
 from py21cmemu import Emulator
 
-
 # Path constants (also defined in conftest.py for fixtures)
 TUTORIALS_DIR = Path(__file__).resolve().parents[1] / "docs" / "tutorials"
 TEST_SET_H5 = TUTORIALS_DIR / "test_set.h5"
@@ -268,19 +267,19 @@ class TestMH2DPSProperties:
         assert hasattr(mh_props, "PS_zs")
         assert hasattr(mh_props, "PS_redshifts")
         # Must have exactly 32 redshifts to match 2D PS grid (32 z-bins x 64 k-bins)
-        assert (
-            len(mh_props.PS_zs) == 32
-        ), f"Expected 32 PS redshifts, got {len(mh_props.PS_zs)}"
+        assert len(mh_props.PS_zs) == 32, (
+            f"Expected 32 PS redshifts, got {len(mh_props.PS_zs)}"
+        )
         assert np.array_equal(mh_props.PS_zs, mh_props.PS_redshifts)
         # PS redshifts should be increasing
         assert np.all(np.diff(mh_props.PS_zs) > 0)
         # Should span roughly z=5.5 to z=29
-        assert (
-            mh_props.PS_zs[0] < 6
-        ), f"First PS redshift should be ~5.5, got {mh_props.PS_zs[0]}"
-        assert (
-            mh_props.PS_zs[-1] > 28
-        ), f"Last PS redshift should be ~29, got {mh_props.PS_zs[-1]}"
+        assert mh_props.PS_zs[0] < 6, (
+            f"First PS redshift should be ~5.5, got {mh_props.PS_zs[0]}"
+        )
+        assert mh_props.PS_zs[-1] > 28, (
+            f"Last PS redshift should be ~29, got {mh_props.PS_zs[-1]}"
+        )
 
     def test_kperp_kpar_available(self, mh_props):
         """Test that kperp and kpar arrays are available."""
@@ -385,14 +384,14 @@ class TestMH2DPSProperties:
         assert mh_props.tau_mean_err < 1.0, "tau mean error too high"
 
         # z-averaged mean FE for LFs should be < 1%
-        assert (
-            np.nanmean(mh_props.UVLFs_med_err) < 1.0
-        ), "UVLFs z-avg median error too high"
+        assert np.nanmean(mh_props.UVLFs_med_err) < 1.0, (
+            "UVLFs z-avg median error too high"
+        )
 
         # 1D PS error is higher at high-z due to sample variance
-        assert (
-            np.nanmean(mh_props.PS_1D_med_err) < 5.0
-        ), "PS_1D z-avg median error too high"
+        assert np.nanmean(mh_props.PS_1D_med_err) < 5.0, (
+            "PS_1D z-avg median error too high"
+        )
 
     def test_1d_ps_properties(self, mh_props):
         """Test that 1D PS properties are available."""
@@ -864,9 +863,9 @@ class TestMHAccuracy:
         assert hasattr(output.PS, "unit"), "PS should have units"
         from astropy import units as u
 
-        assert (
-            output.PS.unit == u.mK**2
-        ), f"PS should have mK^2 units (linear), got {output.PS.unit}"
+        assert output.PS.unit == u.mK**2, (
+            f"PS should have mK^2 units (linear), got {output.PS.unit}"
+        )
 
         # Check 2D PS is None when emulate_2d_ps=False
         assert output.PS_2D is None, "PS_2D should be None when emulate_2d_ps=False"
@@ -885,9 +884,9 @@ class TestMHAccuracy:
 
         # Check axes match
         assert np.allclose(emu.properties.PS_1D_k, k), "PS_1D_k should match database k"
-        assert np.allclose(
-            emu.properties.PS_1D_redshifts, PS_redshifts
-        ), "PS_1D_redshifts should match database"
+        assert np.allclose(emu.properties.PS_1D_redshifts, PS_redshifts), (
+            "PS_1D_redshifts should match database"
+        )
 
         print(f"V3 1D PS accuracy: FE={fe:.2f}%")
 
@@ -910,18 +909,18 @@ class TestMHAccuracy:
         _, output, _ = emu.predict(params, n_realisations=2, ps_2d_redshifts=[7.0])
 
         # Check 1D PS is still available
-        assert (
-            output.PS is not None
-        ), "1D PS should be available with emulate_2d_ps=True"
+        assert output.PS is not None, (
+            "1D PS should be available with emulate_2d_ps=True"
+        )
         assert output.PS.shape == (
             32,
             32,
         ), f"1D PS shape should be (32,32), got {output.PS.shape}"
 
         # Check 2D PS is also available
-        assert (
-            output.PS_2D is not None
-        ), "PS_2D should be available when emulate_2d_ps=True"
+        assert output.PS_2D is not None, (
+            "PS_2D should be available when emulate_2d_ps=True"
+        )
         assert output.PS_2D_samples is not None, "PS_2D_samples should be available"
         assert output.PS_2D_std is not None, "PS_2D_std should be available"
 
@@ -949,9 +948,9 @@ class TestMHAccuracy:
 
         # Check PS_2D_redshifts
         assert output.PS_2D_redshifts is not None, "PS_2D_redshifts should be available"
-        assert np.allclose(
-            output.PS_2D_redshifts, [7.0]
-        ), f"PS_2D_redshifts should be [7.0], got {output.PS_2D_redshifts}"
+        assert np.allclose(output.PS_2D_redshifts, [7.0]), (
+            f"PS_2D_redshifts should be [7.0], got {output.PS_2D_redshifts}"
+        )
 
         print("V3 1D+2D PS test passed: Both available when emulate_2d_ps=True")
 
@@ -1015,12 +1014,12 @@ class TestMHAccuracy:
             PS_emu_log = np.log10(PS_emu_linear)
 
         # Check range is physically reasonable (in log10 space)
-        assert (
-            np.nanmedian(PS_emu_log) > -3
-        ), f"PS_2D median {np.nanmedian(PS_emu_log):.2f} too low"
-        assert (
-            np.nanmedian(PS_emu_log) < 5
-        ), f"PS_2D median {np.nanmedian(PS_emu_log):.2f} too high"
+        assert np.nanmedian(PS_emu_log) > -3, (
+            f"PS_2D median {np.nanmedian(PS_emu_log):.2f} too low"
+        )
+        assert np.nanmedian(PS_emu_log) < 5, (
+            f"PS_2D median {np.nanmedian(PS_emu_log):.2f} too high"
+        )
 
         # Compare with ground truth (rough accuracy check)
         # Diffusion model has ~20-50% typical error
@@ -1108,9 +1107,9 @@ class TestMHAccuracy:
         # We verify FE < 200% (order of magnitude correct) and that
         # PS output has correct structure.
         threshold = 200.0  # Very generous sanity check
-        assert (
-            fe < threshold
-        ), f"Score model median FE {fe:.2f}% exceeds sanity threshold {threshold:.2f}%"
+        assert fe < threshold, (
+            f"Score model median FE {fe:.2f}% exceeds sanity threshold {threshold:.2f}%"
+        )
 
         # Print actual vs stored error for diagnostic purposes
         if global_mean_err is not None:
@@ -1330,9 +1329,9 @@ class TestPS2DErrorStatistics:
         diag_frac = mh_output_with_2d_ps.PS_2D_corr_diag_frac
         assert diag_frac is not None
         assert isinstance(diag_frac, float)
-        assert (
-            0 <= diag_frac <= 1
-        ), f"Diagonal fraction should be in [0, 1], got {diag_frac}"
+        assert 0 <= diag_frac <= 1, (
+            f"Diagonal fraction should be in [0, 1], got {diag_frac}"
+        )
 
     @pytest.mark.main_only
     def test_ps_2d_mean_abs_corr(self, mh_output_with_2d_ps):
@@ -1340,9 +1339,9 @@ class TestPS2DErrorStatistics:
         mean_abs_corr = mh_output_with_2d_ps.PS_2D_mean_abs_corr
         assert mean_abs_corr is not None
         assert isinstance(mean_abs_corr, float)
-        assert (
-            0 <= mean_abs_corr <= 1
-        ), f"Mean abs corr should be in [0, 1], got {mean_abs_corr}"
+        assert 0 <= mean_abs_corr <= 1, (
+            f"Mean abs corr should be in [0, 1], got {mean_abs_corr}"
+        )
 
     def test_correlation_stats_none_when_no_2d_ps(self, mh_output_no_2d_ps):
         """Test correlation stats are None when emulate_2d_ps=False."""
@@ -1510,9 +1509,9 @@ class TestErrorStatisticsConsistency:
         ps_val = output.PS
 
         # PS has shape (n_z, n_k) and PS_err should match
-        assert (
-            ps_err.shape == ps_val.shape
-        ), f"PS_err shape {ps_err.shape} should match PS shape {ps_val.shape}"
+        assert ps_err.shape == ps_val.shape, (
+            f"PS_err shape {ps_err.shape} should match PS shape {ps_val.shape}"
+        )
 
     def test_ps_err_is_on_log10_documented_correctly(self, mh_output_and_props):
         """Test that error is on log10(PS), and PS is returned in linear units."""
@@ -1556,9 +1555,9 @@ class TestErrorStatisticsConsistency:
         # = 10^err - 1 = 10^0.05 - 1 ≈ 0.12
 
         linear_error_factor = 10 ** (0.05) - 1  # ~0.122 = 12.2%
-        assert (
-            0.10 < linear_error_factor < 0.15
-        ), f"10^0.05 - 1 should be ~0.12, got {linear_error_factor}"
+        assert 0.10 < linear_error_factor < 0.15, (
+            f"10^0.05 - 1 should be ~0.12, got {linear_error_factor}"
+        )
 
     def test_linear_summaries_have_linear_errors(self, mh_output_and_props):
         """Test that xHI, Tb, Ts errors are computed on linear values."""
@@ -1572,16 +1571,16 @@ class TestErrorStatisticsConsistency:
         assert np.all((xhi_val >= 0) & (xhi_val <= 1)), "xHI should be in [0, 1]"
 
         # xHI errors should be reasonable FE% (not on log scale)
-        assert (
-            np.nanmedian(xhi_err) < 100
-        ), f"xHI FE% unreasonably high: {np.nanmedian(xhi_err)}"
+        assert np.nanmedian(xhi_err) < 100, (
+            f"xHI FE% unreasonably high: {np.nanmedian(xhi_err)}"
+        )
 
         # Tb is in mK (can be positive or negative during absorption)
         tb_val = output.Tb.value
         # Tb values should be in reasonable range for cosmic dawn/EoR
-        assert (
-            -500 < np.nanmin(tb_val) and np.nanmax(tb_val) < 100
-        ), f"Tb range {np.nanmin(tb_val)} to {np.nanmax(tb_val)} seems wrong"
+        assert -500 < np.nanmin(tb_val) and np.nanmax(tb_val) < 100, (
+            f"Tb range {np.nanmin(tb_val)} to {np.nanmax(tb_val)} seems wrong"
+        )
 
     def test_uvlf_error_is_on_log10(self, mh_output_and_props):
         """Test that UVLF error is on log10(phi), not linear phi."""
@@ -1590,15 +1589,15 @@ class TestErrorStatisticsConsistency:
         # UVLFs are stored as log10(phi), values should be ~-5 to -1
         uvlf_log_vals = output.UVLFs.value
         med_uvlf = np.nanmedian(uvlf_log_vals)
-        assert (
-            -10 < med_uvlf < 0
-        ), f"UVLFs should be log10(phi) in range ~-5 to -1, got median {med_uvlf}"
+        assert -10 < med_uvlf < 0, (
+            f"UVLFs should be log10(phi) in range ~-5 to -1, got median {med_uvlf}"
+        )
 
         # FE% on log10 values should be reasonable
         uvlf_err = props.UVLFs_med_err
-        assert (
-            np.nanmedian(uvlf_err) < 100
-        ), f"UVLF FE% on log10 seems too high: {np.nanmedian(uvlf_err)}"
+        assert np.nanmedian(uvlf_err) < 100, (
+            f"UVLF FE% on log10 seems too high: {np.nanmedian(uvlf_err)}"
+        )
 
     def test_error_properties_docstrings_exist(self, mh_output_and_props):
         """Test that error properties have proper docstrings."""
@@ -1607,9 +1606,9 @@ class TestErrorStatisticsConsistency:
         # Check that the key error properties have docstrings mentioning log10
         ps_err_doc = type(output).PS_err.fget.__doc__
         assert "log10" in ps_err_doc.lower(), "PS_err docstring should mention 'log10'"
-        assert (
-            "FE%" in ps_err_doc or "fractional" in ps_err_doc.lower()
-        ), "PS_err docstring should mention 'FE%' or 'fractional'"
+        assert "FE%" in ps_err_doc or "fractional" in ps_err_doc.lower(), (
+            "PS_err docstring should mention 'FE%' or 'fractional'"
+        )
 
     def test_error_values_are_percentages_not_fractions(self, mh_output_and_props):
         """Test that error values are in % (0-100+) not fraction (0-1)."""
@@ -1622,9 +1621,9 @@ class TestErrorStatisticsConsistency:
 
         # The max FE% should be > 1 if it's a percentage, < 1 if it's a fraction
         # Typical max FE% is 10-50%
-        assert (
-            max_err > 1.0
-        ), f"PS_err max {max_err} < 1 suggests fractions not percentages"
+        assert max_err > 1.0, (
+            f"PS_err max {max_err} < 1 suggests fractions not percentages"
+        )
 
         # But not unreasonably high
         assert max_err < 500, f"PS_err max {max_err} seems unreasonably high"
@@ -1636,15 +1635,15 @@ class TestErrorStatisticsConsistency:
         class_doc = type(props).__doc__
 
         # Should document the error conventions
-        assert (
-            "FE" in class_doc or "Fractional Error" in class_doc
-        ), "Properties class should document Fractional Error"
-        assert (
-            "log10" in class_doc.lower() or "log" in class_doc.lower()
-        ), "Properties class should document log10 vs linear distinction"
-        assert (
-            "median" in class_doc.lower()
-        ), "Properties class should document median aggregation"
+        assert "FE" in class_doc or "Fractional Error" in class_doc, (
+            "Properties class should document Fractional Error"
+        )
+        assert "log10" in class_doc.lower() or "log" in class_doc.lower(), (
+            "Properties class should document log10 vs linear distinction"
+        )
+        assert "median" in class_doc.lower(), (
+            "Properties class should document median aggregation"
+        )
 
 
 # =============================================================================
@@ -1936,9 +1935,9 @@ class TestGetPredMultiGPU:
             denoise=False,
         )
 
-        assert (
-            captured.get("n_realisations") == n_real
-        ), "_n_realisations not stored correctly on instance"
-        assert (
-            captured.get("denoise") is False
-        ), "_denoise not stored correctly on instance"
+        assert captured.get("n_realisations") == n_real, (
+            "_n_realisations not stored correctly on instance"
+        )
+        assert captured.get("denoise") is False, (
+            "_denoise not stored correctly on instance"
+        )

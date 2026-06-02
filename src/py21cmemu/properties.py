@@ -23,9 +23,9 @@ if TYPE_CHECKING:
 # This is the single source of truth for emulator naming.
 
 # Canonical emulator names (physics-based)
-EMULATOR_ACG: str = "acg"       # Atomic Cooling Galaxies only (Breitman+24)
-EMULATOR_RADIO: str = "radio"   # Radio background (Cang+24)
-EMULATOR_MCG: str = "mcg"       # Molecular Cooling Galaxies / Mini-halos
+EMULATOR_ACG: str = "acg"  # Atomic Cooling Galaxies only (Breitman+24)
+EMULATOR_RADIO: str = "radio"  # Radio background (Cang+24)
+EMULATOR_MCG: str = "mcg"  # Molecular Cooling Galaxies / Mini-halos
 
 # Default emulator
 DEFAULT_EMULATOR: str = EMULATOR_MCG
@@ -62,22 +62,22 @@ for canonical, config in EMULATOR_CONFIG.items():
 
 def resolve_emulator_name(name: str) -> str:
     """Resolve an emulator name or alias to its canonical name.
-    
+
     Parameters
     ----------
     name : str
         Emulator name or alias (case-insensitive).
-    
+
     Returns
     -------
     str
         Canonical emulator name ('acg', 'radio', or 'mcg').
-    
+
     Raises
     ------
     ValueError
         If the name is not a valid emulator or alias.
-    
+
     Examples
     --------
     >>> resolve_emulator_name("v3")
@@ -96,12 +96,12 @@ def resolve_emulator_name(name: str) -> str:
 
 def get_emulator_aliases(emulator: str) -> list[str]:
     """Get all aliases for an emulator, including the canonical name.
-    
+
     Parameters
     ----------
     emulator : str
         Emulator name (canonical or alias).
-    
+
     Returns
     -------
     list[str]
@@ -154,9 +154,17 @@ class DefaultEmulatorProperties(EmulatorProperties):
         self.tau_err = all_emulator_numbers["tau_err"]
         self.UVLFs_err = all_emulator_numbers["UVLFs_err"]
         self.UVLFs_logerr = all_emulator_numbers["UVLFs_logerr"]
-        self.astro_param_keys = ['F_STAR10', 'ALPHA_STAR', 'F_ESC10', 
-                                 'ALPHA_ESC', 'M_TURN', 't_STAR', 
-                                 'L_X', 'NU_X_THRESH', 'X_RAY_SPEC_INDEX']
+        self.astro_param_keys = [
+            "F_STAR10",
+            "ALPHA_STAR",
+            "F_ESC10",
+            "ALPHA_ESC",
+            "M_TURN",
+            "t_STAR",
+            "L_X",
+            "NU_X_THRESH",
+            "X_RAY_SPEC_INDEX",
+        ]
         self.parameter_labels = np.array(
             [
                 r"$\log_{10} f_{*,10}$",
@@ -214,7 +222,7 @@ class DefaultEmulatorProperties(EmulatorProperties):
 
 class RadioEmulatorProperties(EmulatorProperties):
     """A class that contains the properties of the radio emulator.
-    
+
     Note: Radio emulator does not use the renormalize() method from the base class,
     so it does not define normalized_quantities. Denormalization is handled
     directly in RadioEmulatorOutput.get_renormalized().
@@ -233,12 +241,12 @@ class RadioEmulatorProperties(EmulatorProperties):
         # Backward compatibility aliases
         self.logPS_mean = self.PS_log_mean
         self.logPS_std = self.PS_log_std
-        
+
         self.PS_ks = all_emulator_numbers["PS_k"]
         self.PS_zs = all_emulator_numbers["PS_z"]
         self.zs = all_emulator_numbers["redshifts"]
         self.limits = np.array([[-2, 6], [33, 45], [-5, 0], [-6, -1], [0, 10]])
-        
+
         # Tb uses special normalization: -(10^(norm*std + mean)) + scale
         self.Tb_log_std = all_emulator_numbers["Tb_std"]
         self.Tb_log_mean = all_emulator_numbers["Tb_mean"]
@@ -246,7 +254,7 @@ class RadioEmulatorProperties(EmulatorProperties):
         # Backward compatibility aliases
         self.logTb_std = self.Tb_log_std
         self.logTb_mean = self.Tb_log_mean
-        
+
         # Tr normalization (log10 space)
         self.Tr_log_mean = all_emulator_numbers["logTr_mean"]
         self.Tr_log_std = all_emulator_numbers["logTr_std"]
@@ -267,8 +275,7 @@ class RadioEmulatorProperties(EmulatorProperties):
             r"log$_{10}$F$_{\rm esc, mini}$",
             r"A$_{\rm LW}$",
         ]
-        self.astro_param_keys = ['f_R_MINI', 'L_X_MINI', 
-                                 'F_STAR7','F_ESC7', 'A_LW']
+        self.astro_param_keys = ["f_R_MINI", "L_X_MINI", "F_STAR7", "F_ESC7", "A_LW"]
 
         USER_PARAMS = {
             "HII_DIM": 50,
@@ -304,92 +311,92 @@ class RadioEmulatorProperties(EmulatorProperties):
 
 class MHEmulatorProperties(EmulatorProperties):
     """Properties and error statistics for the minihalo (v3) emulator.
-    
+
     This class loads constants from two separate files:
-    
+
     - ``lstm_emulator_constants.npz``: LSTM model (summaries + 1D PS)
     - ``score_model_constants.npz``: 2D PS score model
-    
+
     Error Statistics Conventions
     ----------------------------
     All error statistics are **Fractional Errors (FE%)** computed as::
-    
+
         FE% = |true - predicted| / |true| × 100
-    
+
     A floor is applied to the denominator to avoid division by small values:
-    
+
     - xHI: floor at 0.01 (reionization fraction)
-    - Tb: floor at 5 mK (brightness temperature) 
+    - Tb: floor at 5 mK (brightness temperature)
     - Ts: no floor (spin temperature)
     - tau: no floor (optical depth)
     - UVLFs: floor at 0.01 (log10 values)
     - PS: floor at 0.01 (log10 values)
-    
+
     Aggregation Methods
     -------------------
     There are three types of aggregation statistics:
-    
+
     **med_err** (Median FE%):
         ``median(FE across all test samples at each (z,k) pixel)``
-        
+
         Most robust to outliers. This is the primary error metric.
-    
+
     **mean_err** (Mean FE%):
         ``mean(FE across all test samples at each (z,k) pixel)``
-        
+
         Sensitive to outliers but preserves total error budget.
-    
+
     **std_err** (Standard Deviation of FE%):
         ``std(FE across all test samples at each (z,k) pixel)``
-        
+
         Characterizes the spread of errors at each pixel.
-    
+
     Log vs Linear Quantities
     ------------------------
     The emulator works in log10 space for certain quantities:
-    
+
     **Log10 quantities** (errors computed on log10(value)):
         - PS (power spectrum): values are log10(Δ² / mK²)
         - UVLFs: values are log10(φ / Mpc⁻³ mag⁻¹)
         - tau: values are log10(τ), converted to linear on output
-    
+
     **Linear quantities** (errors computed on physical values):
         - xHI: neutral hydrogen fraction (0-1)
         - Tb: brightness temperature (mK)
         - Ts: spin temperature (K)
-    
+
     Important: ``PS_med_err`` gives FE% on **log10(PS)**, not on linear PS.
     To interpret: a 5% FE on log10(PS) ≈ 5% uncertainty in the exponent,
     corresponding to ~12% uncertainty in linear PS (10^0.05 ≈ 1.12).
-    
+
     Per-Pixel vs Global Statistics
     ------------------------------
     **Per-pixel arrays** (e.g., ``PS_med_err`` shape (32, 64)):
         Error at each (kperp, kpar) pixel, computed as median across test set.
-    
+
     **Global scalars** (e.g., ``PS_global_median_err``):
         Single-number summary. Computed as::
-        
+
             median(median(FE at each pixel across test set) across all pixels)
-        
+
         This is median-of-medians: first median over test samples at each pixel,
         then median over all pixels.
-    
+
     **Two-stage robust error** (e.g., ``PS_robust_err``):
         ``median_over_samples(median_over_pixels(FE within each sample))``
-        
+
         First summarize each test sample to one number (median across pixels),
         then take median across samples. Most robust to outlier parameter sets.
-    
+
     Covariance Statistics
     ---------------------
     The covariance matrix ``PS_cov`` characterizes error correlations:
-    
+
     - Shape: (n_pixels, n_pixels) = (32×64, 32×64) = (2048, 2048)
     - Units: FE%² (covariance of fractional error)
     - ``diag_frac``: fraction of variance on diagonal (near 1 = uncorrelated)
     - ``mean_abs_corr``: mean |correlation| off-diagonal
-    
+
     Attributes
     ----------
     PS_med_err : ndarray, shape (32, 64)
@@ -416,11 +423,10 @@ class MHEmulatorProperties(EmulatorProperties):
         Per-(Muv, z) median FE% for UV luminosity functions, on **log10(φ)**.
     """
 
-
     @property
     def normalized_quantities(self) -> list[str]:
         """Return a list of the normalized quantities predicted by the emulator.
-        
+
         Note: LSTM uses _bias/_scale naming convention; the base class looks for
         _mean in _data keys which doesn't work here. xHI is not normalized
         (it's already in [0, 1] range).
@@ -429,7 +435,7 @@ class MHEmulatorProperties(EmulatorProperties):
 
     def __init__(self):
         here = Path(__file__).parent
-        
+
         # Load LSTM model constants (summaries + 1D PS)
         lstm_data = np.load(
             here / "models/MHs/lstm_emulator_constants.npz", allow_pickle=True
@@ -437,7 +443,7 @@ class MHEmulatorProperties(EmulatorProperties):
         self._lstm_data = lstm_data
         # Set _data for base class compatibility (normalized_quantities property)
         self._data = lstm_data
-        
+
         # Load 2D PS score model constants
         score_data = np.load(
             here / "models/MHs/score_model_constants.npz", allow_pickle=True
@@ -463,7 +469,7 @@ class MHEmulatorProperties(EmulatorProperties):
         self.tau_log_std = float(lstm_data["tau_scale"])
         self.UVLFs_log_mean = np.array(lstm_data["UVLFs_bias"])
         self.UVLFs_log_std = np.array(lstm_data["UVLFs_scale"])
-        
+
         # Backward compatibility aliases
         self.tau_mean = self.tau_log_mean
         self.tau_std = self.tau_log_std
@@ -477,7 +483,7 @@ class MHEmulatorProperties(EmulatorProperties):
         self.PS_1D_redshifts = np.array(lstm_data["PS_redshifts"])
         self.PS_1D_log_mean = float(lstm_data["PS_bias"])
         self.PS_1D_log_std = float(lstm_data["PS_scale"])
-        
+
         # Backward compatibility aliases
         self.PS_ks = self.PS_1D_k  # Duplicate coordinate array
         self.PS_1D_bias = self.PS_1D_log_mean
@@ -486,21 +492,31 @@ class MHEmulatorProperties(EmulatorProperties):
         # === 2D PS score model properties ===
         self.PS_2D_limits = score_data["PS_2D_limits"]
         self.PS_redshifts = np.array(score_data["ps_redshifts"])
-        
+
         # Backward compatibility aliases
         self.ps_limits = self.PS_2D_limits  # Old name
         self.PS_zs = self.PS_redshifts  # Duplicate coordinate array
         # Default redshifts for PS emulation (user can override)
-        self.default_ps_redshifts = np.array([
-            5.5, 6.97446005, 7.54906604, 7.9582024, 9.82883407,
-            10.36152691, 10.63860385, 16.66170964, 19.52022545, 24.10859229
-        ])
+        self.default_ps_redshifts = np.array(
+            [
+                5.5,
+                6.97446005,
+                7.54906604,
+                7.9582024,
+                9.82883407,
+                10.36152691,
+                10.63860385,
+                16.66170964,
+                19.52022545,
+                24.10859229,
+            ]
+        )
         self.kperp = np.array(score_data["kperp"])
         self.kpar = np.array(score_data["kpar"])
         self.PS_2D_Nmodes = np.array(score_data["Nmodes"])
         self.PS_log_mean = np.array(score_data["PS_2D_bias"])
         self.PS_log_std = np.array(score_data["PS_2D_scale"])
-        
+
         # Backward compatibility aliases
         self.Nmodes = self.PS_2D_Nmodes  # Old name without prefix
         self.PS_bias = self.PS_log_mean
@@ -510,19 +526,19 @@ class MHEmulatorProperties(EmulatorProperties):
         self.xHI_med_err = np.array(lstm_data["xHI_med_err"])
         self.xHI_mean_err = np.array(lstm_data["xHI_mean_err"])
         self.xHI_std_err = np.array(lstm_data["xHI_std_err"])
-        
+
         self.Tb_med_err = np.array(lstm_data["Tb_med_err"])
         self.Tb_mean_err = np.array(lstm_data["Tb_mean_err"])
         self.Tb_std_err = np.array(lstm_data["Tb_std_err"])
-        
+
         self.Ts_med_err = np.array(lstm_data["Ts_med_err"])
         self.Ts_mean_err = np.array(lstm_data["Ts_mean_err"])
         self.Ts_std_err = np.array(lstm_data["Ts_std_err"])
-        
+
         self.tau_med_err = float(lstm_data["tau_med_err"])
         self.tau_mean_err = float(lstm_data["tau_mean_err"])
         self.tau_std_err = float(lstm_data["tau_std_err"])
-        
+
         self.UVLFs_med_err = np.array(lstm_data["UVLFs_med_err"])
         self.UVLFs_mean_err = np.array(lstm_data["UVLFs_mean_err"])
         self.UVLFs_std_err = np.array(lstm_data["UVLFs_std_err"])
@@ -537,7 +553,7 @@ class MHEmulatorProperties(EmulatorProperties):
             self.UVLFs_lin_med_err = None
             self.UVLFs_lin_mean_err = None
             self.UVLFs_lin_std_err = None
-        
+
         # 1D PS errors (shape: 32 z, 32 k)
         self.PS_1D_med_err = np.array(lstm_data["PS_med_err"])
         self.PS_1D_mean_err = np.array(lstm_data["PS_mean_err"])
@@ -550,8 +566,10 @@ class MHEmulatorProperties(EmulatorProperties):
         elif "PS_med_err_ode" in score_data:
             self.PS_med_err = np.array(score_data["PS_med_err_ode"])
         else:
-            raise KeyError("PS_med_err or PS_med_err_ode required in score_model_constants.npz")
-        
+            raise KeyError(
+                "PS_med_err or PS_med_err_ode required in score_model_constants.npz"
+            )
+
         # Method-specific errors
         if "PS_med_err_em" in score_data:
             self.PS_med_err_em = np.array(score_data["PS_med_err_em"])
@@ -559,7 +577,7 @@ class MHEmulatorProperties(EmulatorProperties):
         else:
             self.PS_med_err_em = self.PS_med_err
             self.PS_med_err_ode = self.PS_med_err
-        
+
         # 2D PS mean/std errors (default to ODE - more accurate sampler)
         if "PS_mean_err" in score_data:
             self.PS_mean_err = np.array(score_data["PS_mean_err"])
@@ -567,28 +585,28 @@ class MHEmulatorProperties(EmulatorProperties):
             self.PS_mean_err = np.array(score_data["PS_mean_err_ode"])
         else:
             self.PS_mean_err = self.PS_med_err.copy()
-        
+
         if "PS_mean_err_em" in score_data:
             self.PS_mean_err_em = np.array(score_data["PS_mean_err_em"])
             self.PS_mean_err_ode = np.array(score_data["PS_mean_err_ode"])
         else:
             self.PS_mean_err_em = self.PS_mean_err
             self.PS_mean_err_ode = self.PS_mean_err
-        
+
         if "PS_std_err" in score_data:
             self.PS_std_err = np.array(score_data["PS_std_err"])
         elif "PS_std_err_ode" in score_data:
             self.PS_std_err = np.array(score_data["PS_std_err_ode"])
         else:
             self.PS_std_err = np.zeros_like(self.PS_med_err)
-        
+
         if "PS_std_err_em" in score_data:
             self.PS_std_err_em = np.array(score_data["PS_std_err_em"])
             self.PS_std_err_ode = np.array(score_data["PS_std_err_ode"])
         else:
             self.PS_std_err_em = self.PS_std_err
             self.PS_std_err_ode = self.PS_std_err
-        
+
         # === 2D PS variance and covariance of emulator errors ===
         # These statistics characterize the error distribution of the score model
         # at each (kperp, kpar) pixel. All are computed on the fractional error
@@ -603,12 +621,12 @@ class MHEmulatorProperties(EmulatorProperties):
         else:
             self.PS_var_ode = None
             self.PS_var = None
-        
+
         if "PS_var_em" in score_data:
             self.PS_var_em = np.array(score_data["PS_var_em"])
         else:
             self.PS_var_em = None
-        
+
         # Covariance: shape (2048, 2048) = (32*64, 32*64), units FE%^2
         #   Mean covariance of FE between all pixel pairs.
         #   Pixels are flattened by raveling (32, 64) -> (2048,).
@@ -620,12 +638,12 @@ class MHEmulatorProperties(EmulatorProperties):
         else:
             self.PS_cov_ode = None
             self.PS_cov = None
-        
+
         if "PS_cov_em" in score_data:
             self.PS_cov_em = np.array(score_data["PS_cov_em"])
         else:
             self.PS_cov_em = None
-        
+
         # === 2D PS correlation statistics ===
         # Summary statistics characterizing pixel-to-pixel error correlations.
         #
@@ -639,17 +657,17 @@ class MHEmulatorProperties(EmulatorProperties):
         else:
             self.PS_cov_diag_frac_ode = None
             self.PS_cov_diag_frac = None
-        
+
         if "diag_frac_em" in score_data:
             self.PS_cov_diag_frac_em = float(score_data["diag_frac_em"])
         else:
             self.PS_cov_diag_frac_em = None
-        
+
         # Backward compatibility aliases (old names without prefix)
         self.diag_frac = self.PS_cov_diag_frac
         self.diag_frac_ode = self.PS_cov_diag_frac_ode
         self.diag_frac_em = self.PS_cov_diag_frac_em
-        
+
         # Mean absolute off-diagonal correlation: mean |r_ij| for i != j
         #   where r_ij is the Pearson correlation between pixels i and j.
         #   Measures typical strength of error correlations.
@@ -659,17 +677,17 @@ class MHEmulatorProperties(EmulatorProperties):
         else:
             self.PS_cov_mean_abs_corr_ode = None
             self.PS_cov_mean_abs_corr = None
-        
+
         if "mean_abs_corr_em" in score_data:
             self.PS_cov_mean_abs_corr_em = float(score_data["mean_abs_corr_em"])
         else:
             self.PS_cov_mean_abs_corr_em = None
-        
+
         # Backward compatibility aliases (old names without prefix)
         self.mean_abs_corr = self.PS_cov_mean_abs_corr
         self.mean_abs_corr_ode = self.PS_cov_mean_abs_corr_ode
         self.mean_abs_corr_em = self.PS_cov_mean_abs_corr_em
-        
+
         # === 2D PS global error scalars (from score model) ===
         # These are headline numbers summarizing emulator accuracy
         # Default to ODE (more accurate sampler)
@@ -679,84 +697,88 @@ class MHEmulatorProperties(EmulatorProperties):
         else:
             self.PS_global_median_err_ode = None
             self.PS_global_median_err = None
-        
+
         if "global_median_em_means" in score_data:
             self.PS_global_median_err_em = float(score_data["global_median_em_means"])
         else:
             self.PS_global_median_err_em = None
-        
+
         if "global_mean_ode_means" in score_data:
             self.PS_global_mean_err_ode = float(score_data["global_mean_ode_means"])
             self.PS_global_mean_err = self.PS_global_mean_err_ode
         else:
             self.PS_global_mean_err_ode = None
             self.PS_global_mean_err = None
-        
+
         if "global_mean_em_means" in score_data:
             self.PS_global_mean_err_em = float(score_data["global_mean_em_means"])
         else:
             self.PS_global_mean_err_em = None
-        
+
         # Two-stage robust error (median of sample medians - most robust to outliers)
         if "twostage_median_of_sample_median_ode_means" in score_data:
-            self.PS_robust_err_ode = float(score_data["twostage_median_of_sample_median_ode_means"])
+            self.PS_robust_err_ode = float(
+                score_data["twostage_median_of_sample_median_ode_means"]
+            )
             self.PS_robust_err = self.PS_robust_err_ode
         else:
             self.PS_robust_err_ode = None
             self.PS_robust_err = None
-        
+
         if "twostage_median_of_sample_median_em_means" in score_data:
-            self.PS_robust_err_em = float(score_data["twostage_median_of_sample_median_em_means"])
+            self.PS_robust_err_em = float(
+                score_data["twostage_median_of_sample_median_em_means"]
+            )
         else:
             self.PS_robust_err_em = None
-        
+
         USER_PARAMS = {
-            'HII_DIM':200,
-            'BOX_LEN':400.0,
-            'USE_INTERPOLATION_TABLES': True,
-            'USE_FFTW_WISDOM': True,
-            'PERTURB_ON_HIGH_RES': True,
-            'OUTPUT_ALL_VEL': False, 
-            'USE_RELATIVE_VELOCITIES' : True,
-            'POWER_SPECTRUM': 5,
+            "HII_DIM": 200,
+            "BOX_LEN": 400.0,
+            "USE_INTERPOLATION_TABLES": True,
+            "USE_FFTW_WISDOM": True,
+            "PERTURB_ON_HIGH_RES": True,
+            "OUTPUT_ALL_VEL": False,
+            "USE_RELATIVE_VELOCITIES": True,
+            "POWER_SPECTRUM": 5,
         }
 
         COSMO_PARAMS = {
-            'hlittle': 0.6688,
-            'OMm': 0.321,
-            'OMb':0.04952,
-            'POWER_INDEX':0.9626,
+            "hlittle": 0.6688,
+            "OMm": 0.321,
+            "OMb": 0.04952,
+            "POWER_INDEX": 0.9626,
         }
 
         FLAG_OPTIONS = {
-            'USE_MASS_DEPENDENT_ZETA': True,
-            'INHOMO_RECO': True,
-            'PHOTON_CONS': False,
-            'EVOLVING_R_BUBBLE_MAX': False,
-            'USE_TS_FLUCT': True,
-            'USE_MINI_HALOS': True,
+            "USE_MASS_DEPENDENT_ZETA": True,
+            "INHOMO_RECO": True,
+            "PHOTON_CONS": False,
+            "EVOLVING_R_BUBBLE_MAX": False,
+            "USE_TS_FLUCT": True,
+            "USE_MINI_HALOS": True,
         }
 
         self.flag_options = FLAG_OPTIONS
         self.user_params = USER_PARAMS
         self.cosmo_params = COSMO_PARAMS
-    
+
     # Coordinate array backward compatibility aliases
     @property
     def zs(self) -> np.ndarray:
         """Alias for redshifts (backward compatibility)."""
         return self.redshifts
-    
+
     def get_ps_error(self, method: str = "ode", stat: str = "median") -> np.ndarray:
         """Get 2D PS error array for the specified sampling method and statistic.
-        
+
         Parameters
         ----------
         method : str
             Sampling method, either "ode" (default, more accurate) or "em".
         stat : str
             Error statistic: "median" (or "med"), "mean", or "std".
-        
+
         Returns
         -------
         np.ndarray
@@ -769,15 +791,15 @@ class MHEmulatorProperties(EmulatorProperties):
             return getattr(self, attr_name)
         # Fall back to default (ODE)
         return getattr(self, f"PS_{stat_key}_err")
-    
+
     def get_ps_variance(self, method: str = "ode") -> np.ndarray | None:
         """Get 2D PS variance array for the specified sampling method.
-        
+
         Parameters
         ----------
         method : str
             Sampling method, either "ode" (default) or "em".
-        
+
         Returns
         -------
         np.ndarray | None
@@ -785,15 +807,15 @@ class MHEmulatorProperties(EmulatorProperties):
         """
         attr_name = f"PS_var_{method}"
         return getattr(self, attr_name, None)
-    
+
     def get_ps_covariance(self, method: str = "ode") -> np.ndarray | None:
         """Get 2D PS covariance matrix for the specified sampling method.
-        
+
         Parameters
         ----------
         method : str
             Sampling method, either "ode" (default) or "em".
-        
+
         Returns
         -------
         np.ndarray | None

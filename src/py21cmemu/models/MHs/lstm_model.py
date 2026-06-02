@@ -20,19 +20,23 @@ class _LSTMHead(nn.Module):
       - channel 0: predicted value
       - channel 1: validity logit (apply sigmoid → P(defined))
     """
-    def __init__(self, input_size, hidden_size, num_layers=2,
-                 output_dim=1, dropout=0.0):
+
+    def __init__(
+        self, input_size, hidden_size, num_layers=2, output_dim=1, dropout=0.0
+    ):
         super().__init__()
         self.lstm = nn.LSTM(
-            input_size=input_size, hidden_size=hidden_size,
-            num_layers=num_layers, batch_first=True,
+            input_size=input_size,
+            hidden_size=hidden_size,
+            num_layers=num_layers,
+            batch_first=True,
             dropout=dropout if num_layers > 1 else 0.0,
         )
         self.lin = nn.Linear(hidden_size, output_dim)
 
     def forward(self, x):
-        output, _ = self.lstm(x)          # (B, seq_len, hidden)
-        output = self.lin(output)          # (B, seq_len, output_dim)
+        output, _ = self.lstm(x)  # (B, seq_len, hidden)
+        output = self.lin(output)  # (B, seq_len, output_dim)
         return output
 
 
@@ -46,28 +50,42 @@ class LSTM2DHead(nn.Module):
     2. **Col-LSTM** – Input is ``(B*n_rows, n_cols, hidden_row + 1)``
        where the ``+1`` is a normalised column coordinate.
     """
-    def __init__(self, input_dim, n_rows, n_cols, *,
-                 hidden_row=256, hidden_col=128, num_layers=2, dropout=0.0):
+
+    def __init__(
+        self,
+        input_dim,
+        n_rows,
+        n_cols,
+        *,
+        hidden_row=256,
+        hidden_col=128,
+        num_layers=2,
+        dropout=0.0,
+    ):
         super().__init__()
         self.n_rows = n_rows
         self.n_cols = n_cols
         self.hidden_row = hidden_row
 
         # Register buffers (will be populated by load_state_dict or set_axes)
-        self.register_buffer('_row_norm', torch.zeros(n_rows))
-        self.register_buffer('_col_norm', torch.zeros(n_cols))
+        self.register_buffer("_row_norm", torch.zeros(n_rows))
+        self.register_buffer("_col_norm", torch.zeros(n_cols))
 
         # Row-LSTM: input = (features, row_coord)  → input_dim + 1
         self.row_lstm = nn.LSTM(
-            input_size=input_dim + 1, hidden_size=hidden_row,
-            num_layers=num_layers, batch_first=True,
+            input_size=input_dim + 1,
+            hidden_size=hidden_row,
+            num_layers=num_layers,
+            batch_first=True,
             dropout=dropout if num_layers > 1 else 0.0,
         )
 
         # Col-LSTM: input = (row_context, col_coord) → hidden_row + 1
         self.col_lstm = nn.LSTM(
-            input_size=hidden_row + 1, hidden_size=hidden_col,
-            num_layers=num_layers, batch_first=True,
+            input_size=hidden_row + 1,
+            hidden_size=hidden_col,
+            num_layers=num_layers,
+            batch_first=True,
             dropout=dropout if num_layers > 1 else 0.0,
         )
         self.col_proj = nn.Linear(hidden_col, 1)
@@ -78,13 +96,13 @@ class LSTM2DHead(nn.Module):
 
         r = torch.as_tensor(row_values, dtype=torch.float32)
         r_norm = (r - r.min()) / (r.max() - r.min())
-        self.register_buffer('_row_norm', r_norm.to(dev))
+        self.register_buffer("_row_norm", r_norm.to(dev))
 
         c = torch.as_tensor(col_values, dtype=torch.float32)
         if log_col:
             c = torch.log10(c)
         c_norm = (c - c.min()) / (c.max() - c.min())
-        self.register_buffer('_col_norm', c_norm.to(dev))
+        self.register_buffer("_col_norm", c_norm.to(dev))
 
     def forward(self, x):
         """x: (B, input_dim) — raw theta."""
@@ -98,19 +116,24 @@ class LSTM2DHead(nn.Module):
         row_out, _ = self.row_lstm(row_seq)  # (B, n_rows, hidden_row)
 
         # ── Col-LSTM input: (B*n_rows, n_cols, hidden_row + 1)
-        row_ctx = row_out.unsqueeze(2).expand(B, self.n_rows, self.n_cols, self.hidden_row)
+        row_ctx = row_out.unsqueeze(2).expand(
+            B, self.n_rows, self.n_cols, self.hidden_row
+        )
         row_ctx = row_ctx.reshape(B * self.n_rows, self.n_cols, self.hidden_row)
 
-        col_coord = self._col_norm.unsqueeze(0).expand(B * self.n_rows, -1).unsqueeze(-1)
+        col_coord = (
+            self._col_norm.unsqueeze(0).expand(B * self.n_rows, -1).unsqueeze(-1)
+        )
         col_input = torch.cat([row_ctx, col_coord], dim=-1)
 
-        col_out, _ = self.col_lstm(col_input)       # (B*n_rows, n_cols, hidden_col)
+        col_out, _ = self.col_lstm(col_input)  # (B*n_rows, n_cols, hidden_col)
         col_vals = self.col_proj(col_out).squeeze(-1)  # (B*n_rows, n_cols)
         return col_vals.reshape(B, self.n_rows, self.n_cols)
 
 
 class FeedForwardHead(nn.Module):
     """Simple MLP for scalar output (tau_e)."""
+
     def __init__(self, d_model, hidden=256, n_layers=4):
         super().__init__()
         layers = [nn.Linear(d_model, hidden), nn.GELU()]
@@ -142,21 +165,22 @@ class MH_Emulator(nn.Module):
         - 'N_PS_Z': int (32 PS redshift bins)
         - 'N_PS_K': int (32 PS k bins)
     """
+
     def __init__(self, params_dict):
         super().__init__()
 
-        n_params = params_dict.get('n_params', 11)
-        N_z = params_dict.get('N_z', 93)
-        N_LF_z = params_dict.get('N_LF_z', 7)
-        N_mag = params_dict.get('N_mag', 45)
-        N_PS_Z = params_dict.get('N_PS_Z', 32)
-        N_PS_K = params_dict.get('N_PS_K', 32)
+        n_params = params_dict.get("n_params", 11)
+        N_z = params_dict.get("N_z", 93)
+        N_LF_z = params_dict.get("N_LF_z", 7)
+        N_mag = params_dict.get("N_mag", 45)
+        N_PS_Z = params_dict.get("N_PS_Z", 32)
+        N_PS_K = params_dict.get("N_PS_K", 32)
 
         self._n_params = n_params
         self._n_z = N_z
 
         # Register buffer for redshift normalization (populated by load_state_dict)
-        self.register_buffer('_z_norm', torch.zeros(N_z))
+        self.register_buffer("_z_norm", torch.zeros(N_z))
 
         # Input dim for 1D LSTM heads: n_params + 1 (z coordinate)
         lstm_1d_in = n_params + 1
@@ -164,7 +188,9 @@ class MH_Emulator(nn.Module):
         # 1-D LSTM heads
         self.xhi_head = _LSTMHead(lstm_1d_in, hidden_size=N_z, num_layers=2)
         self.tb_head = _LSTMHead(lstm_1d_in, hidden_size=N_z, num_layers=2)
-        self.ts_head = _LSTMHead(lstm_1d_in, hidden_size=N_z, num_layers=2, output_dim=2)
+        self.ts_head = _LSTMHead(
+            lstm_1d_in, hidden_size=N_z, num_layers=2, output_dim=2
+        )
 
         # 2-D LSTM heads
         self.uvlf_head = LSTM2DHead(
@@ -193,7 +219,7 @@ class MH_Emulator(nn.Module):
         z_t = torch.as_tensor(z, dtype=torch.float32)
         z_norm = (z_t - z_t.min()) / (z_t.max() - z_t.min())
         dev = next(self.parameters()).device
-        self.register_buffer('_z_norm', z_norm.to(dev))
+        self.register_buffer("_z_norm", z_norm.to(dev))
 
     def set_ps_axes(self, ps_redshifts, ps_k):
         """Register PS axes."""
@@ -239,16 +265,23 @@ class MH_Emulator(nn.Module):
         tb = self.tb_head(seq).squeeze(-1)
 
         # Ts (neutral only, 2-channel output)
-        ts = self.ts_head(seq)                 # (B, N_z, 2)
+        ts = self.ts_head(seq)  # (B, N_z, 2)
 
         # UVLFs
-        uvlf = self.uvlf_head(theta)           # (B, N_LF_z, N_mag)
-        uvlf = uvlf.transpose(1, 2)            # → (B, N_mag, N_LF_z)
+        uvlf = self.uvlf_head(theta)  # (B, N_LF_z, N_mag)
+        uvlf = uvlf.transpose(1, 2)  # → (B, N_mag, N_LF_z)
 
         # tau
         tau = self.tau_head(theta)
 
         # PS
-        ps = self.ps_head(theta)               # (B, N_PS_Z, N_PS_K)
+        ps = self.ps_head(theta)  # (B, N_PS_Z, N_PS_K)
 
-        return torch.flip(xhi, dims=(-1,)), torch.flip(tb, dims=(-1,)), torch.flip(ts, dims=(-2,)), uvlf, ps, tau
+        return (
+            torch.flip(xhi, dims=(-1,)),
+            torch.flip(tb, dims=(-1,)),
+            torch.flip(ts, dims=(-2,)),
+            uvlf,
+            ps,
+            tau,
+        )

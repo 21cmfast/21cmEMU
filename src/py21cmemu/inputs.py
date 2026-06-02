@@ -117,16 +117,14 @@ Example
 
 from __future__ import annotations
 
-from typing import Dict
-from typing import Sequence
+from collections.abc import Sequence
 from typing import Union
 
 import numpy as np
 
 from .properties import emulator_properties
 
-
-SingleParamVecType = Union[Dict[str, float], np.ndarray, Sequence[float]]
+SingleParamVecType = Union[dict[str, float], np.ndarray, Sequence[float]]
 ParamVecType = Union[Sequence[SingleParamVecType], SingleParamVecType]
 
 
@@ -214,7 +212,10 @@ class EmulatorInput:
             List of dicts of astro params, one for each parameter set.
         """
         theta = self.make_param_array(theta, normed=normed)
-        return [dict(zip(self.astro_param_keys, theta[i])) for i in range(len(theta))]
+        return [
+            dict(zip(self.astro_param_keys, theta[i], strict=False))
+            for i in range(len(theta))
+        ]
 
 
 class DefaultEmulatorInput(EmulatorInput):
@@ -226,23 +227,23 @@ class DefaultEmulatorInput(EmulatorInput):
 
     #: Ordered mapping of all parameter names to their physical units.
     PARAMETERS: dict[str, str] = {
-        "F_STAR10":         "log10",
-        "ALPHA_STAR":       "dimensionless",
-        "F_ESC10":          "log10",
-        "ALPHA_ESC":        "dimensionless",
-        "M_TURN":           "log10(Msun)",
-        "t_STAR":           "dimensionless",
-        "L_X":              "log10(erg/s/(Msun/yr))",
-        "NU_X_THRESH":      "eV",
+        "F_STAR10": "log10",
+        "ALPHA_STAR": "dimensionless",
+        "F_ESC10": "log10",
+        "ALPHA_ESC": "dimensionless",
+        "M_TURN": "log10(Msun)",
+        "t_STAR": "dimensionless",
+        "L_X": "log10(erg/s/(Msun/yr))",
+        "NU_X_THRESH": "eV",
         "X_RAY_SPEC_INDEX": "dimensionless",
     }
 
     #: Parameters that must be supplied as log10 values, mapped to their log-space units.
     LOG_PARAMETERS: dict[str, str] = {
         "F_STAR10": "log10",
-        "F_ESC10":  "log10",
-        "M_TURN":   "log10(Msun)",
-        "L_X":      "log10(erg/s/(Msun/yr))",
+        "F_ESC10": "log10",
+        "M_TURN": "log10(Msun)",
+        "L_X": "log10(erg/s/(Msun/yr))",
     }
 
     def __init__(self):
@@ -308,19 +309,19 @@ class RadioEmulatorInput(EmulatorInput):
 
     #: Ordered mapping of all parameter names to their physical units.
     PARAMETERS: dict[str, str] = {
-        "fR_mini":      "log10",
-        "L_X_MINI":     "log10(erg/s/(Msun/yr))",
+        "fR_mini": "log10",
+        "L_X_MINI": "log10(erg/s/(Msun/yr))",
         "F_STAR7_MINI": "log10",
-        "F_ESC7_MINI":  "log10",
-        "A_LW":         "dimensionless",
+        "F_ESC7_MINI": "log10",
+        "A_LW": "dimensionless",
     }
 
     #: Parameters that must be supplied as log10 values, mapped to their log-space units.
     LOG_PARAMETERS: dict[str, str] = {
-        "fR_mini":      "log10",
-        "L_X_MINI":     "log10(erg/s/(Msun/yr))",
+        "fR_mini": "log10",
+        "L_X_MINI": "log10(erg/s/(Msun/yr))",
         "F_STAR7_MINI": "log10",
-        "F_ESC7_MINI":  "log10",
+        "F_ESC7_MINI": "log10",
     }
 
     def __init__(self):
@@ -381,27 +382,27 @@ class MHEmulatorInput(EmulatorInput):
 
     #: Ordered mapping of all parameter names to their physical units.
     PARAMETERS: dict[str, str] = {
-        "F_STAR10":     "log10",
-        "ALPHA_STAR":   "dimensionless",
-        "t_STAR":       "dimensionless",
-        "F_ESC10":      "log10",
-        "ALPHA_ESC":    "dimensionless",
+        "F_STAR10": "log10",
+        "ALPHA_STAR": "dimensionless",
+        "t_STAR": "dimensionless",
+        "F_ESC10": "log10",
+        "ALPHA_ESC": "dimensionless",
         "F_STAR7_MINI": "log10",
-        "F_ESC7_MINI":  "log10",
-        "L_X":          "log10(erg/s/(Msun/yr))",
-        "L_X_MINI":     "log10(erg/s/(Msun/yr))",
-        "NU_X_THRESH":  "eV",
-        "SIGMA_8":      "dimensionless",
+        "F_ESC7_MINI": "log10",
+        "L_X": "log10(erg/s/(Msun/yr))",
+        "L_X_MINI": "log10(erg/s/(Msun/yr))",
+        "NU_X_THRESH": "eV",
+        "SIGMA_8": "dimensionless",
     }
 
     #: Parameters that must be supplied as log10 values, mapped to their log-space units.
     LOG_PARAMETERS: dict[str, str] = {
-        "F_STAR10":     "log10",
-        "F_ESC10":      "log10",
+        "F_STAR10": "log10",
+        "F_ESC10": "log10",
         "F_STAR7_MINI": "log10",
-        "F_ESC7_MINI":  "log10",
-        "L_X":          "log10(erg/s/(Msun/yr))",
-        "L_X_MINI":     "log10(erg/s/(Msun/yr))",
+        "F_ESC7_MINI": "log10",
+        "L_X": "log10(erg/s/(Msun/yr))",
+        "L_X_MINI": "log10(erg/s/(Msun/yr))",
     }
 
     def __init__(self):
@@ -422,7 +423,9 @@ class MHEmulatorInput(EmulatorInput):
         theta_out = (theta_out - limits[:, 0]) / (limits[:, 1] - limits[:, 0])
         return np.clip(theta_out, 0.0, 1.0)
 
-    def undo_normalization(self, theta: np.ndarray, kind: str = "summaries") -> np.ndarray:
+    def undo_normalization(
+        self, theta: np.ndarray, kind: str = "summaries"
+    ) -> np.ndarray:
         theta_out = theta.copy().astype(float)
         if kind.upper() in ("LSTM", "SUMMARIES"):
             limits = self.properties.lstm_limits[:-1]
@@ -436,7 +439,9 @@ class MHEmulatorInput(EmulatorInput):
         theta_out = theta_out * (limits[:, 1] - limits[:, 0]) + limits[:, 0]
         return theta_out
 
-    def format_theta_for_ps(self, theta: np.ndarray, ps_redshifts: np.ndarray) -> np.ndarray:
+    def format_theta_for_ps(
+        self, theta: np.ndarray, ps_redshifts: np.ndarray
+    ) -> np.ndarray:
         z_min, z_max = self.properties.ps_limits[-1]
         normed_redshifts = (ps_redshifts - z_min) / (z_max - z_min)
 
@@ -478,7 +483,9 @@ class MHEmulatorInput(EmulatorInput):
         n_z = len(redshifts)
 
         # Replicate parameters across redshift dimension
-        theta_3d = np.repeat(theta[:, np.newaxis, :], n_z, axis=1)  # (n_samples, n_z, n_params)
+        theta_3d = np.repeat(
+            theta[:, np.newaxis, :], n_z, axis=1
+        )  # (n_samples, n_z, n_params)
 
         # Create redshift array and tile for all samples
         z_array = np.tile(

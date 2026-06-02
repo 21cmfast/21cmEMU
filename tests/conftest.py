@@ -59,20 +59,20 @@ def pytest_collection_modifyitems(
         os.environ.get("GITHUB_REF") == "refs/heads/main"
         or os.environ.get("GITHUB_BASE_REF") == "main"
     )
-    
+
     run_slow = config.getoption("--run-slow")
-    
+
     skip_slow = pytest.mark.skip(reason="need --run-slow option to run")
     skip_main_only = pytest.mark.skip(
         reason="only runs on merge to main (set GITHUB_REF=refs/heads/main or use --run-slow)"
     )
-    
+
     for item in items:
         # Handle slow tests
         if "slow" in item.keywords:
             if not run_slow:
                 item.add_marker(skip_slow)
-        
+
         # Handle main-only tests
         if "main_only" in item.keywords:
             if not (run_slow or (is_ci and is_main_merge)):
@@ -105,6 +105,7 @@ def test_params(test_set_h5_path) -> np.ndarray:
     """Load test parameters from test_set.h5, converted to log-space for LOG_PARAMETERS."""
     h5py = pytest.importorskip("h5py")
     from py21cmemu.inputs import MHEmulatorInput
+
     with h5py.File(test_set_h5_path, "r") as f:
         params = np.asarray(f["inputs"][:5])
     mh_in = MHEmulatorInput()
@@ -120,6 +121,7 @@ def single_test_param(test_set_h5_path) -> np.ndarray:
     """Load a single test parameter from test_set.h5, converted to log-space for LOG_PARAMETERS."""
     h5py = pytest.importorskip("h5py")
     from py21cmemu.inputs import MHEmulatorInput
+
     with h5py.File(test_set_h5_path, "r") as f:
         params = np.asarray(f["inputs"][:1])
     mh_in = MHEmulatorInput()
@@ -131,28 +133,31 @@ def single_test_param(test_set_h5_path) -> np.ndarray:
 
 
 @pytest.fixture(scope="module")
-def mh_emulator() -> "Emulator":
+def mh_emulator() -> Emulator:
     """Create MH emulator without 2D PS (fast)."""
     from py21cmemu import Emulator
+
     return Emulator(emulator="mcg", emulate_2d_ps=False)
 
 
 @pytest.fixture(scope="module")
-def mh_emulator_with_2d_ps() -> "Emulator":
+def mh_emulator_with_2d_ps() -> Emulator:
     """Create MH emulator with 2D PS enabled (slow)."""
     from py21cmemu import Emulator
+
     return Emulator(emulator="mcg", emulate_2d_ps=True)
 
 
 @pytest.fixture(scope="module")
-def mh_properties() -> "MHEmulatorProperties":
+def mh_properties() -> MHEmulatorProperties:
     """Get MH emulator properties."""
     from py21cmemu.properties import get_emulator_properties
+
     return get_emulator_properties(emulator="mcg")
 
 
 @pytest.fixture(scope="module")
-def mh_output_no_2d_ps(mh_emulator, single_test_param) -> "MHEmulatorOutput":
+def mh_output_no_2d_ps(mh_emulator, single_test_param) -> MHEmulatorOutput:
     """Get MH emulator output without 2D PS."""
     _, output, _ = mh_emulator.predict(single_test_param)
     return output
