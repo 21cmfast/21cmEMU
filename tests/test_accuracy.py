@@ -8,7 +8,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from py21cmemu import DefaultEmulatorInput, Emulator
+from py21cmemu import ACGEmulatorInput, Emulator
 from py21cmemu.config import CONFIG
 
 TUTORIALS_DIR = Path(__file__).resolve().parents[1] / "docs" / "tutorials"
@@ -107,7 +107,7 @@ def test_v1_emulator_vs_database():
 
     # Run emulator
     emu = Emulator(emulator="acg")
-    X_test_phys = DefaultEmulatorInput().undo_normalization(X_test)
+    X_test_phys = ACGEmulatorInput().undo_normalization(X_test)
     _, output, _ = emu.predict(X_test_phys)
 
     # Calculate median fractional errors (%)

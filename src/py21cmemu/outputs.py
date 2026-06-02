@@ -455,7 +455,7 @@ class ACGEmulatorOutput(EmulatorOutput):
 
     def squeeze(self):
         """Return a new EmulatorOutput with all dimensions of length 1 removed."""
-        return DefaultEmulatorOutput(**{k: np.squeeze(v) for k, v in self.items()})
+        return ACGEmulatorOutput(**{k: np.squeeze(v) for k, v in self.items()})
 
 
 @dataclass(frozen=True)
@@ -604,7 +604,7 @@ class ACGRawEmulatorOutput(RawEmulatorOutput):
 
         Returns
         -------
-        DefaultEmulatorOutput
+        ACGEmulatorOutput
             The emulator output with all quantities in physical units.
             - PS: LINEAR mK² units
             - UVLFs: log10 space [dex(Mpc⁻³ mag⁻¹)]
@@ -616,7 +616,7 @@ class ACGRawEmulatorOutput(RawEmulatorOutput):
 
         other = {
             k.name: getattr(self, k.name)
-            for k in dc.fields(DefaultEmulatorOutput)
+            for k in dc.fields(ACGEmulatorOutput)
             if k.name not in renorm
         }
 
@@ -1082,7 +1082,7 @@ class MCGEmulatorOutput(EmulatorOutput):
         return self.properties.redshifts * u.dimensionless_unscaled
 
     def squeeze(self):
-        return MCGRawEmulatorOutput(
+        return MCGEmulatorOutput(
             **{k: (np.squeeze(v) if v is not None else None) for k, v in self.items()}
         )
 
@@ -1174,7 +1174,7 @@ class MCGRawEmulatorOutput(RawEmulatorOutput):
 
         other = {
             k.name: getattr(self, k.name)
-            for k in dc.fields(MHEmulatorOutput)
+            for k in dc.fields(MCGEmulatorOutput)
             if k.name not in renorm
         }
 

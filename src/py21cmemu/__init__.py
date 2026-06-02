@@ -5,13 +5,13 @@ from importlib.metadata import version
 __version__ = version("py21cmEMU")
 from .emulator import Emulator as Emulator
 from .get_emulator import get_emu_data as get_emu_data
-from .inputs import DefaultEmulatorInput as DefaultEmulatorInput
-from .inputs import MHEmulatorInput as MHEmulatorInput
+from .inputs import ACGEmulatorInput as ACGEmulatorInput
+from .inputs import MCGEmulatorInput as MCGEmulatorInput
 from .inputs import RadioEmulatorInput as RadioEmulatorInput
 from .outputs import ACGEmulatorErrors as ACGEmulatorErrors
 from .outputs import EmulatorOutput as EmulatorOutput
-from .outputs import MHEmulatorErrors as MHEmulatorErrors
-from .outputs import MHRawEmulatorOutput as MHRawEmulatorOutput
+from .outputs import MCGEmulatorErrors as MCGEmulatorErrors
+from .outputs import MCGRawEmulatorOutput as MCGRawEmulatorOutput
 from .outputs import RadioEmulatorErrors as RadioEmulatorErrors
 from .outputs import RawEmulatorOutput as RawEmulatorOutput
 from .properties import (

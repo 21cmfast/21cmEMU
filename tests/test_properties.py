@@ -145,9 +145,9 @@ class TestMH2DPSProperties:
     @pytest.fixture(scope="class")
     def mh_props(self):
         """Get MH emulator properties."""
-        from py21cmemu.properties import MHEmulatorProperties
+        from py21cmemu.properties import MCGEmulatorProperties
 
-        return MHEmulatorProperties()
+        return MCGEmulatorProperties()
 
     def test_ps_redshifts_available(self, mh_props):
         """Test that PS redshifts are available and match 2D PS grid."""
@@ -287,9 +287,9 @@ class TestMH2DPSAccessors:
     @pytest.fixture(scope="class")
     def mh_props(self):
         """Get MH emulator properties."""
-        from py21cmemu.properties import MHEmulatorProperties
+        from py21cmemu.properties import MCGEmulatorProperties
 
-        return MHEmulatorProperties()
+        return MCGEmulatorProperties()
 
     def test_get_ps_error_ode(self, mh_props):
         """Test get_ps_error returns correct array for ODE."""

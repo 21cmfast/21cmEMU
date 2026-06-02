@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 
 from py21cmemu import ACGEmulatorInput, Emulator, RadioEmulatorInput
-from py21cmemu.outputs import ACGRawEmulatorOutput, ACGEmulatorOutput
+from py21cmemu.outputs import ACGEmulatorOutput, ACGRawEmulatorOutput, MCGEmulatorOutput
 
 TUTORIALS_DIR = Path(__file__).resolve().parents[1] / "docs" / "tutorials"
 TEST_DATABASE_H5 = TUTORIALS_DIR / "test_database.h5"
@@ -125,12 +125,12 @@ def _make_mh_errors():
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# DefaultEmulatorOutput tests
+# ACGEmulatorOutput tests
 # ══════════════════════════════════════════════════════════════════════════════
 
 
 def test_default_output_properties():
-    """DefaultEmulatorOutput exposes coordinate arrays with units."""
+    """ACGEmulatorOutput exposes coordinate arrays with units."""
     import astropy.units as u
 
     out = _make_default_output()
@@ -146,12 +146,12 @@ def test_default_output_properties():
 
 
 def test_default_output_squeeze():
-    """DefaultEmulatorOutput.squeeze returns a new DefaultEmulatorOutput."""
-    from py21cmemu.outputs import DefaultEmulatorOutput
+    """ACGEmulatorOutput.squeeze returns a new ACGEmulatorOutput."""
+    from py21cmemu.outputs import ACGEmulatorOutput
 
     out = _make_default_output()
     squeezed = out.squeeze()
-    assert isinstance(squeezed, DefaultEmulatorOutput)
+    assert isinstance(squeezed, ACGEmulatorOutput)
 
 
 def test_output_write_and_clobber_error(tmp_path):
@@ -268,7 +268,6 @@ def test_mh_output_properties_with_2d_ps():
 
 def test_mh_output_squeeze():
     """MCGEmulatorOutput.squeeze returns a new MCGEmulatorOutput."""
-    from py21cmemu.outputs import MCGEmulatorOutput
 
     out = _make_mh_output()
     squeezed = out.squeeze()
@@ -277,7 +276,6 @@ def test_mh_output_squeeze():
 
 def test_mh_outputs_class() -> None:
     """Test MCGEmulatorOutput class."""
-    from py21cmemu.outputs import MCGEmulatorOutput
 
     # Create minimal output (no 2D PS)
     output = MCGEmulatorOutput(
@@ -356,7 +354,7 @@ def test_radio_errors_summary():
 
 
 def test_mh_errors_dict_interface():
-    """MHEmulatorErrors supports dict-like access."""
+    """MCGEmulatorErrors supports dict-like access."""
     errors = _make_mh_errors()
 
     assert "PS_err" in errors
@@ -368,14 +366,14 @@ def test_mh_errors_dict_interface():
 
 
 def test_mh_errors_summary():
-    """MHEmulatorErrors.summary() returns a non-empty string."""
+    """MCGEmulatorErrors.summary() returns a non-empty string."""
     errors = _make_mh_errors()
     s = errors.summary()
     assert "PS_err" in s
 
 
 def test_mh_errors_advanced_stats():
-    """MHEmulatorErrors advanced error statistics methods work."""
+    """MCGEmulatorErrors advanced error statistics methods work."""
     errors = _make_mh_errors()
     assert errors.properties is not None
 
@@ -397,13 +395,13 @@ def test_mh_errors_advanced_stats():
 
 
 def test_mh_errors_em_method():
-    """MHEmulatorErrors built with 'em' method uses em-specific statistics."""
-    from py21cmemu.outputs import MHEmulatorErrors
+    """MCGEmulatorErrors built with 'em' method uses em-specific statistics."""
+    from py21cmemu.outputs import MCGEmulatorErrors
     from py21cmemu.properties import emulator_properties
 
     props = emulator_properties("mcg")
     out = _make_mh_output()
-    errors = MHEmulatorErrors.from_output(out, props, ps_sampling_method="em")
+    errors = MCGEmulatorErrors.from_output(out, props, ps_sampling_method="em")
 
     fe = errors.get_ps_fractional_error(method="em")
     assert fe is not None
@@ -414,12 +412,12 @@ def test_mh_errors_em_method():
 
 
 def test_mh_errors_no_properties():
-    """MHEmulatorErrors methods handle _properties=None gracefully."""
+    """MCGEmulatorErrors methods handle _properties=None gracefully."""
     import astropy.units as u
 
-    from py21cmemu.outputs import MHEmulatorErrors
+    from py21cmemu.outputs import MCGEmulatorErrors
 
-    errors = MHEmulatorErrors(
+    errors = MCGEmulatorErrors(
         PS_err=np.ones((2, 2)) * u.dex(u.mK**2),
         Tb_err=np.ones(2) * u.mK,
         xHI_err=np.ones(2) * u.dimensionless_unscaled,
@@ -444,7 +442,7 @@ def test_mh_errors_no_properties():
 # ══════════════════════════════════════════════════════════════════════════════
 
 
-@pytest.mark.parametrize("emu_type", ["default", "radio_background"])
+@pytest.mark.parametrize("emu_type", ["acg", "radio_background"])
 def test_output(tmp_path, emu_type):
     """Test outputs.py and emulator.py."""
     if emu_type == "radio_background":
@@ -458,7 +456,7 @@ def test_output(tmp_path, emu_type):
             np.random.rand(npars * 5).reshape((5, npars))
         )
     else:
-        theta = DefaultEmulatorInput().undo_normalization(
+        theta = ACGEmulatorInput().undo_normalization(
             np.random.rand(npars * 5).reshape((5, npars))
         )
 
@@ -489,8 +487,8 @@ def test_output(tmp_path, emu_type):
     ].item()
     assert "xHI" not in check
     assert "theta" not in check
-    if emu_type == "default":
-        out2 = DefaultRawEmulatorOutput(np.random.rand(1098))
+    if emu_type == "acg":
+        out2 = ACGRawEmulatorOutput(np.random.rand(1098))
         with pytest.raises(ValueError):
             out2.renormalize("foo")
 
@@ -503,7 +501,7 @@ def test_output(tmp_path, emu_type):
         output.redshifts
 
         # --- Error shape consistency for single-sample prediction ---
-        theta_single = DefaultEmulatorInput().undo_normalization(
+        theta_single = ACGEmulatorInput().undo_normalization(
             np.random.rand(9).reshape((1, 9))
         )
         _, out_single, err_single = emu.predict(theta_single)
@@ -516,7 +514,7 @@ def test_output(tmp_path, emu_type):
 
         # --- Error shape consistency for multi-sample prediction ---
         N = 5
-        theta_multi = DefaultEmulatorInput().undo_normalization(
+        theta_multi = ACGEmulatorInput().undo_normalization(
             np.random.rand(N * 9).reshape((N, 9))
         )
         _, out_multi, err_multi = emu.predict(theta_multi)
@@ -599,8 +597,8 @@ class TestMH2DOutputStructure:
     """Test 2D PS output structure and data handling."""
 
     def test_mh_output_with_2d_ps(self):
-        """Test MHEmulatorOutput can include 2D PS data."""
-        from py21cmemu.outputs import MHEmulatorOutput
+        """Test MCGEmulatorOutput can include 2D PS data."""
+        from py21cmemu.outputs import MCGEmulatorOutput
 
         ps_1d = np.random.rand(32, 32)
         ps_2d_samples = np.random.rand(1, 10, 100, 32, 64)
@@ -608,7 +606,7 @@ class TestMH2DOutputStructure:
         ps_2d_std = np.std(ps_2d_samples, axis=2)
         ps_redshifts = np.linspace(6, 20, 10)
 
-        output = MHEmulatorOutput(
+        output = MCGEmulatorOutput(
             Tb=np.zeros(32),
             xHI=np.zeros(32),
             Ts=np.zeros(32),

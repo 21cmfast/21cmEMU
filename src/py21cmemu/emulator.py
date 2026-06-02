@@ -101,7 +101,7 @@ class Emulator:
             here = Path(__file__).parent
             model_path = here / "models/acg/default_model.pt"
             model = load_converted_model(str(model_path), self.device)
-            self.inputs = DefaultEmulatorInput()
+            self.inputs = ACGEmulatorInput()
 
         elif self.which_emulator == EMULATOR_RADIO:
             from .models.radio.model import Radio_Emulator
@@ -178,7 +178,7 @@ class Emulator:
                 self._em_sampler_cls = GetEMSampler
                 self._ode_sampler_cls = GetODESampler
 
-            self.inputs = MHEmulatorInput()
+            self.inputs = MCGEmulatorInput()
             model = self.lstm_model
 
         self.model = model
@@ -253,7 +253,7 @@ class Emulator:
             theta_t = torch.tensor(theta, dtype=torch.float32, device=self.device)
             with torch.no_grad():
                 raw = self.model.forward_stacked(theta_t).detach().cpu().numpy()
-            emu = DefaultRawEmulatorOutput(raw)
+            emu = ACGRawEmulatorOutput(raw)
             emu = emu.get_renormalized()
             errors = self.get_errors(emu, theta)
             return theta, emu, errors
@@ -344,7 +344,7 @@ class Emulator:
             self._current_ps_method = None
             predicted.extend([None, None])
 
-        emu = MHRawEmulatorOutput(predicted)
+        emu = MCGRawEmulatorOutput(predicted)
         emu = emu.get_renormalized()
         errors = self.get_errors(emu, theta_LSTM, theta_PS, ps_sampling_method)
         return (theta_PS, theta_LSTM), emu, errors
@@ -470,7 +470,7 @@ class Emulator:
         theta_lstm: np.ndarray | None = None,
         theta_ps: np.ndarray | None = None,
         ps_sampling_method: str | None = None,
-    ) -> ACGEmulatorErrors | RadioEmulatorErrors | MHEmulatorErrors:
+    ) -> ACGEmulatorErrors | RadioEmulatorErrors | MCGEmulatorErrors:
         """Calculate the emulator error on its outputs.
 
         Parameters

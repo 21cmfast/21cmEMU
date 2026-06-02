@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 from typeguard import suppress_type_checks
 
-from py21cmemu import MCGEmulatorInput, ACGEmulatorInput, RadioEmulatorInput
+from py21cmemu import ACGEmulatorInput, MCGEmulatorInput, RadioEmulatorInput
 from py21cmemu.properties import emulator_properties
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -188,9 +188,8 @@ class TestMH2DPSInputs:
     @pytest.fixture(scope="class")
     def mh_inputs(self):
         """Get MH input handler."""
-        from py21cmemu.inputs import MHEmulatorInput
 
-        return MHEmulatorInput()
+        return MCGEmulatorInput()
 
     def test_format_theta_for_ps(self, mh_inputs):
         """Test theta formatting for PS model."""
@@ -209,9 +208,9 @@ class TestMH2DPSInputs:
 
     def test_ps_limits_shape(self, mh_inputs):
         """Test that PS limits have correct shape."""
-        from py21cmemu.properties import MHEmulatorProperties
+        from py21cmemu.properties import MCGEmulatorProperties
 
-        props = MHEmulatorProperties()
+        props = MCGEmulatorProperties()
 
         # PS limits: 12 params (11 astro + 1 redshift), 2 bounds each
         assert props.ps_limits.shape == (12, 2)
@@ -237,7 +236,7 @@ def test_inputs(emu_type):
         limits = properties.limits.copy()
         npars = len(limits)
     else:
-        emu_in = DefaultEmulatorInput()
+        emu_in = ACGEmulatorInput()
         limits = properties.limits.copy()
         limits[7, :] *= 1000.0  # keV to eV for NU_X_THRESH
         npars = len(limits)
