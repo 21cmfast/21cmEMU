@@ -18,17 +18,30 @@ To use ``21cmEMU``, install it with pip:
 For developers
 ^^^^^^^^^^^^^^
 
-Start by cloning the git repository and creating a new ``conda`` environment from the ``yaml`` provided file:
+Clone the repository and install the development dependencies using `uv <https://docs.astral.sh/uv/>`_:
 
 .. code-block:: console
 
-    $ conda env create -f ENV.yml
+    $ git clone https://github.com/21cmfast/21cmEMU
+    $ cd 21cmEMU
+    $ uv sync --group dev
 
-Then you can install your local installation of the code with:
+Or with pip:
 
 .. code-block:: console
 
+    $ git clone https://github.com/21cmfast/21cmEMU
+    $ cd 21cmEMU
     $ pip install -e .
+
+.. note::
+
+   If you need GPU (CUDA) support, install the appropriate version of PyTorch
+   before installing ``21cmEMU`` by following the
+   `official PyTorch installation guide <https://pytorch.org/get-started/locally/>`_.
+   Conda/mamba can be convenient for installing CUDA libraries, but only the
+   minimal CUDA toolkit is needed — all Python dependencies can then be managed
+   with ``uv`` or ``pip``.
 
 To test the installation, run:
 
