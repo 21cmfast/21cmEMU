@@ -6,7 +6,10 @@ import py21cmemu
 sys.path.insert(0, str(Path(__file__).absolute().parent.parent / "src"))
 
 master_doc = 'index'
-source_suffix = ".rst"
+source_suffix = {
+    ".rst": "restructuredtext",
+    ".md": "markdown",
+}
 
 project = "21cmEMU"
 author = "Daniela Breitman"
