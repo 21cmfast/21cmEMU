@@ -118,14 +118,14 @@ Example
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Union
+from typing import ClassVar
 
 import numpy as np
 
 from .properties import emulator_properties
 
-SingleParamVecType = Union[dict[str, float], np.ndarray, Sequence[float]]
-ParamVecType = Union[Sequence[SingleParamVecType], SingleParamVecType]
+SingleParamVecType = dict[str, float] | np.ndarray | Sequence[float]
+ParamVecType = Sequence[SingleParamVecType] | SingleParamVecType
 
 
 class EmulatorInput:
@@ -226,7 +226,7 @@ class DefaultEmulatorInput(EmulatorInput):
     """
 
     #: Ordered mapping of all parameter names to their physical units.
-    PARAMETERS: dict[str, str] = {
+    PARAMETERS: ClassVar[dict[str, str]] = {
         "F_STAR10": "log10",
         "ALPHA_STAR": "dimensionless",
         "F_ESC10": "log10",
@@ -239,7 +239,7 @@ class DefaultEmulatorInput(EmulatorInput):
     }
 
     #: Parameters that must be supplied as log10 values, mapped to their log-space units.
-    LOG_PARAMETERS: dict[str, str] = {
+    LOG_PARAMETERS: ClassVar[dict[str, str]] = {
         "F_STAR10": "log10",
         "F_ESC10": "log10",
         "M_TURN": "log10(Msun)",
@@ -308,7 +308,7 @@ class RadioEmulatorInput(EmulatorInput):
     """
 
     #: Ordered mapping of all parameter names to their physical units.
-    PARAMETERS: dict[str, str] = {
+    PARAMETERS: ClassVar[dict[str, str]] = {
         "fR_mini": "log10",
         "L_X_MINI": "log10(erg/s/(Msun/yr))",
         "F_STAR7_MINI": "log10",
@@ -317,7 +317,7 @@ class RadioEmulatorInput(EmulatorInput):
     }
 
     #: Parameters that must be supplied as log10 values, mapped to their log-space units.
-    LOG_PARAMETERS: dict[str, str] = {
+    LOG_PARAMETERS: ClassVar[dict[str, str]] = {
         "fR_mini": "log10",
         "L_X_MINI": "log10(erg/s/(Msun/yr))",
         "F_STAR7_MINI": "log10",
@@ -381,7 +381,7 @@ class MHEmulatorInput(EmulatorInput):
     """
 
     #: Ordered mapping of all parameter names to their physical units.
-    PARAMETERS: dict[str, str] = {
+    PARAMETERS: ClassVar[dict[str, str]] = {
         "F_STAR10": "log10",
         "ALPHA_STAR": "dimensionless",
         "t_STAR": "dimensionless",
@@ -396,7 +396,7 @@ class MHEmulatorInput(EmulatorInput):
     }
 
     #: Parameters that must be supplied as log10 values, mapped to their log-space units.
-    LOG_PARAMETERS: dict[str, str] = {
+    LOG_PARAMETERS: ClassVar[dict[str, str]] = {
         "F_STAR10": "log10",
         "F_ESC10": "log10",
         "F_STAR7_MINI": "log10",

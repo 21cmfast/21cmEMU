@@ -70,9 +70,9 @@ def test_mh_batch_prediction(mh_emulator) -> None:
         params = np.asarray(f["inputs"][:5])
     params = _log_convert_mh_params(params)
 
-    theta, output, errors = mh_emulator.predict(params)
+    theta, output, _errors = mh_emulator.predict(params)
 
-    theta_ps, theta_lstm = theta
+    _theta_ps, theta_lstm = theta
     assert theta_lstm.shape[0] == 5
     assert output.Tb.shape[0] == 5
     assert output.xHI.shape[0] == 5
@@ -1504,7 +1504,7 @@ class TestErrorStatisticsConsistency:
 
     def test_ps_1d_err_shape_matches_ps_shape(self, mh_output_and_props):
         """Test 1D PS error shape matches 1D PS output shape."""
-        output, props = mh_output_and_props
+        output, _props = mh_output_and_props
         ps_err = output.PS_err
         ps_val = output.PS
 
@@ -1515,7 +1515,7 @@ class TestErrorStatisticsConsistency:
 
     def test_ps_err_is_on_log10_documented_correctly(self, mh_output_and_props):
         """Test that error is on log10(PS), and PS is returned in linear units."""
-        output, props = mh_output_and_props
+        output, _props = mh_output_and_props
 
         # PS values are LINEAR (delta^2 in mK^2), range ~0.01 to 10^4
         ps_linear_vals = output.PS.value
@@ -1601,7 +1601,7 @@ class TestErrorStatisticsConsistency:
 
     def test_error_properties_docstrings_exist(self, mh_output_and_props):
         """Test that error properties have proper docstrings."""
-        output, props = mh_output_and_props
+        output, _props = mh_output_and_props
 
         # Check that the key error properties have docstrings mentioning log10
         ps_err_doc = type(output).PS_err.fget.__doc__
@@ -1612,7 +1612,7 @@ class TestErrorStatisticsConsistency:
 
     def test_error_values_are_percentages_not_fractions(self, mh_output_and_props):
         """Test that error values are in % (0-100+) not fraction (0-1)."""
-        output, props = mh_output_and_props
+        output, _props = mh_output_and_props
 
         # PS errors: if they're fractions (0-1), max would typically be < 1
         # If they're percentages (0-100+), max would typically be > 1
@@ -1630,7 +1630,7 @@ class TestErrorStatisticsConsistency:
 
     def test_properties_class_has_error_docstring(self, mh_output_and_props):
         """Test that MHEmulatorProperties has comprehensive error documentation."""
-        output, props = mh_output_and_props
+        _output, props = mh_output_and_props
 
         class_doc = type(props).__doc__
 

@@ -24,6 +24,7 @@ import argparse
 import logging
 from collections import OrderedDict as OD
 from pathlib import Path
+from typing import ClassVar
 
 import numpy as np
 import torch
@@ -64,7 +65,7 @@ def _crop_like_tf_same(x: torch.Tensor, kernel_h: int, kernel_w: int) -> torch.T
 class DefaultEmulatorV1(nn.Module):
     """Exact PyTorch replica of the v1 TensorFlow 21cmEMU model."""
 
-    OUTPUT_SIZES = OD(
+    OUTPUT_SIZES: ClassVar[OD] = OD(
         [
             ("Tb", 84),
             ("xHI", 84),

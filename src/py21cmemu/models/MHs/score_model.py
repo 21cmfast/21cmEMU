@@ -13,6 +13,7 @@ improvements over the original:
   - Residual connections on attention outputs
 """
 
+import itertools
 import math
 from functools import partial
 
@@ -206,7 +207,7 @@ class Attention(nn.Module):
         self.dropout = dropout
 
     def forward(self, x):
-        b, c, h, w = x.shape
+        _b, _c, h, w = x.shape
         qkv = self.to_qkv(x).chunk(3, dim=1)
         q, k, v = map(
             lambda t: rearrange(t, "b (h c) x y -> b h (x y) c", h=self.heads), qkv
@@ -234,7 +235,7 @@ class LinearAttention(nn.Module):
         )
 
     def forward(self, x):
-        b, c, h, w = x.shape
+        _b, _c, h, w = x.shape
         qkv = self.to_qkv(x).chunk(3, dim=1)
         q, k, v = map(
             lambda t: rearrange(t, "b (h c) x y -> b h c (x y)", h=self.heads), qkv
@@ -311,7 +312,7 @@ class UNet(nn.Module):
         self.init_conv = nn.Conv2d(input_channels, init_dim, 7, padding=3)
 
         dims = [init_dim, *[dim[0] * m for m in dim_mults]]
-        in_out = list(zip(dims[:-1], dims[1:], strict=False))
+        in_out = list(itertools.pairwise(dims))
 
         resnet_block = partial(ResnetBlock, groups=resnet_block_groups, dropout=dropout)
 

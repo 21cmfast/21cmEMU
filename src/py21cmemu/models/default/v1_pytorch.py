@@ -15,6 +15,7 @@ Usage
 from __future__ import annotations
 
 from collections import OrderedDict as OD
+from typing import ClassVar
 
 import torch
 import torch.nn as nn
@@ -62,7 +63,7 @@ class DefaultEmulatorV1(nn.Module):
         Negative slope for LeakyReLU. TF model uses 0.1.
     """
 
-    OUTPUT_SIZES = OD(
+    OUTPUT_SIZES: ClassVar[OD] = OD(
         [
             ("Tb", 84),
             ("xHI", 84),

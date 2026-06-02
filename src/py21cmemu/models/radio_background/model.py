@@ -60,7 +60,7 @@ class CNN(nn.Module):
         nconvs: int,
         in_ch: int,
         out_ch: int,
-        hid_ch: int = None,
+        hid_ch: int | None = None,
         kernel_size: tuple = (2,),
         stride: tuple = (1,),
         padding: tuple = (0,),
@@ -94,7 +94,7 @@ def cnn_list(
     nconvs: int,
     in_ch: int,
     out_ch: int,
-    hid_ch: int = None,
+    hid_ch: int | None = None,
     kernel_size: tuple = (2,),
     stride: tuple = (1,),
     padding: tuple = (0,),
@@ -302,7 +302,7 @@ class Radio_Emulator(nn.Module):
         xHI_pred = self.xHI_branch(input_params)
         tau_pred = self.tau_branch(input_params)
         ps_1d = self.ps_fc(input_params)
-        ps_2d = torch.reshape(ps_1d, (ps_1d.shape[0],) + tuple(self.ps_inp_shape))
+        ps_2d = torch.reshape(ps_1d, (ps_1d.shape[0], *tuple(self.ps_inp_shape)))
         ps = self.cnn1(ps_2d)
         ps = self.cnn1(ps)
         ps = self.cnn2(ps)

@@ -85,8 +85,8 @@ class DefaultEmulatorPyTorch(nn.Module):
     def __init__(
         self,
         n_params: int = 9,
-        hidden_sizes: list[int] = None,
-        output_sizes: dict[str, int] = None,
+        hidden_sizes: list[int] | None = None,
+        output_sizes: dict[str, int] | None = None,
         activation: str = "relu",
     ):
         super().__init__()
@@ -329,7 +329,7 @@ def convert_keras_to_pytorch(
 
     # Shared layers
     keras_layer_idx = 0
-    for i, (torch_linear, torch_act) in enumerate(
+    for i, (torch_linear, _torch_act) in enumerate(
         zip(
             pytorch_model.shared[0::2],  # Linear layers
             pytorch_model.shared[1::2],
@@ -449,7 +449,7 @@ def verify_conversion(
 
 
 def create_v1_model_from_scratch(
-    hidden_sizes: list[int] = None,
+    hidden_sizes: list[int] | None = None,
     n_z: int = 93,
     n_k: int = 14,
     n_lf_z: int = 7,
@@ -502,7 +502,7 @@ def create_v1_model_from_scratch(
 
 def load_default_model_pytorch(
     model_path: str,
-    device: str = None,
+    device: str | None = None,
 ) -> DefaultEmulatorPyTorch:
     """Load converted v1 model for inference.
 

@@ -432,7 +432,7 @@ def test_v1_pytorch_vs_emulator():
         "NU_X_THRESH": 500.0,
         "X_RAY_SPEC_INDEX": 1.0,
     }
-    theta, output, errors = emu.predict(params)
+    _theta, output, _errors = emu.predict(params)
 
     # Check output shapes
     assert output.Tb.shape == (84,)

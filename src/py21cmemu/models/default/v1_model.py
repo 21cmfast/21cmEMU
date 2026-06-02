@@ -14,6 +14,7 @@ Total: 1098 values
 from __future__ import annotations
 
 from collections import OrderedDict as OD
+from typing import ClassVar
 
 import torch
 import torch.nn as nn
@@ -34,7 +35,7 @@ class DefaultEmulatorV1(nn.Module):
     """
 
     # Output sizes in concatenation order
-    OUTPUT_SIZES = OD(
+    OUTPUT_SIZES: ClassVar[OD] = OD(
         [
             ("Tb", 84),
             ("xHI", 84),
