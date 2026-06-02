@@ -9,26 +9,16 @@ from textwrap import dedent
 
 import nox
 
-
-try:
-    from nox_poetry import Session
-    from nox_poetry import session
-except ImportError:
-    message = f"""\
-    Nox failed to import the 'nox-poetry' package.
-
-    Please install it using the following command:
-
-    {sys.executable} -m pip install nox-poetry"""
-    raise SystemExit(dedent(message)) from None
+# Use standard nox session type
+Session = nox.Session
+session = nox.session
 
 
 package = "py21cmemu"
-python_versions = ["3.10", "3.9", "3.8"]
+python_versions = ["3.14", "3.13", "3.12", "3.11", "3.10"]
 nox.needs_version = ">= 2021.6.6"
 nox.options.sessions = (
     "pre-commit",
-    "safety",
     "mypy",
     "tests",
     "typeguard",
@@ -47,7 +37,7 @@ def activate_virtualenv_in_precommit_hooks(session: Session) -> None:
     Args:
         session: The Session object.
     """
-    assert session.bin is not None  # noqa: S101
+    assert session.bin is not None
 
     # Only patch hooks containing a reference to this session's bindir. Support
     # quoting rules for Python and bash, but strip the outermost quotes so we
@@ -97,7 +87,8 @@ def activate_virtualenv_in_precommit_hooks(session: Session) -> None:
         text = hook.read_text()
 
         if not any(
-            Path("A") == Path("a") and bindir.lower() in text.lower() or bindir in text
+            (Path("A") == Path("a") and bindir.lower() in text.lower())
+            or bindir in text
             for bindir in bindirs
         ):
             continue
@@ -121,15 +112,7 @@ def precommit(session: Session) -> None:
         "--show-diff-on-failure",
     ]
     session.install(
-        "black",
-        "darglint",
-        "flake8",
-        "flake8-bandit",
-        "flake8-bugbear",
-        "flake8-docstrings",
-        "flake8-rst-docstrings",
-        "isort",
-        "pep8-naming",
+        "ruff",
         "pre-commit",
         "pre-commit-hooks",
         "pyupgrade",
@@ -137,14 +120,6 @@ def precommit(session: Session) -> None:
     session.run("pre-commit", *args)
     if args and args[0] == "install":
         activate_virtualenv_in_precommit_hooks(session)
-
-
-@session(python=python_versions[0])
-def safety(session: Session) -> None:
-    """Scan dependencies for insecure packages."""
-    requirements = session.poetry.export_requirements()
-    session.install("safety")
-    session.run("safety", "check", "--full-report", f"--file={requirements}")
 
 
 @session(python=python_versions)
@@ -161,9 +136,18 @@ def mypy(session: Session) -> None:
 @session(python=python_versions)
 def tests(session: Session) -> None:
     """Run the test suite."""
-    session.install("coverage[toml]", "pytest", "pygments", "typeguard", ".")
+    session.install("coverage[toml]", "pytest", "pygments", "typeguard", "h5py", ".")
+
+    # Determine if we should run slow tests
+    args = list(session.posargs)
+
+    # Run slow tests in any CI environment (PRs and pushes)
+    if os.environ.get("CI", "").lower() == "true":
+        if "--run-slow" not in args:
+            args.append("--run-slow")
+
     try:
-        session.run("coverage", "run", "--parallel", "-m", "pytest", *session.posargs)
+        session.run("coverage", "run", "--parallel", "-m", "pytest", *args)
     finally:
         if session.interactive:
             session.notify("coverage", posargs=[])
@@ -210,7 +194,9 @@ def docs_build(session: Session) -> None:
     if not session.posargs and "FORCE_COLOR" in os.environ:
         args.insert(0, "--color")
 
-    session.install("sphinx", "sphinx-click", "furo", "myst-parser")
+    session.install(
+        "sphinx", "sphinx-click", "furo", "myst-parser", "nbsphinx", "ipython"
+    )
 
     build_dir = Path("docs", "_build")
     if build_dir.exists():

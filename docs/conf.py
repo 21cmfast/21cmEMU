@@ -1,13 +1,15 @@
 """Sphinx configuration."""
 import sys
 from pathlib import Path
-import subprocess
 import py21cmemu
 
 sys.path.insert(0, str(Path(__file__).absolute().parent.parent / "src"))
 
 master_doc = 'index'
-source_suffix = ".rst"
+source_suffix = {
+    ".rst": "restructuredtext",
+    ".md": "markdown",
+}
 
 project = "21cmEMU"
 author = "Daniela Breitman"
@@ -27,9 +29,16 @@ extensions = [
 version = release = py21cmemu.__version__
 autodoc_typehints = "description"
 html_theme = "furo"
+html_logo = "images/21cmEMU_logo_vertical.png"
+html_static_path = ["_static"]
+html_theme_options = {
+    "sidebar_hide_name": True,
+}
 autosectionlabel_prefix_document = True
 
 autosummary_generate = True
+
+nbsphinx_execute = "never"
 
 exclude_patterns = [
     "_build",

@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Generator
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
-from typing import Generator
 
 import toml
 from appdirs import AppDirs
-
 
 log = logging.getLogger(__name__)
 
@@ -39,7 +38,7 @@ class Config:
             self["data-path"] = APPDIR.user_data_dir
 
         if not self.data_path.exists():
-            self.data_path.mkdir(parents=True, exist_ok=True)
+            self.data_path.mkdir(parents=True, exist_ok=True)  # pragma: no cover
 
         if "disable-network" not in self:
             self["disable-network"] = False
@@ -48,6 +47,14 @@ class Config:
     def emu_path(self) -> Path:
         """Get the path to the emulator data."""
         return Path(self["data-path"]) / "21cmEMU" / "21cmEMU"
+
+    @property
+    def pytorch_models_path(self) -> Path:
+        """Get the path to the PyTorch converted models (not git-managed)."""
+        path = Path(self["data-path"]) / "pytorch_models"
+        if not path.exists():
+            path.mkdir(parents=True, exist_ok=True)  # pragma: no cover
+        return path
 
     @property
     def data_path(self) -> Path:
@@ -60,6 +67,9 @@ class Config:
 
     def __setitem__(self, key: str, value: Any):
         """Set a value in the config file."""
+        # Convert Path objects to strings to avoid toml serialization issues
+        if isinstance(value, Path):
+            value = str(value)
         self.config[key] = value
         self.config_file.write_text(toml.dumps(self.config))
 
@@ -94,6 +104,8 @@ class Config:
 
     def update(self, **kw) -> None:
         """Update the config file with new values."""
+        # Convert Path objects to strings to avoid toml serialization issues
+        kw = {k: str(v) if isinstance(v, Path) else v for k, v in kw.items()}
         self.config.update(**kw)
         self.config_file.write_text(toml.dumps(self.config))
 

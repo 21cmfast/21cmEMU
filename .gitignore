@@ -110,3 +110,6 @@ venv.bak/
 
 # mkdocs documentation
 /site
+
+# Windows Zone.Identifier metadata files
+*:Zone.Identifier

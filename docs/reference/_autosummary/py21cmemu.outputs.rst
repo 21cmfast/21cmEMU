@@ -1,6 +1,22 @@
 ﻿py21cmemu.outputs
 =================
 
-.. currentmodule:: py21cmemu
+.. automodule:: py21cmemu.outputs
 
-.. automodule:: outputs
+
+   .. rubric:: Classes
+
+   .. autosummary::
+
+      ACGEmulatorErrors
+      DefaultEmulatorOutput
+      DefaultRawEmulatorOutput
+      EmulatorErrors
+      EmulatorOutput
+      MHEmulatorErrors
+      MHEmulatorOutput
+      MHRawEmulatorOutput
+      RadioEmulatorErrors
+      RadioEmulatorOutput
+      RadioRawEmulatorOutput
+      RawEmulatorOutput

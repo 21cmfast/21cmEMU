@@ -1,4 +1,4 @@
-exclude: "^docs/conf.py|^src/py21cmemu/emulator_constants.npz"
+exclude: '^docs/conf.py|^src/py21cmemu/emulator_constants.npz|^.*\.ipynb$|^src/py21cmemu/models/ACG/convert_v1_to_pytorch.py'
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -6,52 +6,31 @@ repos:
     hooks:
       - id: trailing-whitespace
       - id: check-ast
+      - id: check-added-large-files
+        args: ["--maxkb=10240"]  # warn on files > 10 MB
       - id: check-json
       - id: check-merge-conflict
       - id: check-xml
       - id: check-yaml
       - id: debug-statements
       - id: end-of-file-fixer
-      - id: requirements-txt-fixer
       - id: mixed-line-ending
         args: ["--fix=no"]
 
-  - repo: https://github.com/psf/black-pre-commit-mirror
-    rev: 25.1.0
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.11.12
     hooks:
-      - id: black
-
-  - repo: https://github.com/PyCQA/flake8
-    rev: 7.2.0
-    hooks:
-      - id: flake8
-        additional_dependencies:
-          - flake8-docstrings
-          - flake8-builtins
-          - flake8-rst-docstrings
-          - flake8-rst
-          - flake8-markdown
-          - flake8-bugbear
-          - flake8-comprehensions
-          - flake8-print
+      - id: ruff
+        args: ["--fix"]
+      - id: ruff-format
 
   - repo: https://github.com/pre-commit/pygrep-hooks
     rev: v1.10.0
     hooks:
       - id: rst-backticks
 
-  - repo: https://github.com/PyCQA/isort
-    rev: 6.0.1
-    hooks:
-      - id: isort
-
   - repo: https://github.com/asottile/pyupgrade
-    rev: v3.19.1
+    rev: v3.21.2
     hooks:
       - id: pyupgrade
-        args: [--py38-plus]
-
-  # - repo: https://github.com/pre-commit/mirrors-prettier
-  #   rev: v3.0.0-alpha.4
-  #   hooks:
-  #     - id: prettier
+        args: [--py312-plus]

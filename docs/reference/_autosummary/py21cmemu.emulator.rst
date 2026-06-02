@@ -1,6 +1,11 @@
 ﻿py21cmemu.emulator
 ==================
 
-.. currentmodule:: py21cmemu
+.. automodule:: py21cmemu.emulator
 
-.. automodule:: emulator
+
+   .. rubric:: Classes
+
+   .. autosummary::
+
+      Emulator

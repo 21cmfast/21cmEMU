@@ -1,6 +1,14 @@
 ﻿py21cmemu.inputs
 ================
 
-.. currentmodule:: py21cmemu
+.. automodule:: py21cmemu.inputs
 
-.. automodule:: inputs
+
+   .. rubric:: Classes
+
+   .. autosummary::
+
+      DefaultEmulatorInput
+      EmulatorInput
+      MHEmulatorInput
+      RadioEmulatorInput
