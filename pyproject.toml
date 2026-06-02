@@ -135,4 +135,4 @@ markers = [
 [tool.ruff.lint.per-file-ignores]
 "*.ipynb" = ["E402"]  # Allow imports after matplotlib setup in notebooks
 "tests/*" = ["B"]     # Relax bugbear in tests
-"src/py21cmemu/models/default/convert_v1_to_pytorch.py" = ["ALL"]  # bookkeeping script, not part of the package
+"src/py21cmemu/models/ACG/convert_v1_to_pytorch.py" = ["ALL"]  # bookkeeping script, not part of the package

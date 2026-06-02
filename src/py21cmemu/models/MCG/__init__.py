@@ -11,8 +11,8 @@ The SDE and sampling routines are in the parent package:
 
 Usage
 -----
->>> from py21cmemu.models.MHs.lstm_model import MH_Emulator
->>> from py21cmemu.models.MHs.score_model_final import UNet
+>>> from py21cmemu.models.MCG.lstm_model import MH_Emulator
+>>> from py21cmemu.models.MCG.score_model_final import UNet
 >>> from py21cmemu.sde import VPSDE
 >>> from py21cmemu.sample_pytorch import GetODESampler
 """

@@ -6,7 +6,7 @@ convert_v1_to_pytorch.py script.
 
 Usage
 -----
-    from py21cmemu.models.default.v1_pytorch import load_converted_model
+    from py21cmemu.models.ACG.v1_pytorch import load_converted_model
 
     model = load_converted_model("/path/to/default_model.pt")
     output = model(input_tensor)

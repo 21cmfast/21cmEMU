@@ -382,7 +382,7 @@ def test_get_emulator_no_internet():
 
 def test_v1_pytorch_model():
     """Test v1 PyTorch model directly."""
-    from py21cmemu.models.default.v1_pytorch import (
+    from py21cmemu.models.ACG.v1_pytorch import (
         DefaultEmulatorV1,
         load_converted_model,
     )
@@ -408,7 +408,7 @@ def test_v1_pytorch_model():
 
     import py21cmemu
 
-    bundled_path = Path(py21cmemu.__file__).parent / "models/default/default_model.pt"
+    bundled_path = Path(py21cmemu.__file__).parent / "models/ACG/default_model.pt"
     loaded_model = load_converted_model(str(bundled_path), device="cpu")
     assert isinstance(loaded_model, DefaultEmulatorV1)
     with torch.no_grad():
@@ -464,7 +464,7 @@ def test_v1_tensorflow_vs_pytorch_equivalence():
     from pathlib import Path
 
     import py21cmemu
-    from py21cmemu.models.default.v1_pytorch import load_converted_model
+    from py21cmemu.models.ACG.v1_pytorch import load_converted_model
 
     # Load TensorFlow model from HuggingFace cache
     tf_model_path = CONFIG.emu_path
@@ -474,7 +474,7 @@ def test_v1_tensorflow_vs_pytorch_equivalence():
     tf_model = tf.keras.models.load_model(str(tf_model_path), compile=False)
 
     # Load PyTorch model
-    bundled_path = Path(py21cmemu.__file__).parent / "models/default/default_model.pt"
+    bundled_path = Path(py21cmemu.__file__).parent / "models/ACG/default_model.pt"
     pt_model = load_converted_model(str(bundled_path), device="cpu")
     pt_model.eval()
 

@@ -231,7 +231,7 @@ class RadioEmulatorProperties(EmulatorProperties):
     def __init__(self):
         here = Path(__file__).parent
         all_emulator_numbers = np.load(
-            here / "models/radio_background/radio_background_emu_csts.npz"
+            here / "models/radio/radio_background_emu_csts.npz"
         )
         self._data = all_emulator_numbers
 
@@ -262,7 +262,7 @@ class RadioEmulatorProperties(EmulatorProperties):
         self.logTr_mean = self.Tr_log_mean
         self.logTr_std = self.Tr_log_std
 
-        with np.load(here / "models/radio_background/median_test_errors.npz") as f:
+        with np.load(here / "models/radio/median_test_errors.npz") as f:
             self.PS_err = f["PS_err"]
             self.Tr_err = f["Tr_err"]
             self.Tb_err = f["Tb_err"]
@@ -438,7 +438,7 @@ class MHEmulatorProperties(EmulatorProperties):
 
         # Load LSTM model constants (summaries + 1D PS)
         lstm_data = np.load(
-            here / "models/MHs/lstm_emulator_constants.npz", allow_pickle=True
+            here / "models/MCG/lstm_emulator_constants.npz", allow_pickle=True
         )
         self._lstm_data = lstm_data
         # Set _data for base class compatibility (normalized_quantities property)
@@ -446,7 +446,7 @@ class MHEmulatorProperties(EmulatorProperties):
 
         # Load 2D PS score model constants
         score_data = np.load(
-            here / "models/MHs/score_model_constants.npz", allow_pickle=True
+            here / "models/MCG/score_model_constants.npz", allow_pickle=True
         )
         self._score_data = score_data
 

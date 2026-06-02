@@ -96,21 +96,21 @@ class Emulator:
 
         if self.which_emulator == EMULATOR_ACG:
             # Load bundled PyTorch model (no download needed)
-            from .models.default.v1_pytorch import load_converted_model
+            from .models.ACG.v1_pytorch import load_converted_model
 
             here = Path(__file__).parent
-            model_path = here / "models/default/default_model.pt"
+            model_path = here / "models/ACG/default_model.pt"
             model = load_converted_model(str(model_path), self.device)
             self.inputs = DefaultEmulatorInput()
 
         elif self.which_emulator == EMULATOR_RADIO:
-            from .models.radio_background.model import Radio_Emulator
+            from .models.radio.model import Radio_Emulator
 
             here = Path(__file__).parent
             model = Radio_Emulator()
             model.load_state_dict(
                 torch.load(
-                    here / "models/radio_background/Radio_Background_Emu_Weights",
+                    here / "models/radio/Radio_Background_Emu_Weights",
                     map_location=self.device,
                 ),
             )
@@ -119,8 +119,8 @@ class Emulator:
             self.inputs = RadioEmulatorInput()
 
         elif self.which_emulator == EMULATOR_MCG:
-            from .models.MHs.lstm_model import MH_Emulator
-            from .models.MHs.score_model import UNet
+            from .models.MCG.lstm_model import MH_Emulator
+            from .models.MCG.score_model import UNet
             from .sample_pytorch import GetEMSampler, GetODESampler
             from .sde import VPSDE
 
@@ -140,7 +140,7 @@ class Emulator:
             )
             lstm_model.load_state_dict(
                 torch.load(
-                    here / "models/MHs/lstm_model_weights.pt", map_location=self.device
+                    here / "models/MCG/lstm_model_weights.pt", map_location=self.device
                 )
             )
             lstm_model.to(self.device)
@@ -150,7 +150,7 @@ class Emulator:
             self.score_model = None
             self.sample = None
             if self.emulate_2d_ps:
-                ps_model_path = here / "models/MHs/score_model_weights.pt"
+                ps_model_path = here / "models/MCG/score_model_weights.pt"
 
                 score_model = UNet(
                     dim=(32, 64),
@@ -399,7 +399,7 @@ class Emulator:
                 if gpu_id == 0:
                     model = self.score_model
                 else:
-                    from .models.MHs.score_model import UNet
+                    from .models.MCG.score_model import UNet
 
                     here = Path(__file__).parent
                     model = UNet(
@@ -411,7 +411,7 @@ class Emulator:
                     )
                     model.load_state_dict(
                         torch.load(
-                            here / "models/MHs/score_model_weights.pt",
+                            here / "models/MCG/score_model_weights.pt",
                             map_location=device,
                             weights_only=True,
                         )
