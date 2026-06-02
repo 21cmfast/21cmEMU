@@ -197,7 +197,7 @@ class TestMH2DScoreModel:
             / "src"
             / "py21cmemu"
             / "models"
-            / "MCG"
+            / "mcg"
             / "score_model_weights.pt"
         )
 

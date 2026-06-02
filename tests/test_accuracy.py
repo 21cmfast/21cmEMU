@@ -67,7 +67,7 @@ def test_v1_tensorflow_vs_pytorch_equivalence():
     tf_model = tf.keras.models.load_model(str(tf_model_path), compile=False)
 
     # Load PyTorch model
-    bundled_path = Path(py21cmemu.__file__).parent / "models/ACG/default_model.pt"
+    bundled_path = Path(py21cmemu.__file__).parent / "models/acg/default_model.pt"
     pt_model = load_converted_model(str(bundled_path), device="cpu")
     pt_model.eval()
 

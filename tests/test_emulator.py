@@ -172,7 +172,7 @@ def test_v1_pytorch_model():
     # Test loading bundled model
     import py21cmemu
 
-    bundled_path = Path(py21cmemu.__file__).parent / "models/ACG/default_model.pt"
+    bundled_path = Path(py21cmemu.__file__).parent / "models/acg/default_model.pt"
     loaded_model = load_converted_model(str(bundled_path), device="cpu")
     assert isinstance(loaded_model, DefaultEmulatorV1)
     with torch.no_grad():
