@@ -240,7 +240,7 @@ class EmulatorOutput:
         Quantity[Mpc⁻¹]
             Wavenumbers in comoving Mpc⁻¹ units
         """
-        return self.properties.PS_ks
+        return self.properties.PS_ks * u.Mpc**-1
 
     @property
     def k(self) -> u.Quantity:
@@ -251,7 +251,7 @@ class EmulatorOutput:
         Quantity[Mpc⁻¹]
             Wavenumbers in comoving Mpc⁻¹ units
         """
-        return self.properties.PS_ks
+        return self.properties.PS_ks * u.Mpc**-1
 
     def write(
         self,
@@ -418,14 +418,14 @@ class DefaultEmulatorOutput(EmulatorOutput):
 
     @property
     def PS_1D_k(self) -> u.Quantity:
-        """Redshifts at which 1D PS is evaluated.
+        """Wavenumbers at which 1D PS is evaluated.
 
         Returns
         -------
-        Quantity[dimensionless]
-            k-values, shape (12,)
+        Quantity[Mpc⁻¹]
+            k-values in comoving Mpc⁻¹ units
         """
-        return self.properties.PS_ks
+        return self.properties.PS_ks * u.Mpc**-1
 
     @property
     def Muv(self) -> u.Quantity:
