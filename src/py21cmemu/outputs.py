@@ -17,8 +17,9 @@ Linear quantities (returned in physical units):
 Logarithmic quantities (returned in dex units):
 - UVLFs : UV luminosity functions [dex(Mpc^-3 mag^-1)] = log10(φ)
 
-To convert log quantities to linear, use `.physical`:
-    >>> output.UVLFs.physical  # returns Mpc^-3 mag^-1
+To convert log quantities to linear, use `.physical`::
+
+    output.UVLFs.physical  # returns Mpc^-3 mag^-1
 
 Coordinate axes (returned with units):
 - redshifts : Redshift values [dimensionless]
@@ -147,9 +148,9 @@ class EmulatorOutput:
     
     Example::
     
-        >>> output.PS              # mK² (linear units)
-        >>> output.UVLFs           # dex(Mpc⁻³ mag⁻¹) (log10 units)
-        >>> output.UVLFs.physical  # Mpc⁻³ mag⁻¹ (converts to linear)
+        output.PS              # mK² (linear units)
+        output.UVLFs           # dex(Mpc⁻³ mag⁻¹) (log10 units)
+        output.UVLFs.physical  # Mpc⁻³ mag⁻¹ (converts to linear)
 
     See Also
     --------
@@ -304,9 +305,10 @@ class EmulatorOutput:
         """Return the set of field names stored in log10 space.
 
         These quantities have units of dex(base_unit). To convert to
-        linear units, use the `.physical` attribute:
-            >>> output.UVLFs           # dex(Mpc⁻³ mag⁻¹)
-            >>> output.UVLFs.physical  # Mpc⁻³ mag⁻¹
+        linear units, use the `.physical` attribute::
+
+            output.UVLFs           # dex(Mpc⁻³ mag⁻¹)
+            output.UVLFs.physical  # Mpc⁻³ mag⁻¹
         
         **Note**: PS is NOT in this set - PS is always returned in LINEAR
         mK² units, not log10 units.
@@ -1364,19 +1366,19 @@ class MHEmulatorErrors(EmulatorErrors):
     
     Examples
     --------
-    Basic usage with prediction:
+    Basic usage with prediction::
     
-    >>> emu = Emulator(emulator="mcg")
-    >>> theta, output, errors = emu.predict(params)
-    >>> print(errors.PS_err.unit)  # dex(mK2)
-    >>> print(errors.summary())    # Human-readable summary
+        emu = Emulator(emulator="mcg")
+        theta, output, errors = emu.predict(params)
+        print(errors.PS_err.unit)  # dex(mK2)
+        print(errors.summary())    # Human-readable summary
     
-    Accessing 2D PS error statistics:
+    Accessing 2D PS error statistics::
     
-    >>> errors.get_ps_variance()            # Per-bin variance
-    >>> errors.get_ps_covariance()          # Full covariance matrix
-    >>> print(f"Diagonal fraction: {errors.ps_diagonal_fraction:.2%}")
-    >>> print(f"Mean |correlation|: {errors.ps_mean_abs_correlation:.3f}")
+        errors.get_ps_variance()            # Per-bin variance
+        errors.get_ps_covariance()          # Full covariance matrix
+        print(f"Diagonal fraction: {errors.ps_diagonal_fraction:.2%}")
+        print(f"Mean |correlation|: {errors.ps_mean_abs_correlation:.3f}")
     
     See Also
     --------
@@ -1663,27 +1665,27 @@ class ACGEmulatorErrors(EmulatorErrors):
     
     Examples
     --------
-    Basic usage:
+    Basic usage::
     
-    >>> emu = Emulator(emulator="acg")
-    >>> theta, output, errors = emu.predict(params)
-    >>> print(f"Median PS error: {np.median(errors.PS_err):.1f}")
+        emu = Emulator(emulator="acg")
+        theta, output, errors = emu.predict(params)
+        print(f"Median PS error: {np.median(errors.PS_err):.1f}")
     
-    Computing absolute errors:
+    Computing absolute errors::
     
-    >>> # Convert FE% to absolute error
-    >>> abs_ps_err = errors.PS_err.value / 100 * np.abs(output.PS)
+        # Convert FE% to absolute error
+        abs_ps_err = errors.PS_err.value / 100 * np.abs(output.PS)
     
-    Plotting with error bands:
+    Plotting with error bands::
     
-    >>> import matplotlib.pyplot as plt
-    >>> z_idx = 20  # Some redshift
-    >>> plt.fill_between(
-    ...     emu.properties.PS_ks,
-    ...     output.PS[z_idx] * (1 - errors.PS_err[z_idx]/100),
-    ...     output.PS[z_idx] * (1 + errors.PS_err[z_idx]/100),
-    ...     alpha=0.3
-    ... )
+        import matplotlib.pyplot as plt
+        z_idx = 20  # Some redshift
+        plt.fill_between(
+            emu.properties.PS_ks,
+            output.PS[z_idx] * (1 - errors.PS_err[z_idx]/100),
+            output.PS[z_idx] * (1 + errors.PS_err[z_idx]/100),
+            alpha=0.3
+        )
     
     See Also
     --------
@@ -1882,16 +1884,16 @@ class RadioEmulatorErrors(EmulatorErrors):
     
     Examples
     --------
-    Basic usage:
+    Basic usage::
     
-    >>> emu = Emulator(emulator="radio")
-    >>> theta, output, errors = emu.predict(params)
-    >>> print(f"Median radio temp error: {np.median(errors.Tr_err):.1f}%")
+        emu = Emulator(emulator="radio")
+        theta, output, errors = emu.predict(params)
+        print(f"Median radio temp error: {np.median(errors.Tr_err):.1f}%")
     
-    Available error fields:
+    Available error fields::
     
-    >>> print(errors.keys())  # ['PS_err', 'Tb_err', 'xHI_err', 'Tr_err', 'tau_err']
-    >>> print("UVLFs_err" in errors)  # False - not available for radio emulator
+        print(errors.keys())  # ['PS_err', 'Tb_err', 'xHI_err', 'Tr_err', 'tau_err']
+        print("UVLFs_err" in errors)  # False - not available for radio emulator
     
     See Also
     --------

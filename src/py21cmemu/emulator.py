@@ -183,6 +183,8 @@ class Emulator:
 
     def __getattr__(self, name: str) -> Any:
         """Allow access to emulator properties directly from the emulator object."""
+        if name == "properties":
+            raise AttributeError(name)
         return getattr(self.properties, name)
 
     def predict(

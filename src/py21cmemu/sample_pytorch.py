@@ -153,7 +153,7 @@ class GetEMSampler:
         inverse_scaler: Callable | None = None,
         denoise: bool = True,
         eps: float = 1e-3,
-        device: str = "cuda",
+        device: str | torch.device = "cuda",
     ):
         self.sde = sde
         self.shape = shape
@@ -246,7 +246,7 @@ def get_em_sampler(
     inverse_scaler: Callable | None = None,
     denoise: bool = True,
     eps: float = 1e-3,
-    device: str = "cuda",
+    device: str | torch.device = "cuda",
 ) -> Callable:
     """Create an Euler-Maruyama sampler function.
 
@@ -308,7 +308,7 @@ class GetODESampler:
         atol: float = 1e-5,
         method: str = "RK45",
         eps: float = 1e-3,
-        device: str = "cuda",
+        device: str | torch.device = "cuda",
     ):
         self.sde = sde
         self.shape = shape

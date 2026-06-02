@@ -10,11 +10,11 @@ The conversion can be run either as a script:
 
     python convert_tf_to_pytorch.py path/to/keras_model output_model.pt
 
-Or via the API:
+Or via the API::
 
-    >>> from convert_tf_to_pytorch import convert_keras_to_pytorch
-    >>> pytorch_model = convert_keras_to_pytorch("path/to/keras_model")
-    >>> torch.save(pytorch_model.state_dict(), "output.pt")
+    from convert_tf_to_pytorch import convert_keras_to_pytorch
+    pytorch_model = convert_keras_to_pytorch("path/to/keras_model")
+    torch.save(pytorch_model.state_dict(), "output.pt")
 
 Architecture
 ------------

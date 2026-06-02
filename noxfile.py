@@ -112,15 +112,7 @@ def precommit(session: Session) -> None:
         "--show-diff-on-failure",
     ]
     session.install(
-        "black",
-        "darglint",
-        "flake8",
-        "flake8-bandit",
-        "flake8-bugbear",
-        "flake8-docstrings",
-        "flake8-rst-docstrings",
-        "isort",
-        "pep8-naming",
+        "ruff",
         "pre-commit",
         "pre-commit-hooks",
         "pyupgrade",
@@ -204,7 +196,7 @@ def docs_build(session: Session) -> None:
     if not session.posargs and "FORCE_COLOR" in os.environ:
         args.insert(0, "--color")
 
-    session.install("sphinx", "sphinx-click", "furo", "myst-parser")
+    session.install("sphinx", "sphinx-click", "furo", "myst-parser", "nbsphinx", "ipython")
 
     build_dir = Path("docs", "_build")
     if build_dir.exists():
