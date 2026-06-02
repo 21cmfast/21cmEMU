@@ -54,6 +54,8 @@ To learn more, see the [Contributor Guide](https://github.com/21cmFAST/21cmEMU/b
 
 If you use `21cmEMU` in your research, please cite [Breitman+23](https://arxiv.org/abs/2309.05697).
 
+If you use the **mcg/v3** emulator specifically, please also cite [Breitman+26](https://arxiv.org/abs/2606.00219).
+
 ## License
 
 Distributed under the terms of the [MIT license](https://github.com/21cmFAST/21cmEMU/blob/main/LICENSE), `21cmEMU` is free and open source software.
