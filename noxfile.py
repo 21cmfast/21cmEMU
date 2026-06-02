@@ -138,13 +138,11 @@ def tests(session: Session) -> None:
     """Run the test suite."""
     session.install("coverage[toml]", "pytest", "pygments", "typeguard", "h5py", ".")
 
-    # Determine if we should run slow tests (on merge to main)
+    # Determine if we should run slow tests
     args = list(session.posargs)
-    github_ref = os.environ.get("GITHUB_REF", "")
-    github_base_ref = os.environ.get("GITHUB_BASE_REF", "")
 
-    # Run slow tests on push to main or when base ref is main (merge)
-    if github_ref == "refs/heads/main" or github_base_ref == "main":
+    # Run slow tests in any CI environment (PRs and pushes)
+    if os.environ.get("CI", "").lower() == "true":
         if "--run-slow" not in args:
             args.append("--run-slow")
 

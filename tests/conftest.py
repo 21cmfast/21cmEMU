@@ -72,18 +72,14 @@ def pytest_collection_modifyitems(
     config: pytest.Config, items: list[pytest.Item]
 ) -> None:
     """Modify test collection based on markers and options."""
-    # Check if we're in CI and if this is a merge to main
+    # Check if we're running in CI
     is_ci = os.environ.get("CI", "false").lower() == "true"
-    is_main_merge = os.environ.get("GITHUB_EVENT_NAME") == "push" and (
-        os.environ.get("GITHUB_REF") == "refs/heads/main"
-        or os.environ.get("GITHUB_BASE_REF") == "main"
-    )
 
     run_slow = config.getoption("--run-slow")
 
     skip_slow = pytest.mark.skip(reason="need --run-slow option to run")
     skip_main_only = pytest.mark.skip(
-        reason="only runs on merge to main (set GITHUB_REF=refs/heads/main or use --run-slow)"
+        reason="only runs in CI or locally with --run-slow"
     )
 
     for item in items:
@@ -92,9 +88,9 @@ def pytest_collection_modifyitems(
             if not run_slow:
                 item.add_marker(skip_slow)
 
-        # Handle main-only tests
+        # Handle main-only tests (run in any CI environment or with --run-slow)
         if "main_only" in item.keywords:
-            if not (run_slow or (is_ci and is_main_merge)):
+            if not (run_slow or is_ci):
                 item.add_marker(skip_main_only)
 
 

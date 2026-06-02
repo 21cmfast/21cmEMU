@@ -131,7 +131,7 @@ show_error_context = true
 testpaths = ["tests"]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
-    "main_only: marks tests to only run on merge to main",
+    "main_only: marks tests to only run in CI or with --run-slow",
 ]
 
 [tool.ruff.lint.per-file-ignores]
