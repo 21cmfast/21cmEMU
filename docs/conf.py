@@ -35,6 +35,8 @@ autosectionlabel_prefix_document = True
 
 autosummary_generate = True
 
+nbsphinx_execute = "never"
+
 exclude_patterns = [
     "_build",
     "build",
