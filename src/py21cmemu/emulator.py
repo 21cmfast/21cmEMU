@@ -96,10 +96,10 @@ class Emulator:
 
         if self.which_emulator == EMULATOR_ACG:
             # Load bundled PyTorch model (no download needed)
-            from .models.ACG.v1_pytorch import load_converted_model
+            from .models.acg.v1_pytorch import load_converted_model
 
             here = Path(__file__).parent
-            model_path = here / "models/ACG/default_model.pt"
+            model_path = here / "models/acg/default_model.pt"
             model = load_converted_model(str(model_path), self.device)
             self.inputs = DefaultEmulatorInput()
 
@@ -119,8 +119,8 @@ class Emulator:
             self.inputs = RadioEmulatorInput()
 
         elif self.which_emulator == EMULATOR_MCG:  # pragma: no branch
-            from .models.MCG.lstm_model import MH_Emulator
-            from .models.MCG.score_model import UNet
+            from .models.mcg.lstm_model import MH_Emulator
+            from .models.mcg.score_model import UNet
             from .sample_pytorch import GetEMSampler, GetODESampler
             from .sde import VPSDE
 
@@ -140,7 +140,7 @@ class Emulator:
             )
             lstm_model.load_state_dict(
                 torch.load(
-                    here / "models/MCG/lstm_model_weights.pt", map_location=self.device
+                    here / "models/mcg/lstm_model_weights.pt", map_location=self.device
                 )
             )
             lstm_model.to(self.device)
@@ -150,7 +150,7 @@ class Emulator:
             self.score_model = None
             self.sample = None
             if self.emulate_2d_ps:
-                ps_model_path = here / "models/MCG/score_model_weights.pt"
+                ps_model_path = here / "models/mcg/score_model_weights.pt"
 
                 score_model = UNet(
                     dim=(32, 64),

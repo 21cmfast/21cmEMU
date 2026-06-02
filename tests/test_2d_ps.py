@@ -139,13 +139,13 @@ class TestMH2DScoreModel:
 
     def test_score_model_import(self):
         """Test that UNet score model can be imported."""
-        from py21cmemu.models.MCG.score_model import UNet
+        from py21cmemu.models.mcg.score_model import UNet
 
         assert UNet is not None
 
     def test_score_model_creation(self):
         """Test UNet can be created without loading weights."""
-        from py21cmemu.models.MCG.score_model import UNet
+        from py21cmemu.models.mcg.score_model import UNet
 
         model = UNet(
             dim=(32, 64),
@@ -163,7 +163,7 @@ class TestMH2DScoreModel:
         """Test UNet forward pass produces correct shape."""
         import torch
 
-        from py21cmemu.models.MCG.score_model import UNet
+        from py21cmemu.models.mcg.score_model import UNet
 
         model = UNet(
             dim=(32, 64),
@@ -190,7 +190,7 @@ class TestMH2DScoreModel:
 
         import torch
 
-        from py21cmemu.models.MCG.score_model import UNet
+        from py21cmemu.models.mcg.score_model import UNet
 
         weights_path = (
             Path(__file__).resolve().parents[1]

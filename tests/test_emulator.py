@@ -148,7 +148,7 @@ def test_mh_batch_prediction(mh_emulator) -> None:
 
 def test_v1_pytorch_model():
     """Test v1 PyTorch model directly."""
-    from py21cmemu.models.ACG.v1_pytorch import (
+    from py21cmemu.models.acg.v1_pytorch import (
         DefaultEmulatorV1,
         load_converted_model,
     )

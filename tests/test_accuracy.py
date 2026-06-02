@@ -57,7 +57,7 @@ def test_v1_tensorflow_vs_pytorch_equivalence():
         pytest.skip("TensorFlow not installed")
 
     import py21cmemu
-    from py21cmemu.models.ACG.v1_pytorch import load_converted_model
+    from py21cmemu.models.acg.v1_pytorch import load_converted_model
 
     # Load TensorFlow model from HuggingFace cache
     tf_model_path = CONFIG.emu_path
