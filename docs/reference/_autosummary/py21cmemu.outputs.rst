@@ -3,4 +3,4 @@
 
 .. currentmodule:: py21cmemu
 
-.. automodule:: outputs
+.. automodule:: py21cmemu.outputs

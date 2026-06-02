@@ -3,4 +3,4 @@
 
 .. currentmodule:: py21cmemu
 
-.. automodule:: inputs
+.. automodule:: py21cmemu.inputs

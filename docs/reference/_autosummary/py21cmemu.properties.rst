@@ -3,4 +3,4 @@
 
 .. currentmodule:: py21cmemu
 
-.. automodule:: properties
+.. automodule:: py21cmemu.properties

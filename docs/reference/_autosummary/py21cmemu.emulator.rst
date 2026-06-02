@@ -3,4 +3,4 @@
 
 .. currentmodule:: py21cmemu
 
-.. automodule:: emulator
+.. automodule:: py21cmemu.emulator
