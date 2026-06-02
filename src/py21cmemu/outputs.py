@@ -947,8 +947,6 @@ class MHEmulatorOutput(EmulatorOutput):
         if self.PS_2D is None:
             return None
         var = self.properties.PS_var
-        if var is None:
-            return None
         return var * u.dimensionless_unscaled
 
     @property

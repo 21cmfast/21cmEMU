@@ -9,6 +9,7 @@ build:
     - uv sync --group docs
     - uv run sphinx-build -T -b html docs $READTHEDOCS_OUTPUT/html
     - uv run sphinx-build -T -b epub docs /tmp/epub-build
+    - mkdir -p $READTHEDOCS_OUTPUT/epub
     - cp /tmp/epub-build/*.epub $READTHEDOCS_OUTPUT/epub/
 
 formats:
