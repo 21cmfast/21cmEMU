@@ -18,6 +18,7 @@ from .inputs import (
 from .outputs import (
     ACGEmulatorErrors,
     DefaultRawEmulatorOutput,
+    EmulatorErrors,
     EmulatorOutput,
     MHEmulatorErrors,
     MHRawEmulatorOutput,
@@ -204,7 +205,7 @@ class Emulator:
     ) -> tuple[
         np.ndarray | tuple[np.ndarray | None, np.ndarray],
         EmulatorOutput,
-        dict[str, np.ndarray],
+        EmulatorErrors,
     ]:
         r"""Call the emulator, evaluate it at the given parameters, restore dimensions.
 
