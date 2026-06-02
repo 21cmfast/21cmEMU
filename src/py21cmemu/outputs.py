@@ -158,31 +158,25 @@ class EmulatorOutput:
     :func:`available_units` : Returns dict of all field units.
     """
 
-    def __getattribute__(self, name: str):
-        # Get the actual value first using object's getattribute to avoid recursion
-        value = object.__getattribute__(self, name)
-        
-        # For methods, properties, private attrs, or non-unit fields, return as-is
-        if name.startswith("_") or callable(value) or name == "properties":
-            return value
-        
-        # Check if this is a known field that should have units
-        if name not in _UNIT_FIELDS:
-            return value
-        
-        # Don't wrap None values
-        if value is None:
-            return None
-        
-        # Wrap with units
-        try:
-            units = _get_units()
-            if name in units:
-                return value * units[name]
-        except KeyError:
-            pass
-        
-        return value
+    def __post_init__(self):
+        """Attach astropy units to data fields at construction time.
+
+        Iterates over all dataclass fields and wraps numeric arrays with their
+        corresponding astropy units.  Fields that are already Quantities (e.g.
+        when constructing from ``squeeze()``) or that are ``None`` are left
+        unchanged.  Using ``__post_init__`` instead of ``__getattribute__``
+        avoids the infinite recursion that arises when tools like typeguard
+        instrument attribute access.
+        """
+        units = _get_units()
+        for f in dc.fields(self):
+            if f.name not in _UNIT_FIELDS:
+                continue
+            value = object.__getattribute__(self, f.name)
+            if value is None or isinstance(value, u.Quantity):
+                continue
+            if f.name in units:
+                object.__setattr__(self, f.name, value * units[f.name])
 
     def keys(self) -> Generator[str]:
         """Yield the keys of the main data products."""
