@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING
 from typing import Any
 
 import numpy as np
@@ -28,10 +27,6 @@ from .properties import EMULATOR_RADIO
 from .properties import emulator_properties
 from .properties import get_emulator_properties
 from .properties import resolve_emulator_name
-
-
-if TYPE_CHECKING:
-    pass
 
 
 log = logging.getLogger(__name__)
