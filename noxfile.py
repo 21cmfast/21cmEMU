@@ -16,7 +16,7 @@ session = nox.session
 
 
 package = "py21cmemu"
-python_versions = ["3.12", "3.11", "3.10"]
+python_versions = ["3.14", "3.13", "3.12", "3.11", "3.10"]
 nox.needs_version = ">= 2021.6.6"
 nox.options.sessions = (
     "pre-commit",
@@ -144,7 +144,7 @@ def mypy(session: Session) -> None:
 @session(python=python_versions)
 def tests(session: Session) -> None:
     """Run the test suite."""
-    session.install("coverage[toml]", "pytest", "pygments", "typeguard", ".")
+    session.install("coverage[toml]", "pytest", "pygments", "typeguard", "h5py", ".")
     
     # Determine if we should run slow tests (on merge to main)
     args = list(session.posargs)

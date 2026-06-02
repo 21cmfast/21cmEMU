@@ -1,6 +1,6 @@
 [project]
 name = "py21cmEMU"
-version = "3.0.0"
+dynamic = ["version"]
 description = "Emulator of 21cmFAST summaries."
 authors = [
     { name = "Daniela Breitman", email = "daniela.breitman@sns.it" }
@@ -17,62 +17,59 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
 ]
 keywords = [
     "Epoch of Reionization",
     "Cosmology",
 ]
 dependencies = [
-    "click>=8.0.1",
     "numpy>=1.22.0",
     "scipy>=1.10.1",
     "torch>=1.9.0",
-    "h5py>=3.8.0",
     "einops>=0.6.0",
     "appdirs>=1.4.4",
     "toml>=0.10.2",
     "GitPython>=3.1.31",
-    "ruff>=0.15.11",
     "astropy>=5.0",
 ]
 
-[project.optional-dependencies]
-dev = [
-    "Pygments>=2.10.0",
-    "black>=21.10b0",
+[dependency-groups]
+test = [
     "coverage[toml]>=6.2",
+    "h5py>=3.8.0",
+    "Pygments>=2.10.0",
+    "pytest>=6.2.5",
+    "pytest-socket",
+    "typeguard>=2.13.3",
+    "xdoctest[colors]>=0.15.10",
+]
+docs = [
+    "furo>=2021.11.12",
+    "myst-parser>=0.16.1",
+    "sphinx>=4.3.2",
+    "sphinx-autobuild>=2021.3.14",
+    "sphinx-click>=3.0.2",
+]
+dev = [
+    "black>=21.10b0",
     "darglint>=1.8.1",
     "flake8>=4.0.1",
     "flake8-bandit>=2.1.2",
     "flake8-bugbear>=21.9.2",
     "flake8-docstrings>=1.6.0",
     "flake8-rst-docstrings>=0.2.5",
-    "furo>=2021.11.12",
     "isort>=5.10.1",
     "mypy>=0.930",
     "pep8-naming>=0.12.1",
     "pre-commit>=2.16.0",
     "pre-commit-hooks>=4.1.0",
-    "pytest>=6.2.5",
     "pyupgrade>=2.29.1",
-    "sphinx>=4.3.2",
-    "sphinx-autobuild>=2021.3.14",
-    "sphinx-click>=3.0.2",
-    "typeguard>=2.13.3",
-    "xdoctest[colors]>=0.15.10",
-    "myst-parser>=0.16.1",
-    "pytest-socket",
+    "ruff>=0.15.11",
+    { include-group = "test" },
+    { include-group = "docs" },
 ]
-docs = [
-    "furo>=2021.11.12",
-    "sphinx>=4.3.2",
-    "sphinx-autobuild>=2021.3.14",
-    "sphinx-click>=3.0.2",
-    "myst-parser>=0.16.1",
-]
-
-[project.scripts]
-py21cmEMU = "py21cmemu.__main__:main"
 
 [project.urls]
 Homepage = "https://github.com/21cmFAST/21cmEMU"
@@ -81,8 +78,11 @@ Documentation = "https://21cmEMU.readthedocs.io"
 Changelog = "https://github.com/21cmFAST/21cmEMU/releases"
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/py21cmemu"]
