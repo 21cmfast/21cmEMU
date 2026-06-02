@@ -123,4 +123,4 @@ jobs:
       - name: Run TensorFlow comparison test
         env:
           CI_MERGE_TEST: "1"
-        run: uv run pytest tests/test_main.py::test_v1_tensorflow_vs_pytorch_equivalence -v
+        run: uv run pytest tests/test_accuracy.py::test_v1_tensorflow_vs_pytorch_equivalence -v

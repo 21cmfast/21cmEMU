@@ -118,7 +118,9 @@ def test_make_param_array_no_len_raises():
     from py21cmemu.inputs import MHEmulatorInput
 
     inp = MHEmulatorInput()
-    with pytest.raises(TypeError):
+    # suppress_type_checks lets the int reach the function body so TypeError
+    # is raised there, rather than typeguard raising TypeCheckError at the call site.
+    with suppress_type_checks(), pytest.raises(TypeError):
         inp.make_param_array(42)  # int has no __len__
 
 

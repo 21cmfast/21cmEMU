@@ -200,7 +200,7 @@ class EmulatorOutput:
         for k in dc.fields(self):
             yield k.name
 
-    def items(self) -> Generator[tuple[str, np.ndarray]]:
+    def items(self) -> Generator[tuple[str, np.ndarray | None]]:
         """Yield the keys and raw values of the main data products, like a dict."""
         for k in self.keys():
             yield k, object.__getattribute__(self, k)
@@ -946,7 +946,10 @@ class MHEmulatorOutput(EmulatorOutput):
         """
         if self.PS_2D is None:
             return None
-        return self.properties.PS_var
+        var = self.properties.PS_var
+        if var is None:
+            return None
+        return var * u.dimensionless_unscaled
 
     @property
     def PS_2D_cov(self) -> u.Quantity | None:
@@ -975,7 +978,10 @@ class MHEmulatorOutput(EmulatorOutput):
         """
         if self.PS_2D is None:
             return None
-        return self.properties.PS_cov
+        cov = self.properties.PS_cov
+        if cov is None:
+            return None
+        return cov * u.dimensionless_unscaled
 
     def PS_2D_cov_4d(self) -> u.Quantity | None:
         """Covariance matrix reshaped to 4D for easier indexing.

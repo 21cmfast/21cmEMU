@@ -397,11 +397,11 @@ def test_mh_errors_advanced_stats():
     assert fe is not None
 
     # get_ps_variance
-    var = errors.get_ps_variance(method="ode")
+    _ = errors.get_ps_variance(method="ode")
     # May be None; just check no exception
 
     # get_ps_covariance
-    cov = errors.get_ps_covariance(method="ode")
+    _ = errors.get_ps_covariance(method="ode")
     # May be None
 
     # ps_diagonal_fraction, ps_mean_abs_correlation
