@@ -416,7 +416,7 @@ def verify_conversion(
 
     # Keras predictions
     keras_preds = keras_model.predict(test_inputs, verbose=0)
-    if not isinstance(keras_preds, (list, tuple)):
+    if not isinstance(keras_preds, list | tuple):
         keras_preds = [keras_preds]
     keras_concat = np.concatenate([p.reshape(n_test, -1) for p in keras_preds], axis=-1)
 
