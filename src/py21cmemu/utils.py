@@ -18,6 +18,11 @@ def transform(x, scale, bias):
 
 def reverse_transform(y, scale, bias):
     unit = (y + 1) / 2
+    # Avoid numpy/torch interop (triggers __array_wrap__ DeprecationWarning in
+    # NumPy 2.0 when a torch Tensor is multiplied by a numpy array).
+    if isinstance(unit, torch.Tensor):
+        scale = torch.as_tensor(scale, dtype=unit.dtype, device=unit.device)
+        bias = torch.as_tensor(bias, dtype=unit.dtype, device=unit.device)
     d = unit * scale + bias
     return 10**d
 
