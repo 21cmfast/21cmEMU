@@ -288,7 +288,10 @@ class EmulatorOutput:
             raise ValueError(f"File {pth} exists and clobber=False.")
 
         # Always write raw values (not Quantities)
-        out = {k: object.__getattribute__(self, k) for k in store}
+        out = {}
+        for k in store:
+            val = object.__getattribute__(self, k)
+            out[k] = val.value if isinstance(val, u.Quantity) else val
         if theta is not None:
             out["inputs"] = theta
 
