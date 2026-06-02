@@ -538,7 +538,7 @@ class TestGetPredMultiGPU:
 
     def test_predict_stores_n_realisations_and_denoise(self, emu_with_2d_ps):
         """predict() stores _n_realisations and _denoise so get_pred can use them."""
-        from py21cmemu.inputs import MHEmulatorInput
+        from py21cmemu.inputs import MCGEmulatorInput
 
         n_real = 4
         captured = {}
@@ -550,7 +550,7 @@ class TestGetPredMultiGPU:
 
         emu_with_2d_ps.get_pred = fake_get_pred
 
-        mh_in = MHEmulatorInput()
+        mh_in = MCGEmulatorInput()
         rng = np.random.default_rng(0)
         params = mh_in.undo_normalization(rng.random((1, 11)))
 

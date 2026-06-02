@@ -86,9 +86,9 @@ def test_emulator_getattr_properties_guard():
 
 def test_emulator_n_lstm_batch(mh_emulator):
     """predict() with n_lstm_batch=1 exercises the chunked LSTM path."""
-    from py21cmemu.inputs import MHEmulatorInput
+    from py21cmemu.inputs import MCGEmulatorInput
 
-    inp = MHEmulatorInput()
+    inp = MCGEmulatorInput()
     n = len(inp.astro_param_keys)
     # 4 parameter sets, batch size 2 → triggers torch.split path
     raw = inp.undo_normalization(np.full((4, n), 0.5))

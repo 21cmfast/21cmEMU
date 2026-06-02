@@ -1437,7 +1437,7 @@ class MCGEmulatorErrors(EmulatorErrors):
     @classmethod
     def from_output(
         cls,
-        output: MCGRawEmulatorOutput,
+        output: MCGEmulatorOutput,
         properties: MCGEmulatorProperties,
         ps_sampling_method: str = "em",
     ) -> MCGEmulatorErrors:
