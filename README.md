@@ -52,9 +52,8 @@ To learn more, see the [Contributor Guide](https://github.com/21cmFAST/21cmEMU/b
 
 ## Citation
 
-If you use `21cmEMU` in your research, please cite [Breitman+23](https://arxiv.org/abs/2309.05697).
-
-If you use the **mcg/v3** emulator specifically, please also cite [Breitman+26](https://arxiv.org/abs/2606.00219).
+If you use `21cmEMU` in your research, please cite [Breitman+23](https://arxiv.org/abs/2309.05697). In particular, if you use `21cmEMUv2`, also cite [Cang+24](https://arxiv.org/abs/2411.08134).
+If you use the newest **mcg/v3** emulator, please also cite [Breitman+26](https://arxiv.org/abs/2606.00219).
 
 ## License
 
