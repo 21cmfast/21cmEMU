@@ -977,8 +977,6 @@ class MHEmulatorOutput(EmulatorOutput):
         if self.PS_2D is None:
             return None
         cov = self.properties.PS_cov
-        if cov is None:
-            return None
         return cov * u.dimensionless_unscaled
 
     def PS_2D_cov_4d(self) -> u.Quantity | None:
