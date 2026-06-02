@@ -3,11 +3,11 @@
 
 .. automodule:: py21cmemu.outputs
 
-   
+
    .. rubric:: Classes
 
    .. autosummary::
-   
+
       ACGEmulatorErrors
       DefaultEmulatorOutput
       DefaultRawEmulatorOutput
@@ -20,4 +20,3 @@
       RadioEmulatorOutput
       RadioRawEmulatorOutput
       RawEmulatorOutput
-   

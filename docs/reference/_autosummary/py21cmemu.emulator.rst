@@ -3,10 +3,9 @@
 
 .. automodule:: py21cmemu.emulator
 
-   
+
    .. rubric:: Classes
 
    .. autosummary::
-   
+
       Emulator
-   
