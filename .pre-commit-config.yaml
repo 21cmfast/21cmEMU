@@ -2,7 +2,7 @@ exclude: '^docs/conf.py|^src/py21cmemu/emulator_constants.npz|^.*\.ipynb$|^src/p
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: v6.0.0
     hooks:
       - id: trailing-whitespace
       - id: check-ast
@@ -18,7 +18,7 @@ repos:
         args: ["--fix=no"]
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.11.12
+    rev: v0.15.16
     hooks:
       - id: ruff
         args: ["--fix"]
