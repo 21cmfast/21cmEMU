@@ -5,7 +5,10 @@ source =
     */site-packages/
 
 omit =
-    */models/radio_background/model.py
+    */models/**/*.py
+    */model_utils.py
+    */sde.py
+    */utils.py
     tests/
     */tmp/
 
@@ -13,7 +16,10 @@ omit =
 branch = True
 source = py21cmemu
 omit =
-    */models/radio_background/model.py
+    */models/**/*.py
+    */model_utils.py
+    */sde.py
+    */utils.py
     tests/
     */tmp/
 
