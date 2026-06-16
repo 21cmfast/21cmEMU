@@ -7,6 +7,7 @@ source =
 omit =
     */models/**/*.py
     */model_utils.py
+    */sample_pytorch.py
     */sde.py
     */utils.py
     tests/
@@ -18,6 +19,7 @@ source = py21cmemu
 omit =
     */models/**/*.py
     */model_utils.py
+    */sample_pytorch.py
     */sde.py
     */utils.py
     tests/
