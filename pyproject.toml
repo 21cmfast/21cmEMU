@@ -83,7 +83,7 @@ source = "vcs"
 packages = ["src/py21cmemu"]
 
 [tool.hatch.build.targets.sdist]
-exclude = ["docs/tutorials/*.h5"]
+exclude = ["docs/tutorials/**/*.h5"]
 
 [tool.coverage.paths]
 source = ["src", "*/site-packages"]
