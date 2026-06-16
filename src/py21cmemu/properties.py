@@ -47,7 +47,7 @@ EMULATOR_CONFIG: dict[str, dict[str, Any]] = {
     EMULATOR_MCG: {
         "aliases": ["v3", "mh"],
         "n_params": 11,
-        "paper": "[upcoming]",
+        "paper": "[Breitman+26]",
         "outputs": ["Tb", "xHI", "Ts", "tau", "PS", "PS_2D", "UVLFs"],
     },
 }
