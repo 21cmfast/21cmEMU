@@ -3,9 +3,26 @@ from pathlib import Path
 
 import torch
 
-device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+def get_device():
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    elif torch.backends.mps.is_available():
+        return torch.device("mps")
+    else:
+        return torch.device("cpu")
 
+device = get_device()
 
+def get_gpu_count():
+    # Check for NVIDIA CUDA GPUs
+    if torch.cuda.is_available():
+        return torch.cuda.device_count()
+    # Check for Apple Silicon / AMD GPUs on Mac (MPS)
+    elif torch.backends.mps.is_available():
+        return 1  # Mac typically exposes all cores as a single unified device
+    else:
+        return 0
+    
 def extract(a, t, x_shape):
     batch_size = t.shape[0]
     out = a.cpu().gather(-1, t.cpu())

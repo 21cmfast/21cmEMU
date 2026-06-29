@@ -363,7 +363,7 @@ class Emulator:
     def get_pred(self, cdns: np.ndarray, verbose: bool = False) -> np.ndarray:
         """Run diffusion-model sampling, using multiple GPUs when available."""
 
-        n_gpus = torch.cuda.device_count()
+        n_gpus = get_gpu_count()
 
         # Single-GPU (or CPU) path – original sequential behaviour.
         if n_gpus <= 1:
@@ -386,9 +386,9 @@ class Emulator:
         """Run diffusion-model sampling across multiple GPUs (internal helper)."""
         from concurrent.futures import ThreadPoolExecutor
 
-        from .utils import reverse_transform
+        from .utils import reverse_transform, get_gpu_count
 
-        n_gpus = torch.cuda.device_count()
+        n_gpus = get_gpu_count()
         n_ps_batch = cdns.shape[1]
         n_realisations = getattr(self, "_n_realisations", 100)
         denoise = getattr(self, "_denoise", True)

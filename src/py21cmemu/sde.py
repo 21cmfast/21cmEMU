@@ -7,9 +7,7 @@ import abc
 
 import numpy as np
 import torch
-
-device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-
+from .utils import device
 
 class SDE(abc.ABC):
     """SDE abstract class. Functions are designed for a mini-batch of inputs."""
