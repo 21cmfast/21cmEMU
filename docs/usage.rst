@@ -115,6 +115,36 @@ The v3 parameter keys are:
     ['F_STAR10', 'ALPHA_STAR', 't_STAR', 'F_ESC10', 'ALPHA_ESC',
      'F_STAR7_MINI', 'F_ESC7_MINI', 'L_X', 'L_X_MINI', 'A_LW', 'NU_X_THRESH']
 
+Using the Radio-heating Emulators (rh / norh)
+---------------------------------------------
+
+The ``rh`` and ``norh`` emulators model a radio background from mini-halo galaxies
+plus dark matter–baryon scattering, with and without radio (soft-photon) heating of
+the gas. They take six parameters, all in log10, and emulate ``Tb``, ``xHI`` and the
+radio temperature ``Tr`` at 110 redshifts (4.9 < z < 49), and ``tau``.
+
+Their trained weights are not part of the repository. Put ``rh_weights.pt`` /
+``norh_weights.pt`` in ``py21cmemu/models/radio_heating/`` or in
+``<data-path>/radio_heating/``, or pass the file with ``weights_path``:
+
+.. code-block:: python
+
+    from py21cmemu import Emulator
+
+    emu = Emulator(emulator="rh")  # or "norh"; weights_path="..." if needed
+    params = {
+        "fR_mini": 2.5,  # all in log10
+        "F_STAR7_MINI": -2.0,
+        "L_X_MINI": 40.5,
+        "F_ESC7_MINI": -2.0,
+        "m_chi": -0.5,  # GeV
+        "sigma_SDM": -41.0,  # cm^2
+    }
+    theta, output, errors = emu.predict(params)
+    print(output.Tb.shape, output.Tr.unit)  # (110,) K
+
+See the ``radio_heating_emulator`` tutorial for a comparison with simulations.
+
 Output Units
 ------------
 

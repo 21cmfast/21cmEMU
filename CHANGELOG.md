@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased: rh / norh (radio heating)
+
+- Two 6-parameter emulators (`rh`, `norh`) of a radio background from mini-halo
+  galaxies plus dark matter–baryon scattering, with and without radio
+  (soft-photon) heating of the gas.
+- Emulate the global neutral fraction, brightness temperature and radio
+  temperature at 110 redshifts (4.9 < z < 49), and the Thomson optical depth.
+- New `RHEmulatorInput` / `NoRHEmulatorInput`, `RHEmulatorOutput` /
+  `NoRHEmulatorOutput`, `RHEmulatorErrors` / `NoRHEmulatorErrors` and
+  `RadioHeatingEmulatorProperties`; `Emulator(..., weights_path=...)`.
+- The trained weights are distributed separately and are not in the repository.
+
 ## v3 (mcg)
 
 - Full 11-parameter emulator for molecular cooling galaxies (Pop II + Pop III).

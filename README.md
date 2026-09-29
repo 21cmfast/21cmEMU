@@ -12,7 +12,7 @@
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://pre-commit.com/)
 [![RTD](https://readthedocs.org/projects/21cmemu/badge/?version=latest)](https://21cmemu.readthedocs.io/en/latest/)
 
-An emulator of 21cmFAST summaries, supporting three galaxy-formation models:
+An emulator of 21cmFAST summaries, supporting the following models:
 
 - **ACG** (v1; [Breitman+23](https://arxiv.org/abs/2309.05697)) — Atomic Cooling Galaxies (Pop II only). A 9-parameter emulator
   for the standard reionization scenario without mini-halos.
@@ -23,19 +23,24 @@ An emulator of 21cmFAST summaries, supporting three galaxy-formation models:
   emulator, jointly modelling atomic and molecular cooling galaxies (Pop II +
   Pop III). Uniquely emulates the **2D** cylindrical power spectrum
   P(k<sub>⊥</sub>, k<sub>∥</sub>) via a score-based diffusion model.
+- **rh / norh** ([in prep.]) — Radio background from mini-halo galaxies plus
+  dark matter–baryon scattering, with (`rh`) and without (`norh`) radio
+  (soft-photon) heating of the gas. Two 6-parameter emulators of the global
+  signals and τ. Their trained weights are distributed separately and are not
+  part of this repository (see the `radio_heating_emulator` tutorial).
 
 ## Emulated summary statistics per model
 
-| Output | acg (v1) | radio (v2) | mcg (v3) |
-|--------|:--------:|:----------:|:--------:|
-| Global brightness temperature T<sub>b</sub> | ✓ | ✓ | ✓ |
-| Neutral fraction x<sub>HI</sub> | ✓ | ✓ | ✓ |
-| Thomson optical depth τ | ✓ | ✓ | ✓ |
-| IGM spin temperature T<sub>s</sub> | ✓ | ✗ | ✓ |
-| Radio temperature T<sub>r</sub> | ✗ | ✓ | ✗ |
-| 1D power spectrum P(k) | ✓ | ✓ | ✓ |
-| 2D power spectrum P(k<sub>⊥</sub>, k<sub>∥</sub>) | ✗ | ✗ | ✓ |
-| UV luminosity functions | ✓ | ✗ | ✓ |
+| Output | acg (v1) | radio (v2) | mcg (v3) | rh / norh |
+|--------|:--------:|:----------:|:--------:|:---------:|
+| Global brightness temperature T<sub>b</sub> | ✓ | ✓ | ✓ | ✓ |
+| Neutral fraction x<sub>HI</sub> | ✓ | ✓ | ✓ | ✓ |
+| Thomson optical depth τ | ✓ | ✓ | ✓ | ✓ |
+| IGM spin temperature T<sub>s</sub> | ✓ | ✗ | ✓ | ✗ |
+| Radio temperature T<sub>r</sub> | ✗ | ✓ | ✗ | ✓ |
+| 1D power spectrum P(k) | ✓ | ✓ | ✓ | ✗ |
+| 2D power spectrum P(k<sub>⊥</sub>, k<sub>∥</sub>) | ✗ | ✗ | ✓ | ✗ |
+| UV luminosity functions | ✓ | ✗ | ✓ | ✗ |
 
 ## Documentation
 

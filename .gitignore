@@ -9,6 +9,9 @@ __pycache__/
 # Emulator
 py21cmemu/21cmEMU/
 *.zip
+# Radio-heating (rh / norh) emulator weights are distributed separately;
+# keep them out of the repository
+src/py21cmemu/models/radio_heating/*_weights.pt
 
 # Distribution / packaging
 .Python

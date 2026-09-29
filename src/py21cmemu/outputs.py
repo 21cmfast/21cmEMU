@@ -8,7 +8,7 @@ Linear quantities (returned in physical units):
 - Tb : Brightness temperature [mK]
 - xHI : Neutral hydrogen fraction [dimensionless, 0-1]
 - Ts : Spin temperature [K]
-- Tr : Radio temperature [K] (radio emulator only)
+- Tr : Radio temperature [K] (radio, rh and norh emulators)
 - tau : Optical depth to reionization [dimensionless]
 - PS : 21-cm power spectrum Δ² [mK²] in LINEAR units
 - PS_2D : 2D power spectrum [mK²] in LINEAR units (MH emulator only)
@@ -60,7 +60,7 @@ import dataclasses as dc
 from collections.abc import Generator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 import numpy as np
 from scipy.special import expit
@@ -72,6 +72,7 @@ if TYPE_CHECKING:  # pragma: no cover
         ACGEmulatorProperties,
         MCGEmulatorProperties,
         RadioEmulatorProperties,
+        RadioHeatingEmulatorProperties,
     )
 
 # Astropy units - required dependency
@@ -489,6 +490,50 @@ class RadioEmulatorOutput(EmulatorOutput):
     def squeeze(self):
         """Return a new EmulatorOutput with all dimensions of length 1 removed."""
         return RadioEmulatorOutput(**{k: np.squeeze(v) for k, v in self.items()})
+
+
+@dataclass(frozen=True)
+class RHEmulatorOutput(EmulatorOutput):
+    """Output of the radio-heating (``rh``) emulator.
+
+    All quantities are returned with astropy units attached. For a single
+    parameter set the batch dimension is removed.
+
+    Attributes
+    ----------
+    Tb : Quantity[mK]
+        Global 21-cm brightness temperature. Shape: (batch, 110 redshifts)
+    xHI : Quantity[dimensionless]
+        Global neutral hydrogen fraction. Shape: (batch, 110 redshifts)
+    Tr : Quantity[K]
+        Excess radio background temperature (the CMB is not included; it is 0
+        before the radio sources switch on). Shape: (batch, 110 redshifts)
+    tau : Quantity[dimensionless]
+        Thomson optical depth. Shape: (batch,)
+
+    The redshifts are ``output.redshifts`` (4.9 < z < 49, increasing).
+    """
+
+    Tb: u.Quantity
+    xHI: u.Quantity
+    Tr: u.Quantity
+    tau: u.Quantity
+
+    properties = emulator_properties(emulator="rh")
+
+    def squeeze(self):
+        """Return a new output with all dimensions of length 1 removed."""
+        return type(self)(**{k: np.squeeze(v) for k, v in self.items()})
+
+
+@dataclass(frozen=True)
+class NoRHEmulatorOutput(RHEmulatorOutput):
+    """Output of the ``norh`` emulator (no radio heating).
+
+    Same fields as :class:`RHEmulatorOutput`.
+    """
+
+    properties = emulator_properties(emulator="norh")
 
 
 @dataclass(frozen=True)
@@ -1232,6 +1277,69 @@ class MCGRawEmulatorOutput(RawEmulatorOutput):
             PS_2D_std=out["PS_2D_std"],
             PS_2D_redshifts=self.PS_2D_redshifts,
         )
+
+
+@dataclass(frozen=True)
+class RHRawEmulatorOutput(RawEmulatorOutput):
+    """Raw (normalised) output of the ``rh`` emulator network.
+
+    Parameters
+    ----------
+    output : dict
+        Normalised network outputs ``{"xHI": (N, n_z), "Tb": (N, n_z),
+        "Tr": (N, n_z), "tau": (N,)}`` (numpy arrays or torch tensors).
+    """
+
+    output: dict
+    properties = emulator_properties(emulator="rh")
+    _output_class: ClassVar[type] = RHEmulatorOutput
+
+    def _get(self, name: str) -> np.ndarray:
+        out = self.output[name]
+        if hasattr(out, "cpu"):
+            out = out.cpu().detach().numpy()
+        return np.asarray(out)
+
+    @property
+    def nparams(self) -> int:
+        """Number of parameter sets in the output."""
+        return int(self._get("tau").shape[0])
+
+    @property
+    def Tb(self) -> np.ndarray:
+        """Normalised brightness temperature."""
+        return self._get("Tb")
+
+    @property
+    def xHI(self) -> np.ndarray:
+        """Neutral fraction (not normalised)."""
+        return self._get("xHI")
+
+    @property
+    def Tr(self) -> np.ndarray:
+        """Normalised radio temperature."""
+        return self._get("Tr")
+
+    @property
+    def tau(self) -> np.ndarray:
+        """Normalised optical depth."""
+        return self._get("tau")
+
+    def get_renormalized(self) -> EmulatorOutput:
+        """Get the output in physical units (Tb [mK], xHI, Tr [K], tau)."""
+        out = {
+            t: self.properties.denormalise(t, getattr(self, t))
+            for t in ("Tb", "xHI", "Tr", "tau")
+        }
+        return self._output_class(**out).squeeze()
+
+
+@dataclass(frozen=True)
+class NoRHRawEmulatorOutput(RHRawEmulatorOutput):
+    """Raw (normalised) output of the ``norh`` emulator network."""
+
+    properties = emulator_properties(emulator="norh")
+    _output_class: ClassVar[type] = NoRHEmulatorOutput
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1981,3 +2089,105 @@ class RadioEmulatorErrors(EmulatorErrors):
         """Yield (name, value) pairs for all error fields."""
         for key in self.keys():
             yield key, getattr(self, key)
+
+
+@dataclass(frozen=True)
+class RHEmulatorErrors(EmulatorErrors):
+    """Error estimates of the radio-heating (``rh``) emulator.
+
+    Two kinds of fields are provided for each summary X in Tb, xHI, Tr, tau:
+
+    - ``X_fe``: median fractional error (FE%) of the emulator on its validation
+      set, per redshift (a scalar for tau)::
+
+          FE% = 100 * |true - emulated| / max(|true|, floor)
+
+      with floors xHI 1e-2, Tb 5 mK, Tr 1e-2 K and none for tau.
+    - ``X_err``: the corresponding absolute error for *this* output, in the
+      units of the summary::
+
+          X_err = X_fe / 100 * max(|X_emulated|, floor)
+
+    More statistics (mean, std, 68th / 95th percentiles, global values) are
+    available on ``errors.properties`` (see
+    :class:`~py21cmemu.properties.RadioHeatingEmulatorProperties`).
+    """
+
+    Tb_err: u.Quantity
+    xHI_err: u.Quantity
+    Tr_err: u.Quantity
+    tau_err: u.Quantity
+    Tb_fe: u.Quantity
+    xHI_fe: u.Quantity
+    Tr_fe: u.Quantity
+    tau_fe: u.Quantity
+
+    _properties: object = dc.field(default=None, repr=False)
+
+    _UNITS: ClassVar[dict] = {
+        "Tb": u.mK,
+        "xHI": u.dimensionless_unscaled,
+        "Tr": u.K,
+        "tau": u.dimensionless_unscaled,
+    }
+
+    def available_errors(self) -> dict[str, str]:
+        """Return dict of available error fields and their descriptions."""
+        out = {}
+        for t in self._UNITS:
+            out[f"{t}_err"] = f"Absolute error on {t}"
+        for t in self._UNITS:
+            out[f"{t}_fe"] = f"Median validation fractional error on {t} (%)"
+        return out
+
+    @property
+    def properties(self):
+        """Access the underlying emulator properties."""
+        return self._properties
+
+    @classmethod
+    def from_output(
+        cls,
+        output: EmulatorOutput,
+        properties: RadioHeatingEmulatorProperties,
+    ) -> RHEmulatorErrors:
+        """Construct the error estimates for an emulator output.
+
+        Parameters
+        ----------
+        output : RHEmulatorOutput or NoRHEmulatorOutput
+            The (renormalised) emulator output.
+        properties : RadioHeatingEmulatorProperties
+            Properties of the same emulator (validation FE%).
+        """
+        kw = {}
+        for t, unit in cls._UNITS.items():
+            val = getattr(output, t)
+            val = np.asarray(val.value if hasattr(val, "value") else val)
+            fe = np.asarray(getattr(properties, f"{t}_med_err"), dtype=float)
+            ref = np.maximum(np.abs(val), properties.fe_floors.get(t, 0.0))
+            kw[f"{t}_err"] = fe / 100.0 * ref * unit
+            kw[f"{t}_fe"] = fe * u.percent
+        return cls(**kw, _properties=properties)
+
+    def __contains__(self, key: str) -> bool:
+        """Check if error field exists."""
+        return key in self.available_errors()
+
+    def __getitem__(self, key: str) -> u.Quantity:
+        """Allow dict-like access to error fields."""
+        return getattr(self, key)
+
+    def keys(self) -> list[str]:
+        """Return list of error field names."""
+        return list(self.available_errors().keys())
+
+    def items(self):
+        """Yield (name, value) pairs for all error fields."""
+        for key in self.keys():
+            yield key, getattr(self, key)
+
+
+@dataclass(frozen=True)
+class NoRHEmulatorErrors(RHEmulatorErrors):
+    """Error estimates of the ``norh`` emulator (see :class:`RHEmulatorErrors`)."""

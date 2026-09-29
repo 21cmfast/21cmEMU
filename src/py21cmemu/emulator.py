@@ -12,8 +12,10 @@ import torch
 from .inputs import (
     ACGEmulatorInput,
     MCGEmulatorInput,
+    NoRHEmulatorInput,
     ParamVecType,
     RadioEmulatorInput,
+    RHEmulatorInput,
 )
 from .outputs import (
     ACGEmulatorErrors,
@@ -22,14 +24,20 @@ from .outputs import (
     EmulatorOutput,
     MCGEmulatorErrors,
     MCGRawEmulatorOutput,
+    NoRHEmulatorErrors,
+    NoRHRawEmulatorOutput,
     RadioEmulatorErrors,
     RadioRawEmulatorOutput,
+    RHEmulatorErrors,
+    RHRawEmulatorOutput,
 )
 from .properties import (
     DEFAULT_EMULATOR,
     EMULATOR_ACG,
     EMULATOR_MCG,
+    EMULATOR_NORH,
     EMULATOR_RADIO,
+    EMULATOR_RH,
     emulator_properties,
     get_emulator_properties,
     resolve_emulator_name,
@@ -59,6 +67,10 @@ class Emulator:
         +-----------+---------+-------------+--------+-----------------------------+
         | ``radio`` | v2      | Cang+24     | 5      | Tb, xHI, Tr, tau, 1D-PS     |
         +-----------+---------+-------------+--------+-----------------------------+
+        | ``rh``    | sph     | [in prep.]  | 6      | Tb, xHI, Tr, tau            |
+        +-----------+---------+-------------+--------+-----------------------------+
+        | ``norh``  | no_rh   | [in prep.]  | 6      | Tb, xHI, Tr, tau            |
+        +-----------+---------+-------------+--------+-----------------------------+
 
         - **mcg** (Molecular Cooling Galaxies): Full 11-parameter emulator
           including mini-halos/molecular cooling galaxies. Predicts 2D power
@@ -70,6 +82,12 @@ class Emulator:
 
         - **radio**: Radio background emulator with 5 parameters. Predicts
           radio temperature Tr instead of spin temperature Ts.
+
+        - **rh** / **norh**: Radio background + scattering dark matter model with
+          6 parameters (all log10), with (``rh``) and without (``norh``) radio
+          (soft-photon) heating. Predicts Tb, xHI and Tr at 110 redshifts
+          (4.9 < z < 49) and tau. Their weights are distributed separately,
+          see ``weights_path``.
 
     emulate_2d_ps : bool, optional
         Whether to emulate the 2D power spectrum (for 'mcg' only). Default is False
@@ -83,12 +101,18 @@ class Emulator:
         Custom PS normalization mean (for 'mcg' only; log10 space).
     PS_log_mean : float, optional
         Custom PS normalization mean (for 'mcg' only; log10 space).
+    weights_path : str or Path, optional
+        Weights file of the 'rh' / 'norh' emulators. By default
+        ``<name>_weights.pt`` is looked up in ``py21cmemu/models/radio_heating/``
+        and then in ``<data-path>/radio_heating/`` (``data-path`` from the
+        py21cmEMU config).
     """
 
     def __init__(
         self,
         emulator: str = DEFAULT_EMULATOR,
         emulate_2d_ps: bool = False,
+        weights_path: str | Path | None = None,
     ):
         self.which_emulator = resolve_emulator_name(emulator)
         self.emulate_2d_ps = emulate_2d_ps
@@ -117,6 +141,23 @@ class Emulator:
             model.to(self.device)
             model.eval()
             self.inputs = RadioEmulatorInput()
+
+        elif self.which_emulator in (EMULATOR_RH, EMULATOR_NORH):
+            from .models.radio_heating import load_model
+
+            props = emulator_properties(emulator=self.which_emulator)
+            model = load_model(
+                self.which_emulator,
+                props.model_config,
+                props.redshifts,
+                weights_path=weights_path,
+                device=self.device,
+            )
+            self.inputs = (
+                RHEmulatorInput()
+                if self.which_emulator == EMULATOR_RH
+                else NoRHEmulatorInput()
+            )
 
         elif self.which_emulator == EMULATOR_MCG:  # pragma: no branch
             from .models.mcg.lstm_model import MH_Emulator
@@ -223,7 +264,7 @@ class Emulator:
         n_ps_batch : int, optional
             Batch size for PS sampling.
         n_lstm_batch : int, optional
-            Batch size for LSTM inference (for 'mcg' emulator only). If None,
+            Batch size for LSTM inference ('mcg', 'rh' and 'norh'). If None,
             all parameter sets are evaluated in a single forward pass. Use this
             to avoid OOM errors when evaluating many parameter sets at once.
         n_realisations : int, optional
@@ -266,6 +307,25 @@ class Emulator:
                 .cpu()
                 .numpy()
             )
+            emu = emu.get_renormalized()
+            errors = self.get_errors(emu, theta)
+            return theta, emu, errors
+
+        if self.which_emulator in (EMULATOR_RH, EMULATOR_NORH):
+            theta = self.inputs.make_param_array(astro_params, normed=True)
+            theta_t = torch.tensor(theta, dtype=torch.float32, device=self.device)
+            with torch.no_grad():
+                if n_lstm_batch is None or n_lstm_batch >= theta_t.shape[0]:
+                    pred = self.model(theta_t)
+                else:
+                    chunks = [self.model(c) for c in torch.split(theta_t, n_lstm_batch)]
+                    pred = {k: torch.cat([c[k] for c in chunks]) for k in chunks[0]}
+            raw_cls = (
+                RHRawEmulatorOutput
+                if self.which_emulator == EMULATOR_RH
+                else NoRHRawEmulatorOutput
+            )
+            emu = raw_cls({k: v.cpu().numpy() for k, v in pred.items()})
             emu = emu.get_renormalized()
             errors = self.get_errors(emu, theta)
             return theta, emu, errors
@@ -470,7 +530,7 @@ class Emulator:
         theta_lstm: np.ndarray | None = None,
         theta_ps: np.ndarray | None = None,
         ps_sampling_method: str | None = None,
-    ) -> ACGEmulatorErrors | RadioEmulatorErrors | MCGEmulatorErrors:
+    ) -> ACGEmulatorErrors | RadioEmulatorErrors | MCGEmulatorErrors | RHEmulatorErrors:
         """Calculate the emulator error on its outputs.
 
         Parameters
@@ -487,8 +547,9 @@ class Emulator:
         Returns
         -------
         EmulatorErrors
-            ACGEmulatorErrors, RadioEmulatorErrors, or MCGEmulatorErrors
-            depending on the emulator type. All provide dict-like access.
+            ACGEmulatorErrors, RadioEmulatorErrors, MCGEmulatorErrors,
+            RHEmulatorErrors or NoRHEmulatorErrors depending on the emulator
+            type. All provide dict-like access.
 
         See Also
         --------
@@ -500,6 +561,10 @@ class Emulator:
             return ACGEmulatorErrors.from_output(emu, self.properties)
         elif self.which_emulator == EMULATOR_RADIO:
             return RadioEmulatorErrors.from_properties(self.properties)
+        elif self.which_emulator == EMULATOR_RH:
+            return RHEmulatorErrors.from_output(emu, self.properties)
+        elif self.which_emulator == EMULATOR_NORH:
+            return NoRHEmulatorErrors.from_output(emu, self.properties)
 
         # For MCG emulator, use output-dependent absolute errors
         return MCGEmulatorErrors.from_output(

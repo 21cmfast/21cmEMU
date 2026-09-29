@@ -8,6 +8,7 @@ This module provides:
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -26,6 +27,8 @@ if TYPE_CHECKING:  # pragma: no cover
 EMULATOR_ACG: str = "acg"  # Atomic Cooling Galaxies only (Breitman+24)
 EMULATOR_RADIO: str = "radio"  # Radio background (Cang+24)
 EMULATOR_MCG: str = "mcg"  # Molecular Cooling Galaxies / Mini-halos
+EMULATOR_RH: str = "rh"  # Radio background + SDM, with radio (soft-photon) heating
+EMULATOR_NORH: str = "norh"  # Radio background + SDM, without radio heating
 
 # Default emulator
 DEFAULT_EMULATOR: str = EMULATOR_MCG
@@ -50,6 +53,18 @@ EMULATOR_CONFIG: dict[str, dict[str, Any]] = {
         "paper": "[Breitman+26]",
         "outputs": ["Tb", "xHI", "Ts", "tau", "PS", "PS_2D", "UVLFs"],
     },
+    EMULATOR_RH: {
+        "aliases": ["radio_heating", "soft_photon_heating", "sph"],
+        "n_params": 6,
+        "paper": "[in prep.]",
+        "outputs": ["Tb", "xHI", "Tr", "tau"],
+    },
+    EMULATOR_NORH: {
+        "aliases": ["no_radio_heating", "no_rh", "no_soft_photon_heating"],
+        "n_params": 6,
+        "paper": "[in prep.]",
+        "outputs": ["Tb", "xHI", "Tr", "tau"],
+    },
 }
 
 # Build aliases map from config (both directions)
@@ -71,7 +86,7 @@ def resolve_emulator_name(name: str) -> str:
     Returns
     -------
     str
-        Canonical emulator name ('acg', 'radio', or 'mcg').
+        Canonical emulator name ('acg', 'radio', 'mcg', 'rh' or 'norh').
 
     Raises
     ------
@@ -825,6 +840,176 @@ class MCGEmulatorProperties(EmulatorProperties):
         return getattr(self, attr_name, None)
 
 
+class RadioHeatingEmulatorProperties(EmulatorProperties):
+    """Properties of the radio-heating emulators (``rh`` and ``norh``).
+
+    Both emulators take six parameters, all in log10 (``astro_param_keys``,
+    with prior edges ``limits``), and emulate the global neutral fraction xHI,
+    the 21-cm brightness temperature Tb [mK] and the excess radio background
+    temperature Tr [K] (the CMB is not included; Tr = 0 before radio sources
+    switch on) at 110 redshifts 4.9 < z < 49, plus the Thomson optical depth
+    tau. ``rh`` includes radio (soft-photon) heating of the gas, ``norh`` does
+    not; the rest of the 21cmFAST set-up is identical (see ``flag_options``,
+    ``user_params``, ``cosmo_params``, ``astro_params`` and ``global_params``,
+    read from the training database).
+
+    Normalisation
+    -------------
+    The networks return normalised summaries ``y``; the physical values are
+    ``x = f^-1(y * scale + shift)`` with the transform ``f`` of each summary
+    (``normalisation[name]``):
+
+    - ``none`` (xHI): identity;
+    - ``asinh`` (Tb): ``f(x) = asinh(x / eps)``, eps = 5 mK;
+    - ``log10`` (Tr, tau): ``f(x) = log10(x + eps)``, eps = 1e-4 K for Tr.
+
+    See :meth:`normalise` and :meth:`denormalise`.
+
+    Error statistics
+    ----------------
+    Fractional errors of the emulator on its validation set (10% of the
+    training database)::
+
+        FE% = 100 * |true - emulated| / max(|true|, floor)
+
+    with the floors ``fe_floors`` (xHI 1e-2, Tb 5 mK, Tr 1e-2 K, none for tau).
+
+    - ``<X>_med_err``, ``<X>_mean_err``, ``<X>_std_err``, ``<X>_p68_err`` and
+      ``<X>_p95_err``: median, mean, standard deviation, 68th and 95th
+      percentile over the validation samples at each redshift (scalars for
+      tau), for X in xHI, Tb, Tr, tau.
+    - ``<X>_global_med_err``, ``<X>_global_mean_err``: median and mean over all
+      samples and redshifts; ``<X>_global_cl68`` / ``<X>_global_cl95``: widths
+      of the central 68% / 95% intervals (84th-16th and 97.5th-2.5th
+      percentiles).
+    """
+
+    #: Canonical emulator name; set by the subclasses.
+    name: str = EMULATOR_RH
+
+    _STATS = (
+        "med_err",
+        "mean_err",
+        "std_err",
+        "p68_err",
+        "p95_err",
+        "global_med_err",
+        "global_mean_err",
+        "global_cl68",
+        "global_cl95",
+    )
+
+    def __init__(self):
+        path = (
+            Path(__file__).parent
+            / "models"
+            / "radio_heating"
+            / f"{self.name}_constants.npz"
+        )
+        with np.load(path, allow_pickle=False) as f:
+            data = {k: f[k] for k in f.files}
+        self._data = data
+
+        self.targets = tuple(str(t) for t in data["targets"])
+        self.astro_param_keys = tuple(str(k) for k in data["param_names"])
+        self.parameter_labels = np.array([str(s) for s in data["param_labels"]])
+        self.limits = np.asarray(data["param_limits"], dtype=float)
+        self.redshifts = np.asarray(data["redshifts"], dtype=float)
+        self.model_config = json.loads(str(data["model_config"]))
+        self.fe_floors = {
+            k: float(v) for k, v in json.loads(str(data["fe_floors"])).items()
+        }
+        self.normalisation = {
+            t: {
+                "transform": str(data[f"{t}_transform"]),
+                "eps": float(data[f"{t}_eps"]),
+                "scaling": str(data[f"{t}_scaling"]),
+                "shift": np.asarray(data[f"{t}_shift"], dtype=float),
+                "scale": np.asarray(data[f"{t}_scale"], dtype=float),
+            }
+            for t in self.targets
+        }
+
+        # Validation-set fractional errors (%)
+        for t in self.targets:
+            for s in self._STATS:
+                v = np.asarray(data[f"{t}_{s}"], dtype=float)
+                setattr(self, f"{t}_{s}", float(v) if v.ndim == 0 else v)
+
+        # 21cmFAST settings of the training database
+        def _settings(key: str) -> dict:
+            return json.loads(str(data[key])) if key in data else {}
+
+        self.flag_options = _settings("flag_options")
+        self.user_params = _settings("user_params")
+        self.cosmo_params = _settings("cosmo_params")
+        #: Astro parameters that were *fixed* in the database; the varied ones
+        #: are ``astro_param_keys``.
+        self.astro_params = _settings("astro_params")
+        self.global_params = _settings("global_params")
+
+        self.training_database = str(data.get("training_database", ""))
+        self.n_train = int(data["n_train"]) if "n_train" in data else None
+        self.n_validation = (
+            int(data["n_validation"]) if "n_validation" in data else None
+        )
+
+    @property
+    def zs(self) -> np.ndarray:
+        """Alias for ``redshifts``."""
+        return self.redshifts
+
+    @property
+    def normalized_quantities(self) -> list[str]:
+        """Summaries that are (de)normalised (all but xHI)."""
+        return [
+            t
+            for t in self.targets
+            if self.normalisation[t]["transform"] != "none"
+            or self.normalisation[t]["scaling"] != "none"
+        ]
+
+    def normalise(self, name: str, x) -> np.ndarray:
+        """Map a physical summary to the normalised space of the network."""
+        n = self.normalisation[name]
+        x = np.asarray(x, dtype=float)
+        if n["transform"] == "log10":
+            v = np.log10(np.clip(x, 0.0, None) + n["eps"])
+        elif n["transform"] == "asinh":
+            v = np.arcsinh(x / n["eps"])
+        else:
+            v = x
+        return (v - n["shift"]) / n["scale"]
+
+    def denormalise(self, name: str, y) -> np.ndarray:
+        """Map a normalised network output back to physical units."""
+        n = self.normalisation[name]
+        v = np.asarray(y, dtype=float) * n["scale"] + n["shift"]
+        if n["transform"] == "log10":
+            return np.clip(10.0**v - n["eps"], 0.0, None)
+        if n["transform"] == "asinh":
+            return n["eps"] * np.sinh(v)
+        return v
+
+
+class RHEmulatorProperties(RadioHeatingEmulatorProperties):
+    """Properties of the ``rh`` emulator (with radio heating).
+
+    See :class:`RadioHeatingEmulatorProperties`.
+    """
+
+    name = EMULATOR_RH
+
+
+class NoRHEmulatorProperties(RadioHeatingEmulatorProperties):
+    """Properties of the ``norh`` emulator (without radio heating).
+
+    See :class:`RadioHeatingEmulatorProperties`.
+    """
+
+    name = EMULATOR_NORH
+
+
 def emulator_properties(emulator: str = EMULATOR_MCG) -> EmulatorProperties:
     """Return the properties of the corresponding emulator.
 
@@ -846,6 +1031,10 @@ def emulator_properties(emulator: str = EMULATOR_MCG) -> EmulatorProperties:
         return RadioEmulatorProperties()
     elif canonical == EMULATOR_MCG:
         return MCGEmulatorProperties()
+    elif canonical == EMULATOR_RH:
+        return RHEmulatorProperties()
+    elif canonical == EMULATOR_NORH:
+        return NoRHEmulatorProperties()
     # Should never reach here due to resolve_emulator_name validation
     raise ValueError(f"Unknown emulator: {emulator}")  # pragma: no cover
 

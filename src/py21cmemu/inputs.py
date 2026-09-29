@@ -95,6 +95,33 @@ Radio Emulator (radio/v2)
 | A_LW          | Lyman-Werner feedback     | linear  | [0, 10]             |
 +---------------+---------------------------+---------+---------------------+
 
+Radio-heating Emulators (rh and norh)
+-------------------------------------
+6 parameters, all in log10, for the radio background + scattering dark matter
+model with (``rh``) and without (``norh``) radio heating:
+
++---------------+---------------------------+---------+---------------------+
+| Key           | Description               | Unit    | Valid Range         |
++===============+===========================+=========+=====================+
+| fR_mini       | log10 radio efficiency    | log10   | [0, 5]              |
+|               | of mini-halos             |         |                     |
++---------------+---------------------------+---------+---------------------+
+| F_STAR7_MINI  | log10 star formation eff. | log10   | [-4, 0]             |
+|               | of mini-halos at 10^7 M   |         |                     |
++---------------+---------------------------+---------+---------------------+
+| L_X_MINI      | log10 X-ray luminosity    | log10   | [38, 43]            |
+|               | per SFR of mini-halos     |         |                     |
++---------------+---------------------------+---------+---------------------+
+| F_ESC7_MINI   | log10 escape fraction     | log10   | [-4, 0]             |
+|               | of mini-halos at 10^7 M   |         |                     |
++---------------+---------------------------+---------+---------------------+
+| m_chi         | log10 dark matter mass    | log10   | [-4, 3]             |
+|               |                           | (GeV)   |                     |
++---------------+---------------------------+---------+---------------------+
+| sigma_SDM     | log10 DM-baryon scattering| log10   | [-44, -38]          |
+|               | cross-section             | (cm^2)  |                     |
++---------------+---------------------------+---------+---------------------+
+
 Example
 -------
 >>> from py21cmemu import Emulator
@@ -501,3 +528,80 @@ class MCGEmulatorInput(EmulatorInput):
 
     def format_theta(self, theta: np.ndarray, ps_redshifts: np.ndarray) -> np.ndarray:
         return self.format_theta_for_ps(theta, ps_redshifts)
+
+
+class RHEmulatorInput(EmulatorInput):
+    """Class for handling inputs of the radio-heating (``rh``) emulator.
+
+    All six parameters are supplied in log10, in the order of ``PARAMETERS``
+    (or as a dict with these keys). They are min-max normalised to [0, 1]
+    with the prior edges ``properties.limits``.
+    """
+
+    #: Ordered mapping of all parameter names to their physical units.
+    PARAMETERS: ClassVar[dict[str, str]] = {
+        "fR_mini": "log10",
+        "F_STAR7_MINI": "log10",
+        "L_X_MINI": "log10(erg/s/(Msun/yr))",
+        "F_ESC7_MINI": "log10",
+        "m_chi": "log10(GeV)",
+        "sigma_SDM": "log10(cm^2)",
+    }
+
+    #: Parameters that must be supplied as log10 values (all of them).
+    LOG_PARAMETERS: ClassVar[dict[str, str]] = dict(PARAMETERS)
+
+    #: Emulator whose properties (limits) are used.
+    _emulator: ClassVar[str] = "rh"
+
+    def __init__(self):
+        self.astro_param_keys = tuple(self.PARAMETERS)
+        super().__init__(emulator=self._emulator)
+        if tuple(self.properties.astro_param_keys) != self.astro_param_keys:
+            raise RuntimeError(  # pragma: no cover
+                "Parameter order of the emulator constants does not match "
+                f"{type(self).__name__}.PARAMETERS"
+            )
+
+    def normalize(self, theta: np.ndarray, kind: str = "PS") -> np.ndarray:
+        """Normalize the parameters to [0, 1].
+
+        Parameters
+        ----------
+        theta : np.ndarray
+            Input parameters (log10), strictly in 2D array format, with shape
+            (n_batch, n_params).
+
+        Returns
+        -------
+        np.ndarray
+            Normalized parameters, with shape (n_batch, n_params).
+        """
+        lims = self.properties.limits
+        return (np.asarray(theta, dtype=float) - lims[:, 0]) / (lims[:, 1] - lims[:, 0])
+
+    def undo_normalization(self, theta: np.ndarray, kind: str = "PS") -> np.ndarray:
+        """Undo the normalization of the parameters.
+
+        Parameters
+        ----------
+        theta : np.ndarray
+            Normalized parameters, strictly in 2D array format, with shape
+            (n_batch, n_params).
+
+        Returns
+        -------
+        np.ndarray
+            Parameters in log10, with shape (n_batch, n_params).
+        """
+        lims = self.properties.limits
+        return np.asarray(theta, dtype=float) * (lims[:, 1] - lims[:, 0]) + lims[:, 0]
+
+
+class NoRHEmulatorInput(RHEmulatorInput):
+    """Class for handling inputs of the ``norh`` emulator (no radio heating).
+
+    Same parameters as :class:`RHEmulatorInput`.
+    """
+
+    _emulator: ClassVar[str] = "norh"
