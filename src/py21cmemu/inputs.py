@@ -421,7 +421,7 @@ class MCGEmulatorInput(EmulatorInput):
             )
 
         theta_out = (theta_out - limits[:, 0]) / (limits[:, 1] - limits[:, 0])
-        return np.clip(theta_out, 0.0, 1.0)
+        return theta_out
 
     def undo_normalization(
         self, theta: np.ndarray, kind: str = "summaries"
