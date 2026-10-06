@@ -1940,11 +1940,54 @@ class RadioEmulatorErrors(EmulatorErrors):
         return self._properties
 
     @classmethod
+    def from_output(
+        cls,
+        output: RadioEmulatorOutput,
+        properties: RadioEmulatorProperties,
+    ) -> RadioEmulatorErrors:
+        """Construct error statistics broadcast to match the output batch shape.
+
+        The stored FE% arrays are independent of the input parameters. This
+        method broadcasts each of them to the shape of the corresponding output
+        field so that shapes always match, regardless of how many parameter
+        sets were passed to ``predict()``.
+
+        Parameters
+        ----------
+        output : RadioEmulatorOutput
+            The emulator output whose shapes define the target broadcast shape.
+        properties : RadioEmulatorProperties
+            The emulator properties containing the FE% arrays.
+
+        Returns
+        -------
+        RadioEmulatorErrors
+            Error statistics (FE% values) with batch dimension matching the output.
+        """
+
+        def _bc(err, ref):
+            """Broadcast err to the shape of ref (stripped of units)."""
+            ref = ref.value if hasattr(ref, "value") else np.asarray(ref)
+            return np.broadcast_to(np.asarray(err), ref.shape)
+
+        return cls(
+            PS_err=_bc(properties.PS_err, output.PS) * u.percent,
+            Tb_err=_bc(properties.Tb_err, output.Tb) * u.percent,
+            xHI_err=_bc(properties.xHI_err, output.xHI) * u.percent,
+            Tr_err=_bc(properties.Tr_err, output.Tr) * u.percent,
+            tau_err=_bc(properties.tau_err, output.tau) * u.percent,
+            _properties=properties,
+        )
+
+    @classmethod
     def from_properties(
         cls,
         properties: RadioEmulatorProperties,
     ) -> RadioEmulatorErrors:
-        """Construct error statistics from emulator properties.
+        """Construct error statistics from emulator properties (no batch dim).
+
+        Prefer ``from_output`` when the emulator output is available, as it
+        broadcasts the error arrays to match the output batch shape.
 
         Parameters
         ----------
