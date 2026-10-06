@@ -529,6 +529,18 @@ def test_output(tmp_path, emu_type):
         output.Tr
         output.PS_ks
 
+        # --- Error shape consistency for single- and multi-sample prediction ---
+        for n in (1, 5):
+            theta_n = RadioEmulatorInput().undo_normalization(
+                np.random.rand(n * npars).reshape((n, npars))
+            )
+            _, out_n, err_n = emu.predict(theta_n)
+            assert out_n.Tb.shape == err_n.Tb_err.shape
+            assert out_n.xHI.shape == err_n.xHI_err.shape
+            assert out_n.Tr.shape == err_n.Tr_err.shape
+            assert out_n.tau.shape == err_n.tau_err.shape
+            assert out_n.PS.shape == err_n.PS_err.shape
+
         with pytest.raises(ValueError):
             emu = Emulator(emulator="foo")
 

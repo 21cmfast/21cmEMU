@@ -377,22 +377,25 @@ class EmulatorOutput:
 class ACGEmulatorOutput(EmulatorOutput):
     """Output from the ACG (v1) emulator.
 
-    All quantities are returned with astropy units attached.
+    All quantities are returned with astropy units attached. Shapes are given
+    for a batch of ``n_batch`` parameter sets; when a single parameter set is
+    passed to ``Emulator.predict``, the leading batch dimension is dropped.
 
     Attributes
     ----------
     Tb : Quantity[mK]
-        Global brightness temperature as function of redshift. Shape: (n_z,)
+        Global brightness temperature as function of redshift.
+        Shape: (n_batch, n_z)
     xHI : Quantity[dimensionless]
-        Neutral hydrogen fraction as function of redshift. Shape: (n_z,)
+        Neutral hydrogen fraction as function of redshift. Shape: (n_batch, n_z)
     Ts : Quantity[K]
-        Spin temperature as function of redshift. Shape: (n_z,)
+        Spin temperature as function of redshift. Shape: (n_batch, n_z)
     PS : Quantity[mK²]
-        1D power spectrum Δ² in LINEAR units. Shape: (n_z, n_k)
+        1D power spectrum Δ² in LINEAR units. Shape: (n_batch, n_z, n_k)
     tau : Quantity[dimensionless]
-        Optical depth to reionization. Scalar.
+        Optical depth to reionization. Shape: (n_batch,)
     UVLFs : Quantity[dex(Mpc⁻³ mag⁻¹)]
-        UV luminosity functions in log10 space. Shape: (n_z_uvlf, n_mag)
+        UV luminosity functions in log10 space. Shape: (n_batch, n_z_uvlf, n_mag)
         Use .physical to convert to linear units.
     """
 
@@ -462,20 +465,24 @@ class ACGEmulatorOutput(EmulatorOutput):
 class RadioEmulatorOutput(EmulatorOutput):
     """Output from the Radio (v2) emulator.
 
-    All quantities are returned with astropy units attached.
+    All quantities are returned with astropy units attached. Shapes are given
+    for a batch of ``n_batch`` parameter sets; when a single parameter set is
+    passed to ``Emulator.predict``, the leading batch dimension is dropped.
 
     Attributes
     ----------
     Tb : Quantity[mK]
-        Global brightness temperature as function of redshift. Shape: (n_z,)
+        Global brightness temperature as function of redshift.
+        Shape: (n_batch, n_z)
     xHI : Quantity[dimensionless]
-        Neutral hydrogen fraction as function of redshift. Shape: (n_z,)
+        Neutral hydrogen fraction as function of redshift. Shape: (n_batch, n_z)
     Tr : Quantity[K]
-        Radio background temperature as function of redshift. Shape: (n_z,)
+        Radio background temperature as function of redshift.
+        Shape: (n_batch, n_z)
     PS : Quantity[mK²]
-        1D power spectrum Δ² in LINEAR units. Shape: (n_z, n_k)
+        1D power spectrum Δ² in LINEAR units. Shape: (n_batch, n_z, n_k)
     tau : Quantity[dimensionless]
-        Optical depth to reionization. Scalar.
+        Optical depth to reionization. Shape: (n_batch,)
     """
 
     Tb: u.Quantity
@@ -1250,10 +1257,12 @@ class EmulatorErrors:
     Error Terminology
     -----------------
     - **Fractional Error (FE%)**: The percentage error relative to the true value,
-      computed as ``100 * |predicted - true| / |true|``. This is what the ACG
-      and Radio emulators store directly.
-    - **Absolute Error**: The error in physical units, computed as
-      ``FE% / 100 * |output_value|``. The MH emulator computes these from FE%.
+      computed as ``100 * |predicted - true| / |true|``. This is what the Radio
+      emulator stores directly.
+    - **Absolute Error**: The error in physical units. The ACG emulator stores
+      pre-computed absolute errors (median absolute difference over the test
+      set). The MH emulator computes them from FE% as
+      ``FE% / 100 * |output_value|``.
 
     Error Aggregation
     -----------------
@@ -1308,9 +1317,10 @@ class MCGEmulatorErrors(EmulatorErrors):
     """Error statistics for the MCG (v3) emulator with proper astropy units.
 
     This class provides **absolute errors** computed from the test set's fractional
-    errors (FE%) applied to the emulator output values. Unlike the ACG and Radio
-    emulators which store raw FE%, the MCG emulator computes output-dependent
-    absolute errors in physical units.
+    errors (FE%) applied to the emulator output values. Unlike the ACG emulator,
+    which stores pre-computed absolute errors, and the Radio emulator, which
+    stores raw FE%, the MCG emulator computes output-dependent absolute errors
+    in physical units.
 
     Error Computation
     -----------------
@@ -1626,20 +1636,26 @@ class MCGEmulatorErrors(EmulatorErrors):
 class ACGEmulatorErrors(EmulatorErrors):
     """Error statistics for the ACG/Default (v1) emulator.
 
-    This class provides **fractional errors (FE%)** from the test set for all
-    outputs. Unlike the MH emulator which computes output-dependent absolute
-    errors, the ACG emulator stores the raw FE% arrays directly.
+    This class provides **absolute errors** from the test set for all outputs,
+    in the same physical units as the corresponding output fields. Unlike the
+    MH emulator, whose errors depend on the output, the ACG errors are
+    pre-computed and independent of the input parameters.
 
     Error Interpretation
     --------------------
-    The errors represent the **median fractional error** across a held-out test
-    set of ~300 simulations. Each FE% value indicates the typical percentage
-    error at that (redshift, k-mode) or (redshift, magnitude) bin::
+    The errors represent the **median absolute difference** between emulator
+    and simulation across a held-out test set of ~300 simulations, computed
+    after restoring units and removing any log transform. Each value is the
+    typical error at that (redshift, k-mode) or (redshift, magnitude) bin.
 
-        absolute_error = FE% / 100 * |emulator_output|
-
-    For example, if ``PS_err[z_idx, k_idx] = 5%``, the emulator's power spectrum
-    prediction at that bin is typically within 5% of the true value.
+    Shapes
+    ------
+    When constructed via ``from_output`` (as ``Emulator.predict`` does), each
+    error array is broadcast to the shape of the corresponding output field, so
+    it carries the same leading batch dimension ``n_batch`` as the output. The
+    shapes below are for a batch of ``n_batch`` parameter sets; for a single
+    parameter set the batch dimension is dropped, as it is for the output.
+    Errors built with ``from_properties`` have no batch dimension.
 
     Physics Context
     ---------------
@@ -1656,26 +1672,26 @@ class ACGEmulatorErrors(EmulatorErrors):
     Attributes
     ----------
     PS_err : Quantity
-        Power spectrum fractional error in percent. Shape (n_z, n_k).
-        Units: percent. Typical values: 1-10%.
+        Absolute error on the power spectrum. Shape (n_batch, n_z, n_k).
+        Units: mK².
     Tb_err : Quantity
-        Global brightness temperature fractional error. Shape (n_z,).
-        Units: percent. Typical values: 1-5%.
+        Absolute error on the global brightness temperature.
+        Shape (n_batch, n_z). Units: mK.
     xHI_err : Quantity
-        Neutral fraction fractional error. Shape (n_z,).
-        Units: percent. Typical values: 1-3%.
+        Absolute error on the neutral fraction. Shape (n_batch, n_z).
+        Dimensionless.
     Ts_err : Quantity
-        Spin temperature fractional error. Shape (n_z,).
-        Units: percent. Typical values: 1-5%.
+        Absolute error on the spin temperature. Shape (n_batch, n_z).
+        Units: K.
     tau_err : Quantity
-        Optical depth fractional error. Scalar.
-        Units: percent. Typical value: ~1%.
+        Absolute error on the optical depth. Shape (n_batch,).
+        Dimensionless.
     UVLFs_err : Quantity
-        UV luminosity function (linear) fractional error. Shape (n_z, n_mag).
-        Units: percent.
+        Absolute error on the linear UV luminosity function.
+        Shape (n_batch, n_z_uvlf, n_mag). Units: Mpc⁻³ mag⁻¹.
     UVLFs_logerr : Quantity
-        UV luminosity function (log10) fractional error. Shape (n_z, n_mag).
-        Units: percent. Typically smaller than linear errors.
+        Absolute error on log10 of the UV luminosity function.
+        Shape (n_batch, n_z_uvlf, n_mag). Units: dex(Mpc⁻³ mag⁻¹).
 
     Examples
     --------
@@ -1685,19 +1701,14 @@ class ACGEmulatorErrors(EmulatorErrors):
         theta, output, errors = emu.predict(params)
         print(f"Median PS error: {np.median(errors.PS_err):.1f}")
 
-    Computing absolute errors::
-
-        # Convert FE% to absolute error
-        abs_ps_err = errors.PS_err.value / 100 * np.abs(output.PS)
-
     Plotting with error bands::
 
         import matplotlib.pyplot as plt
         z_idx = 20  # Some redshift
         plt.fill_between(
             emu.properties.PS_ks,
-            output.PS[z_idx] * (1 - errors.PS_err[z_idx]/100),
-            output.PS[z_idx] * (1 + errors.PS_err[z_idx]/100),
+            (output.PS[z_idx] - errors.PS_err[z_idx]).value,
+            (output.PS[z_idx] + errors.PS_err[z_idx]).value,
             alpha=0.3
         )
 
@@ -1871,23 +1882,32 @@ class RadioEmulatorErrors(EmulatorErrors):
 
     This emulator is described in Reis et al. (2023).
 
+    The errors are independent of the input parameters. When constructed via
+    ``from_output`` (as ``Emulator.predict`` does), each error array is
+    broadcast to the shape of the corresponding output field, so it carries the
+    same leading batch dimension ``n_batch`` as the output for batched
+    predictions. The shapes below are for a batch of ``n_batch`` parameter
+    sets; for a single parameter set the batch dimension is dropped, as it is
+    for the output. Errors built with ``from_properties`` have no batch
+    dimension.
+
     Attributes
     ----------
     PS_err : Quantity
-        Power spectrum fractional error in percent. Shape (n_z, n_k).
+        Power spectrum fractional error in percent. Shape (n_batch, n_z, n_k).
         Units: percent.
     Tb_err : Quantity
-        Global brightness temperature fractional error. Shape (n_z,).
+        Global brightness temperature fractional error. Shape (n_batch, n_z).
         Units: percent.
     xHI_err : Quantity
-        Neutral fraction fractional error. Shape (n_z,).
+        Neutral fraction fractional error. Shape (n_batch, n_z).
         Units: percent.
     Tr_err : Quantity
-        Radio temperature fractional error. Shape (n_z,).
+        Radio temperature fractional error. Shape (n_batch, n_z).
         Units: percent. This is the background radio temperature from
         high-z radio sources, not the CMB.
     tau_err : Quantity
-        Optical depth fractional error. Scalar.
+        Optical depth fractional error. Shape (n_batch,).
         Units: percent.
 
     Notes
@@ -1940,11 +1960,54 @@ class RadioEmulatorErrors(EmulatorErrors):
         return self._properties
 
     @classmethod
+    def from_output(
+        cls,
+        output: RadioEmulatorOutput,
+        properties: RadioEmulatorProperties,
+    ) -> RadioEmulatorErrors:
+        """Construct error statistics broadcast to match the output batch shape.
+
+        The stored FE% arrays are independent of the input parameters. This
+        method broadcasts each of them to the shape of the corresponding output
+        field so that shapes always match, regardless of how many parameter
+        sets were passed to ``predict()``.
+
+        Parameters
+        ----------
+        output : RadioEmulatorOutput
+            The emulator output whose shapes define the target broadcast shape.
+        properties : RadioEmulatorProperties
+            The emulator properties containing the FE% arrays.
+
+        Returns
+        -------
+        RadioEmulatorErrors
+            Error statistics (FE% values) with batch dimension matching the output.
+        """
+
+        def _bc(err, ref):
+            """Broadcast err to the shape of ref (stripped of units)."""
+            ref = ref.value if hasattr(ref, "value") else np.asarray(ref)
+            return np.broadcast_to(np.asarray(err), ref.shape)
+
+        return cls(
+            PS_err=_bc(properties.PS_err, output.PS) * u.percent,
+            Tb_err=_bc(properties.Tb_err, output.Tb) * u.percent,
+            xHI_err=_bc(properties.xHI_err, output.xHI) * u.percent,
+            Tr_err=_bc(properties.Tr_err, output.Tr) * u.percent,
+            tau_err=_bc(properties.tau_err, output.tau) * u.percent,
+            _properties=properties,
+        )
+
+    @classmethod
     def from_properties(
         cls,
         properties: RadioEmulatorProperties,
     ) -> RadioEmulatorErrors:
-        """Construct error statistics from emulator properties.
+        """Construct error statistics from emulator properties (no batch dim).
+
+        Prefer ``from_output`` when the emulator output is available, as it
+        broadcasts the error arrays to match the output batch shape.
 
         Parameters
         ----------
