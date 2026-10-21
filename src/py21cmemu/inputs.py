@@ -171,7 +171,10 @@ class EmulatorInput:
             of floats, in the same order as astro_param_keys. It could also be a list
             or array of such objects, for batch evaluation (the type can be mixed).
         normed : bool, optional
-            Whether to return the parameters normalized or not (i.e. between 0 and 1).
+            Whether to return the parameters normalized or not. Normalization maps
+            each parameter's training range linearly onto [0, 1]. Inputs are not
+            clipped, so parameters outside the training range give normalized
+            values outside [0, 1] and the emulator extrapolates.
         """
         if not hasattr(astro_params, "__len__"):
             raise TypeError(
@@ -204,7 +207,10 @@ class EmulatorInput:
         theta : np.ndarray
             Input parameters, in any format accepted by :func:`~make_param_array`.
         normed : bool, optional
-            Whether to return the parameters normalized or not (i.e. between 0 and 1).
+            Whether to return the parameters normalized or not. Normalization maps
+            each parameter's training range linearly onto [0, 1]. Inputs are not
+            clipped, so parameters outside the training range give normalized
+            values outside [0, 1] and the emulator extrapolates.
 
         Returns
         -------
@@ -410,6 +416,24 @@ class MCGEmulatorInput(EmulatorInput):
         super().__init__(emulator="mh")
 
     def normalize(self, theta: np.ndarray, kind: str = "summaries") -> np.ndarray:
+        """Normalize the parameters using the training limits of the given model.
+
+        Parameters
+        ----------
+        theta : np.ndarray
+            Input parameters, strictly in 2D array format, with shape
+            (n_batch, n_params).
+        kind : str, optional
+            Which model's limits to use: 'summaries'/'LSTM' or 'PS'/'PS_2D'.
+
+        Returns
+        -------
+        np.ndarray
+            Normalized parameters, with shape (n_batch, n_params). Values lie in
+            [0, 1] for parameters within the training range. Inputs are not
+            clipped, so out-of-range parameters give values outside [0, 1]
+            (extrapolation).
+        """
         theta_out = theta.copy().astype(float)
         if kind.upper() in ("LSTM", "SUMMARIES"):
             limits = self.properties.lstm_limits[:-1]
@@ -421,7 +445,7 @@ class MCGEmulatorInput(EmulatorInput):
             )
 
         theta_out = (theta_out - limits[:, 0]) / (limits[:, 1] - limits[:, 0])
-        return np.clip(theta_out, 0.0, 1.0)
+        return theta_out
 
     def undo_normalization(
         self, theta: np.ndarray, kind: str = "summaries"

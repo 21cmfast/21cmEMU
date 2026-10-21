@@ -141,6 +141,36 @@ def test_mh_batch_prediction(mh_emulator) -> None:
     assert output.tau.shape[0] == 5
 
 
+@pytest.mark.parametrize(
+    ("param", "value"),
+    [("F_STAR10", -2.4), ("F_STAR7_MINI", -4.5), ("SIGMA_8", 0.75), ("L_X_MINI", 38.5)],
+)
+def test_mh_out_of_range_inputs_are_not_clipped(mh_emulator, param, value) -> None:
+    """Inputs below the training range give different outputs from the range edge."""
+    theta = {
+        "F_STAR10": -1.2,
+        "ALPHA_STAR": 0.5,
+        "t_STAR": 0.55,
+        "F_ESC10": -1.3,
+        "ALPHA_ESC": 0.0,
+        "F_STAR7_MINI": -2.5,
+        "F_ESC7_MINI": -1.5,
+        "L_X": 40.5,
+        "L_X_MINI": 41.5,
+        "NU_X_THRESH": 500.0,
+        "SIGMA_8": 0.8118,
+    }
+    keys = list(mh_emulator.astro_param_keys)
+    edge = mh_emulator.properties.lstm_limits[keys.index(param), 0]
+    assert value < edge
+
+    _, at_edge, _ = mh_emulator.predict({**theta, param: edge})
+    _, outside, _ = mh_emulator.predict({**theta, param: value})
+
+    assert not np.allclose(outside.Tb, at_edge.Tb)
+    assert not np.allclose(outside.tau, at_edge.tau)
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # V1 ACG (PyTorch) model tests (from test_main.py)
 # ══════════════════════════════════════════════════════════════════════════════
