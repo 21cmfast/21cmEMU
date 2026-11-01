@@ -1,6 +1,14 @@
 name: Update Draft Release
 
-on: push
+# Draft releases from main only. Running on every branch push (a) retargets the
+# shared draft release at whatever branch was pushed, and (b) races with
+# auto-merged Dependabot/pre-commit-ci PRs: release-drafter fetches its config via
+# the API at the pushed ref, so if the head branch is deleted after the merge
+# before that fetch happens, the lookup 404s and the job fails.
+on:
+  push:
+    branches:
+      - main
 
 permissions:
   contents: write
