@@ -50,6 +50,8 @@ def test_get_device_env(fake_hardware, monkeypatch):
     fake_hardware(cuda=False, mps=True)
     monkeypatch.setenv(DEVICE_ENV_VAR, "cpu")
     assert get_device() == torch.device("cpu")
+    assert get_device("mps") == torch.device("mps")
+    assert get_device(torch.device("mps")) == torch.device("mps")
     monkeypatch.setenv(DEVICE_ENV_VAR, "")  # empty means unset
     assert get_device().type == "mps"
 
@@ -64,17 +66,21 @@ def test_get_gpu_count(fake_hardware, cuda, mps, n_cuda, expected):
     assert get_gpu_count() == expected
 
 
-def test_emulator_device_argument(no_device_env):
-    """The emulator and its model live on the requested device."""
+def test_emulator_device_argument(fake_hardware):
+    """The emulator and its model go to the requested device, not the automatic one."""
+    fake_hardware(cuda=False, mps=True)  # the automatic choice would be MPS
     emu = Emulator(emulator="acg", device="cpu")
     assert emu.device == torch.device("cpu")
     assert next(emu.model.parameters()).device == torch.device("cpu")
 
 
-def test_emulator_device_env(monkeypatch):
+def test_emulator_device_env(fake_hardware, monkeypatch):
     """Without a device argument the emulator follows the environment variable."""
+    fake_hardware(cuda=False, mps=True)  # the automatic choice would be MPS
     monkeypatch.setenv(DEVICE_ENV_VAR, "cpu")
-    assert Emulator(emulator="acg").device == torch.device("cpu")
+    emu = Emulator(emulator="acg")
+    assert emu.device == torch.device("cpu")
+    assert next(emu.model.parameters()).device == torch.device("cpu")
 
 
 @pytest.mark.skipif(not utils.mps_is_available(), reason="needs an Apple-silicon GPU")
@@ -88,8 +94,10 @@ def test_acg_mps_matches_cpu(no_device_env):
     cpu_emu = Emulator(emulator="acg", device="cpu")
     rng = np.random.default_rng(0)
     theta = cpu_emu.inputs.undo_normalization(rng.random((16, 9)))  # training range
+    mps_emu = Emulator(emulator="acg", device="mps")
+    assert next(mps_emu.model.parameters()).device.type == "mps"
     _, cpu, _ = cpu_emu.predict(theta)
-    _, mps, _ = Emulator(emulator="acg", device="mps").predict(theta)
+    _, mps, _ = mps_emu.predict(theta)
     for name in ("Tb", "xHI", "Ts", "PS", "tau", "UVLFs"):
         expected = np.asarray(getattr(cpu, name), dtype=float)
         np.testing.assert_allclose(

@@ -406,10 +406,13 @@ class Emulator:
 
         if getattr(self, "_ps_gpu_config_key", None) != config_key:
             sde = self._vpsde_cls(beta_min=0.1, beta_max=20.0)
+            # The loaded model sits on the current CUDA device, which need not be
+            # cuda:0; reuse it there and load a replica on every other GPU.
+            main_device = next(self.score_model.parameters()).device
             replicas = []
             for gpu_id in range(n_gpus):
                 device = torch.device(f"cuda:{gpu_id}")
-                if gpu_id == 0:
+                if device == main_device:
                     model = self.score_model
                 else:
                     from .models.mcg.score_model import UNet
