@@ -7,7 +7,9 @@ import abc
 
 import numpy as np
 import torch
-from .utils import device
+
+from .utils import device  # noqa: F401 (kept as py21cmemu.sde.device)
+
 
 class SDE(abc.ABC):
     """SDE abstract class. Functions are designed for a mini-batch of inputs."""

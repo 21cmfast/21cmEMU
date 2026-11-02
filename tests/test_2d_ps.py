@@ -303,6 +303,15 @@ class TestGetPredMultiGPU:
         """Return a (n_batches, n_ps_batch, 12) conditioning array."""
         return np.random.rand(n_batches, n_ps_batch, 12).astype(np.float32)
 
+    @staticmethod
+    def _fake_cuda(emu, monkeypatch, n_gpus: int) -> None:
+        """Pretend that the emulator runs on device "cuda" with n_gpus cards."""
+        import torch
+
+        monkeypatch.setattr(torch.cuda, "is_available", lambda: True)
+        monkeypatch.setattr(torch.cuda, "device_count", lambda: n_gpus)
+        emu.device = torch.device("cuda")
+
     # ------------------------------------------------------------------
     # Single-GPU / CPU path (device_count <= 1)
     # ------------------------------------------------------------------
@@ -355,6 +364,30 @@ class TestGetPredMultiGPU:
         assert len(call_log) == 2
         assert result.shape == (2, n_ps_batch, n_real, 32, 64)
 
+    @pytest.mark.parametrize("device", ["cpu", "cuda:1"])
+    def test_explicit_device_uses_single_path(
+        self, emu_with_2d_ps, monkeypatch, device
+    ):
+        """A CPU or single-card device stays sequential even with several GPUs."""
+        import torch
+
+        self._fake_cuda(emu_with_2d_ps, monkeypatch, 4)
+        emu_with_2d_ps.device = torch.device(device)
+
+        n_ps_batch, n_real = 2, 3
+        call_log = []
+
+        def fake_get_pred_single(cdn):
+            call_log.append(1)
+            return np.ones((n_ps_batch, n_real, 32, 64))
+
+        emu_with_2d_ps.get_pred_single = fake_get_pred_single
+        cdns = self._make_cdns(n_batches=3, n_ps_batch=n_ps_batch)
+        result = emu_with_2d_ps.get_pred(cdns)
+
+        assert len(call_log) == 3
+        assert result.shape == (3, n_ps_batch, n_real, 32, 64)
+
     # ------------------------------------------------------------------
     # Multi-GPU path (device_count >= 2)
     # ------------------------------------------------------------------
@@ -364,7 +397,7 @@ class TestGetPredMultiGPU:
         import torch
 
         n_gpus, n_ps_batch, n_real = 2, 2, 5
-        monkeypatch.setattr(torch.cuda, "device_count", lambda: n_gpus)
+        self._fake_cuda(emu_with_2d_ps, monkeypatch, n_gpus)
 
         processed_by_gpu = [[] for _ in range(n_gpus)]
 
@@ -398,7 +431,7 @@ class TestGetPredMultiGPU:
         import torch
 
         n_gpus, n_ps_batch, n_real = 2, 2, 3
-        monkeypatch.setattr(torch.cuda, "device_count", lambda: n_gpus)
+        self._fake_cuda(emu_with_2d_ps, monkeypatch, n_gpus)
 
         processed = [[] for _ in range(n_gpus)]
 
@@ -432,7 +465,7 @@ class TestGetPredMultiGPU:
         import torch
 
         n_gpus, n_ps_batch, n_real = 2, 1, 4
-        monkeypatch.setattr(torch.cuda, "device_count", lambda: n_gpus)
+        self._fake_cuda(emu_with_2d_ps, monkeypatch, n_gpus)
 
         def make_fake_sampler(gpu_id):
             def sampler(model, cdn):
@@ -468,7 +501,7 @@ class TestGetPredMultiGPU:
         import torch
 
         n_gpus, n_ps_batch, n_real = 2, 2, 3
-        monkeypatch.setattr(torch.cuda, "device_count", lambda: n_gpus)
+        self._fake_cuda(emu_with_2d_ps, monkeypatch, n_gpus)
 
         def fake_sampler(model, cdn):
             return torch.ones(cdn.shape[0], n_real, 32, 64)
@@ -514,7 +547,7 @@ class TestGetPredMultiGPU:
         import torch
 
         n_gpus = 2
-        monkeypatch.setattr(torch.cuda, "device_count", lambda: n_gpus)
+        self._fake_cuda(emu_with_2d_ps, monkeypatch, n_gpus)
 
         def failing_sampler(model, cdn):
             raise RuntimeError("deliberate worker failure")

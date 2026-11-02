@@ -1,28 +1,71 @@
+from __future__ import annotations
+
 import logging
+import os
 from pathlib import Path
 
 import torch
 
-def get_device():
+#: Environment variable that sets the default torch device, e.g. ``cpu`` or ``mps``.
+DEVICE_ENV_VAR = "PY21CMEMU_DEVICE"
+
+
+def mps_is_available() -> bool:
+    """Return whether torch can use an Apple-silicon GPU through the MPS backend."""
+    mps = getattr(torch.backends, "mps", None)  # torch < 1.12 has no MPS backend
+    return mps is not None and mps.is_available()
+
+
+def get_device(device: str | torch.device | None = None) -> torch.device:
+    """Return the torch device to run the emulators on.
+
+    Parameters
+    ----------
+    device : str or torch.device, optional
+        Explicit device, e.g. ``"cpu"``, ``"cuda:1"`` or ``"mps"``. If None, the
+        ``PY21CMEMU_DEVICE`` environment variable is used when it is set; otherwise
+        the first available of CUDA, Apple-silicon GPU (MPS) and CPU.
+
+    Returns
+    -------
+    torch.device
+        The selected device.
+    """
+    if device is None:
+        device = os.environ.get(DEVICE_ENV_VAR) or None
+    if device is not None:
+        return torch.device(device)
     if torch.cuda.is_available():
         return torch.device("cuda")
-    elif torch.backends.mps.is_available():
+    if mps_is_available():
         return torch.device("mps")
-    else:
-        return torch.device("cpu")
+    return torch.device("cpu")
+
 
 device = get_device()
 
-def get_gpu_count():
-    # Check for NVIDIA CUDA GPUs
+
+def get_gpu_count() -> int:
+    """Return the number of GPUs available for sampling.
+
+    CUDA reports every card; Apple silicon exposes a single GPU through MPS.
+    """
     if torch.cuda.is_available():
         return torch.cuda.device_count()
-    # Check for Apple Silicon / AMD GPUs on Mac (MPS)
-    elif torch.backends.mps.is_available():
-        return 1  # Mac typically exposes all cores as a single unified device
-    else:
-        return 0
-    
+    if mps_is_available():
+        return 1
+    return 0
+
+
+def empty_cache(device: str | torch.device) -> None:
+    """Release cached GPU memory on ``device``; does nothing on the CPU."""
+    device_type = torch.device(device).type
+    if device_type == "cuda":
+        torch.cuda.empty_cache()
+    elif device_type == "mps" and hasattr(torch, "mps"):
+        torch.mps.empty_cache()
+
+
 def extract(a, t, x_shape):
     batch_size = t.shape[0]
     out = a.cpu().gather(-1, t.cpu())

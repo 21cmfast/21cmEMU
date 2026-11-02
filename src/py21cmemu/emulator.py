@@ -34,6 +34,7 @@ from .properties import (
     get_emulator_properties,
     resolve_emulator_name,
 )
+from .utils import get_device, get_gpu_count
 
 log = logging.getLogger(__name__)
 
@@ -75,6 +76,12 @@ class Emulator:
         Whether to emulate the 2D power spectrum (for 'mcg' only). Default is False
         since the 2D PS score model is slower than the LSTM. When False, the 1D PS
         from the LSTM model is used.
+    device : str or torch.device, optional
+        Torch device to run on, e.g. ``"cpu"``, ``"cuda"``, ``"cuda:1"`` or ``"mps"``.
+        By default the ``PY21CMEMU_DEVICE`` environment variable if set, otherwise
+        the first available of CUDA, Apple-silicon GPU (MPS) and CPU. With
+        ``"cuda"`` the 2D PS sampling is spread over all GPUs; ``"cuda:1"`` uses
+        that GPU only.
     model_path : str, optional
         Custom path to model weights (for 'mcg' score model only).
     PS_log_std : float, optional
@@ -89,10 +96,11 @@ class Emulator:
         self,
         emulator: str = DEFAULT_EMULATOR,
         emulate_2d_ps: bool = False,
+        device: str | torch.device | None = None,
     ):
         self.which_emulator = resolve_emulator_name(emulator)
         self.emulate_2d_ps = emulate_2d_ps
-        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.device = get_device(device)
 
         if self.which_emulator == EMULATOR_ACG:
             # Load bundled PyTorch model (no download needed)
@@ -363,7 +371,9 @@ class Emulator:
     def get_pred(self, cdns: np.ndarray, verbose: bool = False) -> np.ndarray:
         """Run diffusion-model sampling, using multiple GPUs when available."""
 
-        n_gpus = get_gpu_count()
+        # Spread over all GPUs only for device "cuda"; "cuda:N" uses GPU N alone.
+        on_all_gpus = self.device.type == "cuda" and self.device.index is None
+        n_gpus = get_gpu_count() if on_all_gpus else 1
 
         # Single-GPU (or CPU) path – original sequential behaviour.
         if n_gpus <= 1:
@@ -386,7 +396,7 @@ class Emulator:
         """Run diffusion-model sampling across multiple GPUs (internal helper)."""
         from concurrent.futures import ThreadPoolExecutor
 
-        from .utils import reverse_transform, get_gpu_count
+        from .utils import reverse_transform
 
         n_gpus = get_gpu_count()
         n_ps_batch = cdns.shape[1]
