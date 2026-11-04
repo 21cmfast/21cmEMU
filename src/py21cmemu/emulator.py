@@ -34,6 +34,7 @@ from .properties import (
     get_emulator_properties,
     resolve_emulator_name,
 )
+from .utils import get_device, get_gpu_count
 
 log = logging.getLogger(__name__)
 
@@ -51,7 +52,7 @@ class Emulator:
         +-----------+---------+-------------+--------+-----------------------------+
         | Name      | Aliases | Paper       | Params | Outputs                     |
         +===========+=========+=============+========+=============================+
-        | ``mcg``   | v3, mh  | [upcoming]  | 11     | Tb, xHI, Ts, tau, 2D-PS,    |
+        | ``mcg``   | v3, mh  | Breitman+26 | 11     | Tb, xHI, Ts, tau, 2D-PS,    |
         |           |         |             |        | UVLFs                       |
         +-----------+---------+-------------+--------+-----------------------------+
         | ``acg``   | v1      | Breitman+24 | 9      | Tb, xHI, Ts, tau, 1D-PS,    |
@@ -75,6 +76,12 @@ class Emulator:
         Whether to emulate the 2D power spectrum (for 'mcg' only). Default is False
         since the 2D PS score model is slower than the LSTM. When False, the 1D PS
         from the LSTM model is used.
+    device : str or torch.device, optional
+        Torch device to run on, e.g. ``"cpu"``, ``"cuda"``, ``"cuda:1"`` or ``"mps"``.
+        By default the ``PY21CMEMU_DEVICE`` environment variable if set, otherwise
+        the first available of CUDA, Apple-silicon GPU (MPS) and CPU. With
+        ``"cuda"`` the 2D PS sampling is spread over all GPUs; ``"cuda:1"`` uses
+        that GPU only.
     model_path : str, optional
         Custom path to model weights (for 'mcg' score model only).
     PS_log_std : float, optional
@@ -89,10 +96,11 @@ class Emulator:
         self,
         emulator: str = DEFAULT_EMULATOR,
         emulate_2d_ps: bool = False,
+        device: str | torch.device | None = None,
     ):
         self.which_emulator = resolve_emulator_name(emulator)
         self.emulate_2d_ps = emulate_2d_ps
-        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.device = get_device(device)
 
         if self.which_emulator == EMULATOR_ACG:
             # Load bundled PyTorch model (no download needed)
@@ -363,7 +371,9 @@ class Emulator:
     def get_pred(self, cdns: np.ndarray, verbose: bool = False) -> np.ndarray:
         """Run diffusion-model sampling, using multiple GPUs when available."""
 
-        n_gpus = torch.cuda.device_count()
+        # Spread over all GPUs only for device "cuda"; "cuda:N" uses GPU N alone.
+        on_all_gpus = self.device.type == "cuda" and self.device.index is None
+        n_gpus = get_gpu_count() if on_all_gpus else 1
 
         # Single-GPU (or CPU) path – original sequential behaviour.
         if n_gpus <= 1:
@@ -388,7 +398,7 @@ class Emulator:
 
         from .utils import reverse_transform
 
-        n_gpus = torch.cuda.device_count()
+        n_gpus = get_gpu_count()
         n_ps_batch = cdns.shape[1]
         n_realisations = getattr(self, "_n_realisations", 100)
         denoise = getattr(self, "_denoise", True)
@@ -396,10 +406,13 @@ class Emulator:
 
         if getattr(self, "_ps_gpu_config_key", None) != config_key:
             sde = self._vpsde_cls(beta_min=0.1, beta_max=20.0)
+            # The loaded model sits on the current CUDA device, which need not be
+            # cuda:0; reuse it there and load a replica on every other GPU.
+            main_device = next(self.score_model.parameters()).device
             replicas = []
             for gpu_id in range(n_gpus):
                 device = torch.device(f"cuda:{gpu_id}")
-                if gpu_id == 0:
+                if device == main_device:
                     model = self.score_model
                 else:
                     from .models.mcg.score_model import UNet

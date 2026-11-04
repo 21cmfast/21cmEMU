@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- The emulators run on Apple-silicon GPUs (PyTorch MPS backend). The device is chosen in the order CUDA, MPS, CPU.
+- New `device` argument of `Emulator` and `PY21CMEMU_DEVICE` environment variable to choose the device, e.g. `Emulator("acg", device="cpu")`.
+- The 2D PS samplers default to the same automatic device choice instead of `"cuda"`.
+
 ## v3 (mcg)
 
 - Full 11-parameter emulator for molecular cooling galaxies (Pop II + Pop III).

@@ -8,7 +8,7 @@ import abc
 import numpy as np
 import torch
 
-device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+from .utils import device  # noqa: F401 (kept as py21cmemu.sde.device)
 
 
 class SDE(abc.ABC):

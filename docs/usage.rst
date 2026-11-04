@@ -43,6 +43,13 @@ Or with pip:
    minimal CUDA toolkit is needed — all Python dependencies can then be managed
    with ``uv`` or ``pip``.
 
+   On Apple-silicon Macs the standard PyTorch wheels already include GPU support
+   (the MPS backend), so nothing extra is needed. The emulators use the first
+   available of CUDA, MPS and CPU. To choose the device yourself, pass it to the
+   emulator, e.g. ``Emulator("acg", device="cpu")``, or set the environment
+   variable ``PY21CMEMU_DEVICE`` (e.g. ``export PY21CMEMU_DEVICE=cpu``), which also
+   works when the emulator is created by another package such as 21CMMC.
+
 To test the installation, run:
 
 .. code-block:: python

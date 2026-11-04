@@ -19,7 +19,12 @@ import torch
 from scipy import integrate
 
 from .model_utils import get_score_fn
-from .utils import from_flattened_numpy, to_flattened_numpy
+from .utils import (
+    empty_cache,
+    from_flattened_numpy,
+    get_device,
+    to_flattened_numpy,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -145,7 +150,7 @@ class GetEMSampler:
         inverse_scaler: Optional function to un-normalise samples.
         denoise: If True, apply one final denoising step for sharper samples.
         eps: Smallest time value for numerical stability.
-        device: PyTorch device ('cuda' or 'cpu').
+        device: Torch device; by default chosen by ``py21cmemu.utils.get_device``.
     """
 
     def __init__(
@@ -155,7 +160,7 @@ class GetEMSampler:
         inverse_scaler: Callable | None = None,
         denoise: bool = True,
         eps: float = 1e-3,
-        device: str | torch.device = "cuda",
+        device: str | torch.device | None = None,
     ):
         self.sde = sde
         self.shape = shape
@@ -164,7 +169,7 @@ class GetEMSampler:
         self.inverse_scaler = inverse_scaler
         self.denoise = denoise
         self.eps = eps
-        self.device = device
+        self.device = get_device(device)
 
     def _em_sample_once(
         self,
@@ -232,7 +237,7 @@ class GetEMSampler:
             result = torch.cat(all_samples, dim=1)
 
             gc.collect()
-            torch.cuda.empty_cache()
+            empty_cache(self.device)
 
             return result
 
@@ -248,7 +253,7 @@ def get_em_sampler(
     inverse_scaler: Callable | None = None,
     denoise: bool = True,
     eps: float = 1e-3,
-    device: str | torch.device = "cuda",
+    device: str | torch.device | None = None,
 ) -> Callable:
     """Create an Euler-Maruyama sampler function.
 
@@ -260,7 +265,7 @@ def get_em_sampler(
         inverse_scaler: Optional function to un-normalise samples.
         denoise: If True, apply one final denoising step.
         eps: Smallest time value for numerical stability.
-        device: PyTorch device.
+        device: Torch device; by default chosen by ``py21cmemu.utils.get_device``.
 
     Returns:
         A sampling function: samples = sampler(model, cdn=...)
@@ -298,7 +303,7 @@ class GetODESampler:
         atol: Absolute tolerance for the ODE solver.
         method: ODE solver method ('RK45', 'RK23', 'DOP853', etc.).
         eps: Smallest time value for numerical stability.
-        device: PyTorch device.
+        device: Torch device; by default chosen by ``py21cmemu.utils.get_device``.
     """
 
     def __init__(
@@ -311,7 +316,7 @@ class GetODESampler:
         atol: float = 1e-5,
         method: str = "RK45",
         eps: float = 1e-3,
-        device: str | torch.device = "cuda",
+        device: str | torch.device | None = None,
     ):
         self.sde = sde
         self.shape = shape
@@ -322,7 +327,7 @@ class GetODESampler:
         self.atol = atol
         self.method = method
         self.eps = eps
-        self.device = device
+        self.device = get_device(device)
 
     def denoise_update_fn(
         self,
@@ -395,7 +400,7 @@ class GetODESampler:
 
             def ode_func(t: float, x_np: np.ndarray) -> np.ndarray:
                 x_t = from_flattened_numpy(x_np, self.single_batch_shape)
-                x_t = x_t.to(self.device).float()
+                x_t = x_t.float().to(self.device)  # MPS has no float64
                 vec_t = torch.ones(self.single_batch_shape[0], device=x_t.device) * t
                 drift = self.drift_fn(model, x_t, vec_t, x_cdn=x_cdn, cdn=cdn)
                 return to_flattened_numpy(drift)
@@ -414,8 +419,8 @@ class GetODESampler:
             sln = (
                 torch.tensor(solution.y[:, -1])
                 .reshape(self.single_batch_shape)
-                .to(self.device)
                 .float()
+                .to(self.device)
             )
 
             if self.denoise:
@@ -426,7 +431,7 @@ class GetODESampler:
             sln = sln.reshape(self.shape)
 
             gc.collect()
-            torch.cuda.empty_cache()
+            empty_cache(self.device)
 
             if return_nfe:
                 return sln, nfe
